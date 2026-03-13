@@ -1,0 +1,55 @@
+
+body{
+font-family:system-ui,Arial;
+background:#121212;
+color:#fff;
+margin:0;
+}
+
+header{
+padding:20px;
+border-bottom:1px solid #333;
+}
+
+.subtitle{
+color:#aaa;
+font-size:14px;
+}
+
+.app{
+display:flex;
+}
+
+.controls{
+width:260px;
+padding:20px;
+border-right:1px solid #333;
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+.controls input,
+.controls select,
+.controls button{
+padding:6px;
+}
+
+.previews{
+flex:1;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:20px;
+padding:20px;
+}
+
+.preview{
+background:#1e1e1e;
+padding:10px;
+border-radius:6px;
+}
+
+canvas{
+width:100%;
+background:#fff;
+}

@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Camo Lab</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header>
+<h1>QR Camo Lab</h1>
+<p class="subtitle">Curves belong to the silhouette edge, not the decoding core.</p>
+</header>
+
+<main class="app">
+
+<aside class="controls">
+
+<h2>Controls</h2>
+
+<label>Upload QR</label>
+<input type="file" id="qrUpload" accept="image/*">
+
+<label>Mask Shape</label>
+<select id="maskSelect"></select>
+
+<label>Crop %</label>
+<input type="range" id="cropSlider" min="0" max="40" value="22">
+
+<label>Tile Size</label>
+<input type="range" id="tileSlider" min="6" max="30" value="14">
+
+<label>
+<input type="checkbox" id="safeCoreToggle" checked>
+Safe Core
+</label>
+
+<button id="generateBtn">Generate</button>
+<button id="exportBtn">Export PNG</button>
+
+</aside>
+
+<section class="previews">
+
+<div class="preview">
+<h3>Original</h3>
+<canvas id="originalCanvas"></canvas>
+</div>
+
+<div class="preview">
+<h3>Threshold</h3>
+<canvas id="thresholdCanvas"></canvas>
+</div>
+
+<div class="preview">
+<h3>Cropped</h3>
+<canvas id="cropCanvas"></canvas>
+</div>
+
+<div class="preview">
+<h3>QR Camo Output</h3>
+<canvas id="outputCanvas"></canvas>
+</div>
+
+</section>
+
+</main>
+
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
