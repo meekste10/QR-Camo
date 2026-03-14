@@ -116,6 +116,7 @@ generateBtn.addEventListener("click", async () => {
       maskImg: mask,
       outputCanvas,
       tileSize,
+      sourceQrCanvas: originalCanvas
     });
 
     setDebug("render complete");
