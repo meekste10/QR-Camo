@@ -1,4 +1,9 @@
+console.log("QR Camo app.js loaded");
 
+document.addEventListener("DOMContentLoaded", () => {
+  const header = document.querySelector("h1");
+  if (header) header.textContent = "QR Camo Lab ✅";
+});
 import {state} from "./state.js"
 import {maskPresets} from "./presets.js"
 import {loadImage,drawToCanvas} from "./image-utils.js"
