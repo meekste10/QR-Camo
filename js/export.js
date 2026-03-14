@@ -1,5 +1,5 @@
+import { downloadCanvas } from "./image-utils.js";
 
-import {downloadCanvas} from "./image-utils.js"
-export function exportPNG(canvas){
-downloadCanvas(canvas)
+export function exportPNG(canvas) {
+  downloadCanvas(canvas);
 }
