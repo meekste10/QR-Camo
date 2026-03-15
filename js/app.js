@@ -36,6 +36,10 @@ const qrOffsetY = document.getElementById("qrOffsetY");
 const qrOffsetXLabel = document.getElementById("qrOffsetXLabel");
 const qrOffsetYLabel = document.getElementById("qrOffsetYLabel");
 
+const foregroundColor = document.getElementById("foregroundColor");
+const backgroundColor = document.getElementById("backgroundColor");
+const transparentBackground = document.getElementById("transparentBackground");
+
 const presetMaskSection = document.getElementById("presetMaskSection");
 const customMaskSection = document.getElementById("customMaskSection");
 
@@ -60,6 +64,74 @@ function syncOffsetLabels() {
   qrOffsetYLabel.textContent = qrOffsetY.value;
 }
 
+function hexToRgb(hex) {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3
+    ? clean.split("").map(c => c + c).join("")
+    : clean;
+
+  const int = parseInt(full, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255
+  };
+}
+
+function recolorOutputCanvas(canvas, fgHex, bgHex, useTransparentBackground) {
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+
+  const fg = hexToRgb(fgHex);
+  const bg = hexToRgb(bgHex);
+
+  for (let i = 0; i < d.length; i += 4) {
+    const alpha = d[i + 3];
+
+    if (alpha === 0) {
+      continue;
+    }
+
+    const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    const isDark = avg < 128;
+
+    if (isDark) {
+      d[i] = fg.r;
+      d[i + 1] = fg.g;
+      d[i + 2] = fg.b;
+      d[i + 3] = 255;
+    } else {
+      if (useTransparentBackground) {
+        d[i] = 0;
+        d[i + 1] = 0;
+        d[i + 2] = 0;
+        d[i + 3] = 0;
+      } else {
+        d[i] = bg.r;
+        d[i + 1] = bg.g;
+        d[i + 2] = bg.b;
+        d[i + 3] = 255;
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+}
+
+function applyCurrentColorsToOutput() {
+  if (!outputCanvas.width || !outputCanvas.height) return;
+
+  recolorOutputCanvas(
+    outputCanvas,
+    foregroundColor.value,
+    backgroundColor.value,
+    transparentBackground.checked
+  );
+
+  setDebug("colors applied");
+}
+
 setDebug("app.js loaded");
 
 const header = document.querySelector("h1");
@@ -80,6 +152,10 @@ syncOffsetLabels();
 maskModeSelect.addEventListener("change", syncMaskModeUI);
 qrOffsetX.addEventListener("input", syncOffsetLabels);
 qrOffsetY.addEventListener("input", syncOffsetLabels);
+
+foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
+backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
+transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
 
 qrUpload.addEventListener("change", async (e) => {
   try {
@@ -213,6 +289,8 @@ generateBtn.addEventListener("click", async () => {
       qrOffsetX: Number(qrOffsetX.value || 0),
       qrOffsetY: Number(qrOffsetY.value || 0)
     });
+
+    applyCurrentColorsToOutput();
 
     setDebug("render complete");
   } catch (err) {
