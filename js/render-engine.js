@@ -86,7 +86,6 @@ export function render(options) {
   };
 
   const drawSize = centerFit.moduleDisplaySize;
-
   let tileIndex = 0;
 
   for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
@@ -99,7 +98,6 @@ export function render(options) {
 
       const rawTile = tiles[tileIndex % tiles.length];
       const tileCanvas = normalizeTile(rawTile);
-
       if (!tileCanvas) continue;
 
       ctx.drawImage(
