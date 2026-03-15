@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR-Camo Creator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">▣</div>
+        <div>
+          <h1>QR-Camo</h1>
+          <p>Visual QR navigation</p>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Workspace</h2>
+        </div>
+
+        <label class="field">
+          <span>Mode</span>
+          <select id="workspaceMode">
+            <option value="creator" selected>Creator</option>
+            <option value="lab">Lab</option>
+          </select>
+        </label>
+
+        <div id="engineStatus" class="status-pill">Engine ready</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>1. Destination</h2>
+        </div>
+
+        <label class="field">
+          <span>Upload QR</span>
+          <input type="file" id="qrUpload" accept="image/*" />
+        </label>
+
+        <div class="hint">
+          Use any working QR style and let the engine do the rest.
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>2. Shape</h2>
+        </div>
+
+        <label class="field">
+          <span>Mask source</span>
+          <select id="maskModeSelect">
+            <option value="preset" selected>Preset</option>
+            <option value="custom">Custom upload</option>
+          </select>
+        </label>
+
+        <div id="presetMaskSection">
+          <label class="field">
+            <span>Preset shape</span>
+            <select id="maskSelect"></select>
+          </label>
+        </div>
+
+        <div id="customMaskSection" class="stack hidden">
+          <label class="field">
+            <span>Upload custom silhouette source</span>
+            <input type="file" id="customMaskUpload" accept="image/*" />
+          </label>
+
+          <label class="field">
+            <span>Mask threshold</span>
+            <input type="range" id="customMaskThreshold" min="0" max="255" value="180" />
+          </label>
+
+          <label class="field inline">
+            <input type="checkbox" id="customMaskInvert" />
+            <span>Invert mask</span>
+          </label>
+
+          <button id="buildMaskBtn" class="secondary" type="button">Build custom mask</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>3. Core placement</h2>
+        </div>
+
+        <label class="field">
+          <span>Center QR size</span>
+          <select id="qrSizeSelect">
+            <option value="small">Small</option>
+            <option value="medium" selected>Medium</option>
+            <option value="large">Large</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Horizontal offset</span>
+          <input type="range" id="qrOffsetX" min="-200" max="200" value="0" />
+          <small id="qrOffsetXLabel">0</small>
+        </label>
+
+        <label class="field">
+          <span>Vertical offset</span>
+          <input type="range" id="qrOffsetY" min="-200" max="200" value="0" />
+          <small id="qrOffsetYLabel">0</small>
+        </label>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>4. Color</h2>
+        </div>
+
+        <div class="swatches">
+          <label class="field">
+            <span>Foreground</span>
+            <input type="color" id="foregroundColor" value="#000000" />
+          </label>
+
+          <label class="field">
+            <span>Background</span>
+            <input type="color" id="backgroundColor" value="#ffffff" />
+          </label>
+        </div>
+
+        <label class="field inline">
+          <input type="checkbox" id="transparentBackground" />
+          <span>Transparent background</span>
+        </label>
+
+        <div id="contrastWarning" class="warning hidden">
+          Low contrast may not scan reliably.
+        </div>
+      </section>
+
+      <section class="panel actions">
+        <button id="generateBtn" class="primary" type="button">Generate</button>
+        <button id="exportBtn" class="secondary" type="button">Export PNG</button>
+      </section>
+
+      <section class="panel subtle">
+        <div id="debugPanel">Ready.</div>
+      </section>
+    </aside>
+
+    <main class="stage">
+      <section class="hero">
+        <div>
+          <h2>Create QR codes people understand at a glance.</h2>
+          <p>
+            Turn square scans into icons, symbols, and silhouettes that still work in the real world.
+          </p>
+        </div>
+      </section>
+
+      <section class="canvas-card">
+        <div class="canvas-toolbar">
+          <div class="canvas-title">Live Preview</div>
+          <div class="canvas-meta" id="previewMeta">Waiting for QR upload</div>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="outputCanvas"></canvas>
+        </div>
+      </section>
+
+      <section id="labPanels" class="lab-grid hidden">
+        <div class="lab-card">
+          <h3>Original QR</h3>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+
+        <div class="lab-card">
+          <h3>Threshold QR</h3>
+          <canvas id="thresholdCanvas"></canvas>
+        </div>
+
+        <div class="lab-card">
+          <h3>Inner Tile Source</h3>
+          <canvas id="cropCanvas"></canvas>
+        </div>
+
+        <div class="lab-card">
+          <h3>Custom Mask Preview</h3>
+          <canvas id="customMaskCanvas"></canvas>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
