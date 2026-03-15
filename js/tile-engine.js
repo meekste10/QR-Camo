@@ -15,14 +15,10 @@ function getTileStats(tileCanvas) {
   const total = blackCount + whiteCount;
   const blackRatio = total ? blackCount / total : 0;
 
-  // strongest visually when not too empty and not too solid
-  const contrastScore = 1 - Math.abs(0.5 - blackRatio) * 2;
-
   return {
     blackCount,
     whiteCount,
-    blackRatio,
-    contrastScore
+    blackRatio
   };
 }
 
@@ -64,40 +60,27 @@ export function extractTiles(imageData, tileSize) {
 export function buildWeightedTilePool(tiles) {
   if (!tiles || !tiles.length) return [];
 
-  const strong = [];
-  const medium = [];
-  const weak = [];
-
-  for (const tile of tiles) {
-    const score = tile.stats.contrastScore;
-    const blackRatio = tile.stats.blackRatio;
-
-    // discard tiles that are almost all one color
-    if (blackRatio < 0.05 || blackRatio > 0.95) {
-      weak.push(tile);
-    } else if (score >= 0.55) {
-      strong.push(tile);
-    } else if (score >= 0.25) {
-      medium.push(tile);
-    } else {
-      weak.push(tile);
-    }
-  }
-
-  // weighted pool: stronger tiles appear more often
   const pool = [];
 
-  strong.forEach(tile => {
-    pool.push(tile, tile, tile, tile, tile);
-  });
+  for (const tile of tiles) {
+    const r = tile.stats.blackRatio;
 
-  medium.forEach(tile => {
-    pool.push(tile, tile, tile);
-  });
+    // throw away tiles that are almost solid black or white
+    if (r < 0.08 || r > 0.92) continue;
 
-  weak.forEach(tile => {
-    pool.push(tile);
-  });
+    // strongly prefer middle-balance tiles
+    if (r >= 0.35 && r <= 0.65) {
+      pool.push(tile, tile, tile, tile, tile, tile);
+    }
+    // moderately prefer near-middle tiles
+    else if (r >= 0.22 && r <= 0.78) {
+      pool.push(tile, tile, tile, tile);
+    }
+    // allow edge cases lightly
+    else {
+      pool.push(tile, tile);
+    }
+  }
 
   return pool.length ? pool : tiles;
 }
