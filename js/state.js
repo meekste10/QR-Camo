@@ -5,7 +5,7 @@ export const state = {
   cropped: null,
   tileLibrary: [],
   maskImage: null,
-  cropPercent: 22,
-  tileSize: 14,
-  safeCore: true
+  safeCore: true,
+  customMaskImage: null,
+  customMaskCanvas: null
 };
