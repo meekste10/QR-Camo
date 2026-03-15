@@ -97,7 +97,11 @@ generateBtn.addEventListener("click", async () => {
     cropCanvas.height = trimmed.height;
     cropCanvas.getContext("2d").putImageData(trimmed, 0, 0);
 
-    const modulePixelSize = estimateModuleSize(trimmed);
+    let modulePixelSize = estimateModuleSize(trimmed);
+
+if (!modulePixelSize || modulePixelSize < 1) {
+  modulePixelSize = 4;
+}
     setDebug(`estimated native module size: ${modulePixelSize}px`);
 
     const tiles = extractTiles(trimmed, modulePixelSize);
