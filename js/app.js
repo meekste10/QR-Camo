@@ -64,7 +64,6 @@ if (maskSelect && maskSelect.options.length === 0) {
 }
 
 syncMaskModeUI();
-
 maskModeSelect.addEventListener("change", syncMaskModeUI);
 
 qrUpload.addEventListener("change", async (e) => {
