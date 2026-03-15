@@ -72,36 +72,6 @@ export function trimWhiteBorder(imageData, keepMarginPx = 1) {
   return tctx.getImageData(0, 0, newW, newH);
 }
 
-export function innerCrop(imageData, insetPercent = 24) {
-  const w = imageData.width;
-  const h = imageData.height;
-
-  const insetX = Math.floor(w * (insetPercent / 100));
-  const insetY = Math.floor(h * (insetPercent / 100));
-
-  const newW = Math.max(1, w - insetX * 2);
-  const newH = Math.max(1, h - insetY * 2);
-
-  const sourceCanvas = document.createElement("canvas");
-  sourceCanvas.width = w;
-  sourceCanvas.height = h;
-  const sctx = sourceCanvas.getContext("2d");
-  sctx.putImageData(imageData, 0, 0);
-
-  const targetCanvas = document.createElement("canvas");
-  targetCanvas.width = newW;
-  targetCanvas.height = newH;
-  const tctx = targetCanvas.getContext("2d");
-
-  tctx.drawImage(
-    sourceCanvas,
-    insetX, insetY, newW, newH,
-    0, 0, newW, newH
-  );
-
-  return tctx.getImageData(0, 0, newW, newH);
-}
-
 export function imageDataToCanvas(imageData) {
   const canvas = document.createElement("canvas");
   canvas.width = imageData.width;
@@ -149,9 +119,103 @@ export function estimateModuleSize(imageData) {
   if (!filtered.length) return 4;
 
   filtered.sort((a, b) => a - b);
-
   const lowerHalf = filtered.slice(0, Math.max(1, Math.floor(filtered.length * 0.35)));
   const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
 
   return Math.max(1, Math.round(avg));
+}
+
+function nearestValidQrModuleCount(approxCount) {
+  // QR versions: 21 + 4*(version-1)
+  let best = 21;
+  let bestDiff = Infinity;
+
+  for (let version = 1; version <= 40; version++) {
+    const count = 21 + 4 * (version - 1);
+    const diff = Math.abs(count - approxCount);
+    if (diff < bestDiff) {
+      best = count;
+      bestDiff = diff;
+    }
+  }
+
+  return best;
+}
+
+export function normalizeQrToModuleGrid(imageData) {
+  const modulePixelSize = estimateModuleSize(imageData);
+  const approxModuleCount = Math.round(imageData.width / modulePixelSize);
+  const moduleCount = nearestValidQrModuleCount(approxModuleCount);
+
+  const sourceCanvas = imageDataToCanvas(imageData);
+
+  // Build a 1-pixel-per-module logical canvas
+  const moduleCanvas = document.createElement("canvas");
+  moduleCanvas.width = moduleCount;
+  moduleCanvas.height = moduleCount;
+  const mctx = moduleCanvas.getContext("2d");
+  mctx.imageSmoothingEnabled = false;
+
+  mctx.drawImage(
+    sourceCanvas,
+    0,
+    0,
+    sourceCanvas.width,
+    sourceCanvas.height,
+    0,
+    0,
+    moduleCount,
+    moduleCount
+  );
+
+  // Re-threshold after resampling to snap cells cleanly
+  const img = mctx.getImageData(0, 0, moduleCount, moduleCount);
+  const d = img.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    const v = avg > 128 ? 255 : 0;
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
+    d[i + 3] = 255;
+  }
+
+  mctx.putImageData(img, 0, 0);
+
+  return {
+    moduleCanvas,
+    moduleCount,
+    modulePixelSize
+  };
+}
+
+export function innerCropFromModuleCanvas(moduleCanvas, insetModules = 8) {
+  const w = moduleCanvas.width;
+  const h = moduleCanvas.height;
+
+  const x = Math.max(0, insetModules);
+  const y = Math.max(0, insetModules);
+  const newW = Math.max(1, w - insetModules * 2);
+  const newH = Math.max(1, h - insetModules * 2);
+
+  const target = document.createElement("canvas");
+  target.width = newW;
+  target.height = newH;
+  const tctx = target.getContext("2d");
+  tctx.imageSmoothingEnabled = false;
+
+  tctx.drawImage(
+    moduleCanvas,
+    x,
+    y,
+    newW,
+    newH,
+    0,
+    0,
+    newW,
+    newH
+  );
+
+  return target;
 }
