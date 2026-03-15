@@ -12,7 +12,6 @@ export function buildMaskFromImage(img, options = {}) {
 
   ctx.clearRect(0, 0, size, size);
 
-  // fit image into square canvas
   const scale = Math.min(size / img.width, size / img.height);
   const drawW = Math.round(img.width * scale);
   const drawH = Math.round(img.height * scale);
@@ -57,6 +56,5 @@ export function buildMaskFromImage(img, options = {}) {
   }
 
   ctx.putImageData(imageData, 0, 0);
-
   return canvas;
 }
