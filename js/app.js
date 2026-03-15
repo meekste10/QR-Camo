@@ -4,10 +4,11 @@ import { loadImage, drawToCanvas } from "./image-utils.js";
 import {
   threshold,
   trimWhiteBorder,
-  normalizeQrToModuleGrid,
-  innerCropFromModuleCanvas
+  innerCrop,
+  estimateModuleSize,
+  imageDataToCanvas
 } from "./qr-preprocess.js";
-import { extractTilesFromModuleCanvas } from "./tile-engine.js";
+import { extractTiles } from "./tile-engine.js";
 import { loadMask } from "./mask-engine.js";
 import { buildMaskFromImage } from "./mask-builder.js";
 import { render } from "./render-engine.js";
@@ -18,11 +19,6 @@ const setDebug = (msg) => {
   if (debugPanel) debugPanel.textContent = `debug: ${msg}`;
   console.log(msg);
 };
-
-setDebug("app.js loaded");
-
-const header = document.querySelector("h1");
-if (header) header.textContent = "QR Camo Lab ✅";
 
 const qrUpload = document.getElementById("qrUpload");
 const maskModeSelect = document.getElementById("maskModeSelect");
@@ -48,13 +44,15 @@ state.customMaskCanvas = null;
 
 function syncMaskModeUI() {
   const mode = maskModeSelect.value;
-  presetMaskSection.style.display = mode === "block" ? "block" : "block";
   presetMaskSection.style.display = mode === "preset" ? "block" : "none";
   customMaskSection.style.display = mode === "custom" ? "block" : "none";
   setDebug(`mask mode: ${mode}`);
 }
 
-setDebug("elements grabbed");
+setDebug("app.js loaded");
+
+const header = document.querySelector("h1");
+if (header) header.textContent = "QR Camo Lab ✅";
 
 if (maskSelect && maskSelect.options.length === 0) {
   Object.keys(maskPresets).forEach((k) => {
@@ -63,21 +61,14 @@ if (maskSelect && maskSelect.options.length === 0) {
     o.textContent = k;
     maskSelect.appendChild(o);
   });
-  setDebug("mask presets added from js");
-} else {
-  setDebug("mask options already present");
 }
 
 syncMaskModeUI();
 
-maskModeSelect.addEventListener("change", () => {
-  syncMaskModeUI();
-});
+maskModeSelect.addEventListener("change", syncMaskModeUI);
 
 qrUpload.addEventListener("change", async (e) => {
   try {
-    setDebug("QR file selected");
-
     const file = e.target.files[0];
     if (!file) {
       setDebug("no QR file selected");
@@ -97,8 +88,6 @@ qrUpload.addEventListener("change", async (e) => {
 
 customMaskUpload.addEventListener("change", async (e) => {
   try {
-    setDebug("custom mask source selected");
-
     const file = e.target.files[0];
     if (!file) {
       setDebug("no custom mask file selected");
@@ -107,7 +96,6 @@ customMaskUpload.addEventListener("change", async (e) => {
 
     const img = await loadImage(file);
     state.customMaskImage = img;
-
     setDebug(`custom mask source loaded ${img.width}x${img.height}`);
   } catch (err) {
     console.error(err);
@@ -168,36 +156,21 @@ generateBtn.addEventListener("click", async () => {
 
     const trimmed = trimWhiteBorder(thresholded, 1);
 
-    setDebug("normalizing QR to module grid");
+    setDebug("making inner crop for tile source");
 
-    const normalized = normalizeQrToModuleGrid(trimmed);
-    const sourceQrCanvas = normalized.moduleCanvas;
+    const inner = innerCrop(trimmed, 24);
 
-    setDebug(`normalized module count: ${normalized.moduleCount}`);
+    cropCanvas.width = inner.width;
+    cropCanvas.height = inner.height;
+    cropCanvas.getContext("2d").putImageData(inner, 0, 0);
 
-    setDebug("making inner module crop for tile source");
+    let modulePixelSize = estimateModuleSize(trimmed);
+    if (!modulePixelSize || modulePixelSize < 1) {
+      modulePixelSize = 4;
+    }
 
-    const innerModuleCanvas = innerCropFromModuleCanvas(sourceQrCanvas, 8);
-
-    cropCanvas.width = innerModuleCanvas.width * 8;
-    cropCanvas.height = innerModuleCanvas.height * 8;
-    const cropCtx = cropCanvas.getContext("2d");
-    cropCtx.imageSmoothingEnabled = false;
-    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
-    cropCtx.drawImage(
-      innerModuleCanvas,
-      0,
-      0,
-      innerModuleCanvas.width,
-      innerModuleCanvas.height,
-      0,
-      0,
-      cropCanvas.width,
-      cropCanvas.height
-    );
-
-    const tiles = extractTilesFromModuleCanvas(innerModuleCanvas);
-    setDebug(`tiles extracted from module grid: ${tiles.length}`);
+    const tiles = extractTiles(inner, modulePixelSize);
+    setDebug(`tiles extracted: ${tiles.length}`);
 
     let maskSource = null;
 
@@ -214,12 +187,14 @@ generateBtn.addEventListener("click", async () => {
       setDebug(`using preset mask: ${selectedMask}`);
     }
 
+    const sourceQrCanvas = imageDataToCanvas(trimmed);
+
     render({
       tiles,
       maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas,
-      modulePixelSize: 1
+      modulePixelSize
     });
 
     setDebug("render complete");
