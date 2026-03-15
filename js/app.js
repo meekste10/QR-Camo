@@ -1,7 +1,12 @@
 import { state } from "./state.js";
 import { maskPresets } from "./presets.js";
 import { loadImage, drawToCanvas } from "./image-utils.js";
-import { threshold, cropInterior } from "./qr-preprocess.js";
+import {
+  threshold,
+  trimWhiteBorder,
+  estimateModuleSize,
+  imageDataToCanvas
+} from "./qr-preprocess.js";
 import { extractTiles } from "./tile-engine.js";
 import { loadMask } from "./mask-engine.js";
 import { render } from "./render-engine.js";
@@ -20,8 +25,6 @@ if (header) header.textContent = "QR Camo Lab ✅";
 
 const qrUpload = document.getElementById("qrUpload");
 const maskSelect = document.getElementById("maskSelect");
-const cropSlider = document.getElementById("cropSlider");
-const tileSlider = document.getElementById("tileSlider");
 const generateBtn = document.getElementById("generateBtn");
 const exportBtn = document.getElementById("exportBtn");
 
@@ -55,8 +58,6 @@ qrUpload.addEventListener("change", async (e) => {
     }
 
     const img = await loadImage(file);
-    setDebug(`image loaded ${img.width}x${img.height}`);
-
     state.qrImage = img;
     state.qrImageData = drawToCanvas(img, originalCanvas);
 
@@ -74,10 +75,7 @@ generateBtn.addEventListener("click", async () => {
       return;
     }
 
-    const cropPercent = Number(cropSlider.value || 22);
-    const tileSize = Number(tileSlider.value || 14);
-
-    setDebug("thresholding");
+    setDebug("thresholding uploaded QR");
 
     const thresholded = threshold(
       new ImageData(
@@ -91,32 +89,32 @@ generateBtn.addEventListener("click", async () => {
     thresholdCanvas.height = thresholded.height;
     thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
 
-    setDebug("cropping");
+    setDebug("trimming white border aggressively");
 
-    const cropped = cropInterior(thresholded, cropPercent);
+    const trimmed = trimWhiteBorder(thresholded, 1);
 
-    cropCanvas.width = cropped.width;
-    cropCanvas.height = cropped.height;
-    cropCanvas.getContext("2d").putImageData(cropped, 0, 0);
+    cropCanvas.width = trimmed.width;
+    cropCanvas.height = trimmed.height;
+    cropCanvas.getContext("2d").putImageData(trimmed, 0, 0);
 
-    setDebug("extracting tiles");
+    const modulePixelSize = estimateModuleSize(trimmed);
+    setDebug(`estimated native module size: ${modulePixelSize}px`);
 
-    const tiles = extractTiles(cropped, tileSize);
+    const tiles = extractTiles(trimmed, modulePixelSize);
     setDebug(`tiles extracted: ${tiles.length}`);
 
     const selectedMask = maskSelect.value;
-    setDebug(`loading mask: ${selectedMask}`);
-
     const mask = await loadMask(maskPresets[selectedMask]);
+    setDebug(`mask loaded: ${selectedMask}`);
 
-    setDebug("rendering");
+    const sourceQrCanvas = imageDataToCanvas(trimmed);
 
     render({
       tiles,
       maskImg: mask,
       outputCanvas,
-      tileSize,
-      sourceQrCanvas: originalCanvas
+      sourceQrCanvas,
+      modulePixelSize
     });
 
     setDebug("render complete");
