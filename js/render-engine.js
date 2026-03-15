@@ -1,9 +1,13 @@
 import { pointInsideMask } from "./mask-engine.js";
 
-function fitQrCenter(outputSize, moduleCount) {
+function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
-  const targetFraction = 0.34;
+  let targetFraction = 0.34;
+  if (qrSize === "small") targetFraction = 0.26;
+  if (qrSize === "medium") targetFraction = 0.34;
+  if (qrSize === "large") targetFraction = 0.42;
+
   let qrDisplaySize = Math.floor(outputSize * targetFraction);
 
   const moduleDisplaySize = Math.max(2, Math.floor(qrDisplaySize / moduleCount));
@@ -36,7 +40,10 @@ export function render(options) {
     maskImg,
     outputCanvas,
     sourceQrCanvas,
-    modulePixelSize
+    modulePixelSize,
+    qrSize = "medium",
+    qrOffsetX = 0,
+    qrOffsetY = 0
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -65,7 +72,10 @@ export function render(options) {
     Math.round(sourceQrCanvas.width / safeModulePixelSize)
   );
 
-  const centerFit = fitQrCenter(OUTPUT_SIZE, moduleCount);
+  const centerFit = fitQrCenter(OUTPUT_SIZE, moduleCount, qrSize);
+
+  const centerX = centerFit.x + qrOffsetX;
+  const centerY = centerFit.y + qrOffsetY;
 
   ctx.drawImage(
     sourceQrCanvas,
@@ -73,15 +83,15 @@ export function render(options) {
     0,
     sourceQrCanvas.width,
     sourceQrCanvas.height,
-    centerFit.x,
-    centerFit.y,
+    centerX,
+    centerY,
     centerFit.qrDisplaySize,
     centerFit.qrDisplaySize
   );
 
   const centerRect = {
-    x: centerFit.x,
-    y: centerFit.y,
+    x: centerX,
+    y: centerY,
     size: centerFit.qrDisplaySize
   };
 
