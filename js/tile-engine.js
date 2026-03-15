@@ -24,24 +24,27 @@ function getTileStats(tileCanvas) {
   };
 }
 
-export function extractTilesFromModuleCanvas(moduleCanvas) {
+export function extractTiles(imageData, tileSize) {
   const tiles = [];
-  const w = moduleCanvas.width;
-  const h = moduleCanvas.height;
-  const sctx = moduleCanvas.getContext("2d");
 
-  for (let y = 0; y < h; y += 1) {
-    for (let x = 0; x < w; x += 1) {
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = imageData.width;
+  sourceCanvas.height = imageData.height;
+  const sctx = sourceCanvas.getContext("2d");
+  sctx.putImageData(imageData, 0, 0);
+
+  for (let y = 0; y + tileSize <= imageData.height; y += tileSize) {
+    for (let x = 0; x + tileSize <= imageData.width; x += tileSize) {
       const tileCanvas = document.createElement("canvas");
-      tileCanvas.width = 1;
-      tileCanvas.height = 1;
+      tileCanvas.width = tileSize;
+      tileCanvas.height = tileSize;
       const tctx = tileCanvas.getContext("2d");
       tctx.imageSmoothingEnabled = false;
 
       tctx.drawImage(
-        moduleCanvas,
-        x, y, 1, 1,
-        0, 0, 1, 1
+        sourceCanvas,
+        x, y, tileSize, tileSize,
+        0, 0, tileSize, tileSize
       );
 
       const stats = getTileStats(tileCanvas);
