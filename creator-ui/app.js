@@ -1,330 +1,349 @@
-:root{
-  --bg:#0b1020;
-  --panel:#121a2d;
-  --panel-2:#17223a;
-  --line:#26324d;
-  --text:#ecf2ff;
-  --muted:#9eaccd;
-  --accent:#87b4ff;
-  --accent-2:#4d7fff;
-  --shadow:0 18px 50px rgba(0,0,0,.32);
-  --radius:18px;
+import { state } from "../js/state.js";
+import { maskPresets } from "../js/presets.js";
+import { loadImage, drawToCanvas } from "../js/image-utils.js";
+import {
+  threshold,
+  trimWhiteBorder,
+  innerCrop,
+  estimateModuleSize,
+  imageDataToCanvas
+} from "../js/qr-preprocess.js";
+import { extractTiles } from "../js/tile-engine.js";
+import { loadMask } from "../js/mask-engine.js";
+import { buildMaskFromImage } from "../js/mask-builder.js";
+import { render } from "../js/render-engine.js";
+import { exportPNG } from "../js/export.js";
+
+const debugPanel = document.getElementById("debugPanel");
+const previewMeta = document.getElementById("previewMeta");
+const engineStatus = document.getElementById("engineStatus");
+const contrastWarning = document.getElementById("contrastWarning");
+
+const qrUpload = document.getElementById("qrUpload");
+const maskModeSelect = document.getElementById("maskModeSelect");
+const maskSelect = document.getElementById("maskSelect");
+const customMaskUpload = document.getElementById("customMaskUpload");
+const customMaskThreshold = document.getElementById("customMaskThreshold");
+const customMaskInvert = document.getElementById("customMaskInvert");
+const buildMaskBtn = document.getElementById("buildMaskBtn");
+const generateBtn = document.getElementById("generateBtn");
+const exportBtn = document.getElementById("exportBtn");
+
+const workspaceMode = document.getElementById("workspaceMode");
+const labPanels = document.getElementById("labPanels");
+
+const qrSizeSelect = document.getElementById("qrSizeSelect");
+const qrOffsetX = document.getElementById("qrOffsetX");
+const qrOffsetY = document.getElementById("qrOffsetY");
+const qrOffsetXLabel = document.getElementById("qrOffsetXLabel");
+const qrOffsetYLabel = document.getElementById("qrOffsetYLabel");
+
+const foregroundColor = document.getElementById("foregroundColor");
+const backgroundColor = document.getElementById("backgroundColor");
+const transparentBackground = document.getElementById("transparentBackground");
+
+const presetMaskSection = document.getElementById("presetMaskSection");
+const customMaskSection = document.getElementById("customMaskSection");
+
+const originalCanvas = document.getElementById("originalCanvas");
+const thresholdCanvas = document.getElementById("thresholdCanvas");
+const cropCanvas = document.getElementById("cropCanvas");
+const customMaskCanvas = document.getElementById("customMaskCanvas");
+const outputCanvas = document.getElementById("outputCanvas");
+
+state.customMaskImage = null;
+state.customMaskCanvas = null;
+
+function setDebug(msg) {
+  debugPanel.textContent = msg;
+  console.log(msg);
 }
 
-*{
-  box-sizing:border-box;
+function setMeta(msg) {
+  previewMeta.textContent = msg;
 }
 
-html,body{
-  margin:0;
-  padding:0;
-  background:radial-gradient(circle at top,#182545 0%,#0b1020 52%);
-  color:var(--text);
-  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+function setEngineReady(msg = "Engine ready") {
+  engineStatus.textContent = msg;
 }
 
-body{
-  min-height:100vh;
+function syncMaskModeUI() {
+  const mode = maskModeSelect.value;
+  presetMaskSection.classList.toggle("hidden", mode !== "preset");
+  customMaskSection.classList.toggle("hidden", mode !== "custom");
+  setDebug(`Mask mode: ${mode}`);
 }
 
-.shell{
-  display:grid;
-  grid-template-columns:360px 1fr;
-  min-height:100vh;
+function syncOffsetLabels() {
+  qrOffsetXLabel.textContent = qrOffsetX.value;
+  qrOffsetYLabel.textContent = qrOffsetY.value;
 }
 
-.sidebar{
-  padding:20px;
-  border-right:1px solid rgba(255,255,255,.06);
-  background:rgba(6,10,20,.55);
-  backdrop-filter:blur(18px);
-  overflow:auto;
+function syncWorkspace() {
+  labPanels.classList.toggle("hidden", workspaceMode.value !== "lab");
 }
 
-.stage{
-  padding:28px;
-  display:flex;
-  flex-direction:column;
-  gap:22px;
+function hexToRgb(hex) {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3
+    ? clean.split("").map(c => c + c).join("")
+    : clean;
+
+  const num = parseInt(full, 16);
+  return {
+    r: (num >> 16) & 255,
+    g: (num >> 8) & 255,
+    b: num & 255
+  };
 }
 
-.brand{
-  display:flex;
-  gap:14px;
-  align-items:center;
-  margin-bottom:18px;
+function luminanceFromHex(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-.brand-mark{
-  width:48px;
-  height:48px;
-  border-radius:14px;
-  display:grid;
-  place-items:center;
-  background:linear-gradient(135deg,var(--accent-2),#7be8ff);
-  color:#07101f;
-  font-weight:800;
-  font-size:24px;
-  box-shadow:var(--shadow);
-}
-
-.brand h1{
-  font-size:24px;
-  line-height:1;
-  margin:0;
-}
-
-.brand p{
-  margin:4px 0 0;
-  color:var(--muted);
-  font-size:13px;
-}
-
-.panel{
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:var(--radius);
-  padding:16px;
-  margin-bottom:14px;
-  box-shadow:var(--shadow);
-}
-
-.panel.subtle{
-  padding:12px;
-}
-
-.panel-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-}
-
-.panel-head h2{
-  margin:0;
-  font-size:15px;
-}
-
-.field{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  margin-bottom:12px;
-}
-
-.field.inline{
-  flex-direction:row;
-  align-items:center;
-  gap:10px;
-}
-
-.field span{
-  font-size:13px;
-  color:#dbe6ff;
-}
-
-.field small{
-  color:var(--muted);
-}
-
-select,
-input[type="file"],
-input[type="color"],
-input[type="range"],
-button{
-  width:100%;
-}
-
-select,
-input[type="file"]{
-  background:var(--panel-2);
-  color:var(--text);
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:12px 13px;
-}
-
-input[type="color"]{
-  height:46px;
-  border:none;
-  background:transparent;
-  padding:0;
-  cursor:pointer;
-}
-
-input[type="range"]{
-  accent-color:var(--accent-2);
-}
-
-button{
-  border:none;
-  border-radius:14px;
-  padding:12px 14px;
-  font-weight:700;
-  cursor:pointer;
-}
-
-button.primary{
-  background:linear-gradient(135deg,var(--accent-2),#7b79ff);
-  color:white;
-}
-
-button.secondary{
-  background:rgba(255,255,255,.06);
-  color:var(--text);
-  border:1px solid rgba(255,255,255,.08);
-}
-
-.actions{
-  display:grid;
-  gap:10px;
-}
-
-.hint{
-  font-size:12px;
-  color:var(--muted);
-  line-height:1.5;
-}
-
-.status-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  background:rgba(57,217,138,.14);
-  color:#9ff2c4;
-  border:1px solid rgba(57,217,138,.25);
-  padding:8px 10px;
-  border-radius:999px;
-  font-size:12px;
-}
-
-.warning{
-  margin-top:10px;
-  background:rgba(255,191,95,.12);
-  border:1px solid rgba(255,191,95,.28);
-  color:#ffe0a0;
-  border-radius:12px;
-  padding:10px 12px;
-  font-size:12px;
-}
-
-.hero{
-  padding:6px 2px 2px;
-}
-
-.hero h2{
-  margin:0 0 8px;
-  font-size:34px;
-  letter-spacing:-.02em;
-  max-width:700px;
-}
-
-.hero p{
-  margin:0;
-  color:var(--muted);
-  font-size:16px;
-  max-width:720px;
-}
-
-.canvas-card{
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:22px;
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-
-.canvas-toolbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:16px 18px;
-  border-bottom:1px solid rgba(255,255,255,.06);
-}
-
-.canvas-title{
-  font-weight:700;
-}
-
-.canvas-meta{
-  color:var(--muted);
-  font-size:13px;
-}
-
-.canvas-wrap{
-  padding:24px;
-  min-height:640px;
-  display:grid;
-  place-items:center;
-  background:
-    linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%),
-    linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%),
-    linear-gradient(180deg,#10192d,#0b1120);
-  background-size:36px 36px;
-  background-position:0 0,18px 18px,0 0;
-}
-
-#outputCanvas{
-  max-width:min(92vw,860px);
-  width:100%;
-  background:white;
-  border-radius:20px;
-  box-shadow:0 12px 40px rgba(0,0,0,.35);
-}
-
-.lab-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:18px;
-}
-
-.lab-card{
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:18px;
-  box-shadow:var(--shadow);
-  padding:14px;
-}
-
-.lab-card h3{
-  margin:0 0 12px;
-  font-size:14px;
-}
-
-.lab-card canvas{
-  width:100%;
-  background:white;
-  border-radius:14px;
-}
-
-.hidden{
-  display:none !important;
-}
-
-.swatches{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-.stack{
-  display:flex;
-  flex-direction:column;
-}
-
-#debugPanel{
-  font-size:12px;
-  color:var(--muted);
-  line-height:1.5;
-}
-
-@media (max-width:1100px){
-  .shell{
-    grid-template-columns:1fr;
+function updateContrastWarning() {
+  if (transparentBackground.checked) {
+    contrastWarning.classList.add("hidden");
+    return;
   }
 
-  .sidebar{
-    border-right:none;
-    border-bottom:1px solid rgba(255,255,255,.06);
-  }
+  const diff = Math.abs(
+    luminanceFromHex(foregroundColor.value) - luminanceFromHex(backgroundColor.value)
+  );
+
+  contrastWarning.classList.toggle("hidden", diff >= 110);
 }
+
+function recolorOutputCanvas(canvas, fgHex, bgHex, transparent) {
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+
+  const fg = hexToRgb(fgHex);
+  const bg = hexToRgb(bgHex);
+
+  for (let i = 0; i < d.length; i += 4) {
+    const alpha = d[i + 3];
+    if (alpha === 0) continue;
+
+    const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    const isDark = avg < 128;
+
+    if (isDark) {
+      d[i] = fg.r;
+      d[i + 1] = fg.g;
+      d[i + 2] = fg.b;
+      d[i + 3] = 255;
+    } else {
+      if (transparent) {
+        d[i] = 0;
+        d[i + 1] = 0;
+        d[i + 2] = 0;
+        d[i + 3] = 0;
+      } else {
+        d[i] = bg.r;
+        d[i + 1] = bg.g;
+        d[i + 2] = bg.b;
+        d[i + 3] = 255;
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+}
+
+function applyCurrentColorsToOutput() {
+  if (!outputCanvas.width || !outputCanvas.height) return;
+
+  recolorOutputCanvas(
+    outputCanvas,
+    foregroundColor.value,
+    backgroundColor.value,
+    transparentBackground.checked
+  );
+
+  updateContrastWarning();
+  setDebug("Colors applied");
+}
+
+function populatePresetMasks() {
+  if (maskSelect.options.length > 0) return;
+
+  Object.keys(maskPresets).forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = key;
+    maskSelect.appendChild(option);
+  });
+}
+
+setDebug("Creator UI loaded");
+setMeta("Waiting for QR upload");
+populatePresetMasks();
+syncMaskModeUI();
+syncOffsetLabels();
+syncWorkspace();
+updateContrastWarning();
+
+workspaceMode.addEventListener("change", syncWorkspace);
+maskModeSelect.addEventListener("change", syncMaskModeUI);
+qrOffsetX.addEventListener("input", syncOffsetLabels);
+qrOffsetY.addEventListener("input", syncOffsetLabels);
+
+foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
+backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
+transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
+
+qrUpload.addEventListener("change", async (e) => {
+  try {
+    const file = e.target.files[0];
+    if (!file) {
+      setDebug("No QR file selected");
+      return;
+    }
+
+    const img = await loadImage(file);
+    state.qrImage = img;
+    state.qrImageData = drawToCanvas(img, originalCanvas);
+
+    setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
+    setMeta("QR uploaded. Pick a shape and generate.");
+    setEngineReady("QR loaded");
+  } catch (err) {
+    console.error(err);
+    setDebug(`QR upload error: ${err.message}`);
+    setEngineReady("Engine error");
+  }
+});
+
+customMaskUpload.addEventListener("change", async (e) => {
+  try {
+    const file = e.target.files[0];
+    if (!file) {
+      setDebug("No custom mask file selected");
+      return;
+    }
+
+    const img = await loadImage(file);
+    state.customMaskImage = img;
+    setDebug(`Custom mask source loaded: ${img.width}×${img.height}`);
+    setMeta("Custom silhouette source loaded.");
+  } catch (err) {
+    console.error(err);
+    setDebug(`Custom mask upload error: ${err.message}`);
+  }
+});
+
+buildMaskBtn.addEventListener("click", () => {
+  try {
+    if (!state.customMaskImage) {
+      setDebug("Load a custom mask image first");
+      return;
+    }
+
+    const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
+      size: 800,
+      threshold: Number(customMaskThreshold.value || 180),
+      invert: customMaskInvert.checked
+    });
+
+    state.customMaskCanvas = builtMaskCanvas;
+
+    customMaskCanvas.width = builtMaskCanvas.width;
+    customMaskCanvas.height = builtMaskCanvas.height;
+    const ctx = customMaskCanvas.getContext("2d");
+    ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
+    ctx.drawImage(builtMaskCanvas, 0, 0);
+
+    setDebug("Custom mask built");
+    setMeta("Custom mask ready. Generate when ready.");
+  } catch (err) {
+    console.error(err);
+    setDebug(`Build mask error: ${err.message}`);
+  }
+});
+
+generateBtn.addEventListener("click", async () => {
+  try {
+    if (!state.qrImageData) {
+      setDebug("Upload a QR first");
+      return;
+    }
+
+    setDebug("Thresholding QR");
+
+    const thresholded = threshold(
+      new ImageData(
+        new Uint8ClampedArray(state.qrImageData.data),
+        state.qrImageData.width,
+        state.qrImageData.height
+      )
+    );
+
+    thresholdCanvas.width = thresholded.width;
+    thresholdCanvas.height = thresholded.height;
+    thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
+
+    setDebug("Trimming outer border");
+    const trimmed = trimWhiteBorder(thresholded, 1);
+
+    setDebug("Building inner tile source");
+    const inner = innerCrop(trimmed, 24);
+
+    cropCanvas.width = inner.width;
+    cropCanvas.height = inner.height;
+    cropCanvas.getContext("2d").putImageData(inner, 0, 0);
+
+    let modulePixelSize = estimateModuleSize(trimmed);
+    if (!modulePixelSize || modulePixelSize < 1) {
+      modulePixelSize = 4;
+    }
+
+    const tiles = extractTiles(inner, modulePixelSize);
+
+    let maskSource = null;
+    if (maskModeSelect.value === "custom") {
+      if (!state.customMaskCanvas) {
+        setDebug("Build a custom mask first");
+        return;
+      }
+      maskSource = state.customMaskCanvas;
+    } else {
+      maskSource = await loadMask(maskPresets[maskSelect.value]);
+    }
+
+    const sourceQrCanvas = imageDataToCanvas(trimmed);
+
+    render({
+      tiles,
+      maskImg: maskSource,
+      outputCanvas,
+      sourceQrCanvas,
+      modulePixelSize,
+      qrSize: qrSizeSelect.value,
+      qrOffsetX: Number(qrOffsetX.value || 0),
+      qrOffsetY: Number(qrOffsetY.value || 0)
+    });
+
+    applyCurrentColorsToOutput();
+
+    setDebug("Render complete");
+    setMeta("Live preview ready. Export when satisfied.");
+    setEngineReady("Render complete");
+  } catch (err) {
+    console.error(err);
+    setDebug(`Generate error: ${err.message}`);
+    setEngineReady("Engine error");
+  }
+});
+
+exportBtn.addEventListener("click", () => {
+  try {
+    exportPNG(outputCanvas);
+    setDebug("Export triggered");
+  } catch (err) {
+    console.error(err);
+    setDebug(`Export error: ${err.message}`);
+  }
+});
