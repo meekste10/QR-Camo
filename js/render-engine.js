@@ -10,6 +10,14 @@ function cellIntersectsRect(x, y, size, rect) {
   );
 }
 
+function expandRect(rect, amount) {
+  return {
+    x: rect.x - amount,
+    y: rect.y - amount,
+    size: rect.size + amount * 2
+  };
+}
+
 function getMaskBounds(maskCtx, width, height) {
   let minX = width;
   let minY = height;
@@ -51,6 +59,52 @@ function getMaskBounds(maskCtx, width, height) {
   };
 }
 
+function tintWhiteDown(canvas, whiteValue = 232) {
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const isWhite = d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200;
+    if (isWhite) {
+      d[i] = whiteValue;
+      d[i + 1] = whiteValue;
+      d[i + 2] = whiteValue;
+      d[i + 3] = 255;
+    } else {
+      d[i] = 0;
+      d[i + 1] = 0;
+      d[i + 2] = 0;
+      d[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+function makeQrDisplayCanvas(sourceQrCanvas, displaySize, whiteValue = 232) {
+  const c = document.createElement("canvas");
+  c.width = displaySize;
+  c.height = displaySize;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    sourceQrCanvas,
+    0,
+    0,
+    sourceQrCanvas.width,
+    sourceQrCanvas.height,
+    0,
+    0,
+    displaySize,
+    displaySize
+  );
+
+  tintWhiteDown(c, whiteValue);
+  return c;
+}
+
 export function render(options) {
   const {
     tiles,
@@ -80,14 +134,11 @@ export function render(options) {
     safeModulePixelSize = 4;
   }
 
-  // True module count from the trimmed QR itself
   const moduleCount = Math.max(
     1,
     Math.round(sourceQrCanvas.width / safeModulePixelSize)
   );
 
-  // Size the WHOLE system from one shared module scale.
-  // No special body-fit scaling for the center QR.
   const maskBounds = getMaskBounds(mctx, OUTPUT_SIZE, OUTPUT_SIZE);
 
   const maxQrWidthByCanvas = Math.floor(OUTPUT_SIZE * 0.34);
@@ -109,28 +160,19 @@ export function render(options) {
   const centerX = Math.floor((OUTPUT_SIZE - qrDisplaySize) / 2);
   const centerY = Math.floor((OUTPUT_SIZE - qrDisplaySize) / 2);
 
-  // Draw center QR on the exact same module grid scale
-  ctx.drawImage(
-    sourceQrCanvas,
-    0,
-    0,
-    sourceQrCanvas.width,
-    sourceQrCanvas.height,
-    centerX,
-    centerY,
-    qrDisplaySize,
-    qrDisplaySize
-  );
-
   const centerRect = {
     x: centerX,
     y: centerY,
     size: qrDisplaySize
   };
 
+  // small transition band around QR
+  const blendBand = moduleDisplaySize * 2;
+  const softRect = expandRect(centerRect, blendBand);
+
   const tilePool = buildWeightedTilePool(tiles);
 
-  // Outer shape uses the SAME exact module display size
+  // 1) draw outer field first
   for (let y = 0; y < OUTPUT_SIZE; y += moduleDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += moduleDisplaySize) {
       const cx = Math.floor(x + moduleDisplaySize / 2);
@@ -155,4 +197,15 @@ export function render(options) {
       );
     }
   }
+
+  // 2) add a subtle darkening wash in the transition band
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillRect(softRect.x, softRect.y, softRect.size, softRect.size);
+  ctx.clearRect(centerRect.x, centerRect.y, centerRect.size, centerRect.size);
+  ctx.restore();
+
+  // 3) draw the center QR with slightly dimmed white
+  const qrDisplayCanvas = makeQrDisplayCanvas(sourceQrCanvas, qrDisplaySize, 232);
+  ctx.drawImage(qrDisplayCanvas, centerX, centerY);
 }
