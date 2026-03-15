@@ -25,28 +25,40 @@
       <label>Upload QR</label>
       <input type="file" id="qrUpload" accept="image/*">
 
-      <label>Mask Shape</label>
-      <select id="maskSelect">
-        <option value="heart">heart</option>
-        <option value="house">house</option>
-        <option value="tag">tag</option>
-        <option value="star">star</option>
-        <option value="pizza">pizza</option>
-        <option value="mug">mug</option>
-        <option value="tree">tree</option>
-        <option value="turtle">turtle</option>
+      <label>Mask Source</label>
+      <select id="maskModeSelect">
+        <option value="preset">Preset Mask</option>
+        <option value="custom">Custom Upload</option>
       </select>
 
-      <label>Crop %</label>
-      <input type="range" id="cropSlider" min="0" max="40" value="22">
+      <div id="presetMaskSection">
+        <label>Mask Shape</label>
+        <select id="maskSelect">
+          <option value="heart">heart</option>
+          <option value="house">house</option>
+          <option value="tag">tag</option>
+          <option value="star">star</option>
+          <option value="pizza">pizza</option>
+          <option value="mug">mug</option>
+          <option value="tree">tree</option>
+          <option value="turtle">turtle</option>
+        </select>
+      </div>
 
-      <label>Tile Size</label>
-      <input type="range" id="tileSlider" min="6" max="30" value="14">
+      <div id="customMaskSection" style="display:none;">
+        <label>Upload Custom Mask Source</label>
+        <input type="file" id="customMaskUpload" accept="image/*">
 
-      <label>
-        <input type="checkbox" id="safeCoreToggle" checked>
-        Safe Core
-      </label>
+        <label>Mask Threshold</label>
+        <input type="range" id="customMaskThreshold" min="0" max="255" value="180">
+
+        <label>
+          <input type="checkbox" id="customMaskInvert">
+          Invert Mask
+        </label>
+
+        <button id="buildMaskBtn" type="button">Build Custom Mask</button>
+      </div>
 
       <button id="generateBtn">Generate</button>
       <button id="exportBtn">Export PNG</button>
@@ -56,21 +68,26 @@
     <section class="previews">
 
       <div class="preview">
-        <h3>Original</h3>
+        <h3>Original QR</h3>
         <canvas id="originalCanvas"></canvas>
       </div>
 
       <div class="preview">
-        <h3>Threshold</h3>
+        <h3>Threshold QR</h3>
         <canvas id="thresholdCanvas"></canvas>
       </div>
 
       <div class="preview">
-        <h3>Cropped</h3>
+        <h3>Inner Tile Source</h3>
         <canvas id="cropCanvas"></canvas>
       </div>
 
       <div class="preview">
+        <h3>Custom Mask Preview</h3>
+        <canvas id="customMaskCanvas"></canvas>
+      </div>
+
+      <div class="preview" style="grid-column: span 2;">
         <h3>QR Camo Output</h3>
         <canvas id="outputCanvas"></canvas>
       </div>
