@@ -30,6 +30,12 @@ const buildMaskBtn = document.getElementById("buildMaskBtn");
 const generateBtn = document.getElementById("generateBtn");
 const exportBtn = document.getElementById("exportBtn");
 
+const qrSizeSelect = document.getElementById("qrSizeSelect");
+const qrOffsetX = document.getElementById("qrOffsetX");
+const qrOffsetY = document.getElementById("qrOffsetY");
+const qrOffsetXLabel = document.getElementById("qrOffsetXLabel");
+const qrOffsetYLabel = document.getElementById("qrOffsetYLabel");
+
 const presetMaskSection = document.getElementById("presetMaskSection");
 const customMaskSection = document.getElementById("customMaskSection");
 
@@ -49,6 +55,11 @@ function syncMaskModeUI() {
   setDebug(`mask mode: ${mode}`);
 }
 
+function syncOffsetLabels() {
+  qrOffsetXLabel.textContent = qrOffsetX.value;
+  qrOffsetYLabel.textContent = qrOffsetY.value;
+}
+
 setDebug("app.js loaded");
 
 const header = document.querySelector("h1");
@@ -64,7 +75,11 @@ if (maskSelect && maskSelect.options.length === 0) {
 }
 
 syncMaskModeUI();
+syncOffsetLabels();
+
 maskModeSelect.addEventListener("change", syncMaskModeUI);
+qrOffsetX.addEventListener("input", syncOffsetLabels);
+qrOffsetY.addEventListener("input", syncOffsetLabels);
 
 qrUpload.addEventListener("change", async (e) => {
   try {
@@ -193,7 +208,10 @@ generateBtn.addEventListener("click", async () => {
       maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas,
-      modulePixelSize
+      modulePixelSize,
+      qrSize: qrSizeSelect.value,
+      qrOffsetX: Number(qrOffsetX.value || 0),
+      qrOffsetY: Number(qrOffsetY.value || 0)
     });
 
     setDebug("render complete");
