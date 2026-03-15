@@ -10,6 +10,7 @@ import {
 } from "./qr-preprocess.js";
 import { extractTiles } from "./tile-engine.js";
 import { loadMask } from "./mask-engine.js";
+import { buildMaskFromImage } from "./mask-builder.js";
 import { render } from "./render-engine.js";
 import { exportPNG } from "./export.js";
 
@@ -25,14 +26,33 @@ const header = document.querySelector("h1");
 if (header) header.textContent = "QR Camo Lab ✅";
 
 const qrUpload = document.getElementById("qrUpload");
+const maskModeSelect = document.getElementById("maskModeSelect");
 const maskSelect = document.getElementById("maskSelect");
+const customMaskUpload = document.getElementById("customMaskUpload");
+const customMaskThreshold = document.getElementById("customMaskThreshold");
+const customMaskInvert = document.getElementById("customMaskInvert");
+const buildMaskBtn = document.getElementById("buildMaskBtn");
 const generateBtn = document.getElementById("generateBtn");
 const exportBtn = document.getElementById("exportBtn");
+
+const presetMaskSection = document.getElementById("presetMaskSection");
+const customMaskSection = document.getElementById("customMaskSection");
 
 const originalCanvas = document.getElementById("originalCanvas");
 const thresholdCanvas = document.getElementById("thresholdCanvas");
 const cropCanvas = document.getElementById("cropCanvas");
+const customMaskCanvas = document.getElementById("customMaskCanvas");
 const outputCanvas = document.getElementById("outputCanvas");
+
+state.customMaskImage = null;
+state.customMaskCanvas = null;
+
+function syncMaskModeUI() {
+  const mode = maskModeSelect.value;
+  presetMaskSection.style.display = mode === "preset" ? "block" : "none";
+  customMaskSection.style.display = mode === "custom" ? "block" : "none";
+  setDebug(`mask mode: ${mode}`);
+}
 
 setDebug("elements grabbed");
 
@@ -48,13 +68,19 @@ if (maskSelect && maskSelect.options.length === 0) {
   setDebug("mask options already present");
 }
 
+syncMaskModeUI();
+
+maskModeSelect.addEventListener("change", () => {
+  syncMaskModeUI();
+});
+
 qrUpload.addEventListener("change", async (e) => {
   try {
-    setDebug("file selected");
+    setDebug("QR file selected");
 
     const file = e.target.files[0];
     if (!file) {
-      setDebug("no file selected");
+      setDebug("no QR file selected");
       return;
     }
 
@@ -62,17 +88,65 @@ qrUpload.addEventListener("change", async (e) => {
     state.qrImage = img;
     state.qrImageData = drawToCanvas(img, originalCanvas);
 
-    setDebug(`image drawn ${state.qrImageData.width}x${state.qrImageData.height}`);
+    setDebug(`QR image drawn ${state.qrImageData.width}x${state.qrImageData.height}`);
   } catch (err) {
     console.error(err);
-    setDebug(`upload error: ${err.message}`);
+    setDebug(`QR upload error: ${err.message}`);
+  }
+});
+
+customMaskUpload.addEventListener("change", async (e) => {
+  try {
+    setDebug("custom mask source selected");
+
+    const file = e.target.files[0];
+    if (!file) {
+      setDebug("no custom mask file selected");
+      return;
+    }
+
+    const img = await loadImage(file);
+    state.customMaskImage = img;
+
+    setDebug(`custom mask source loaded ${img.width}x${img.height}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`custom mask upload error: ${err.message}`);
+  }
+});
+
+buildMaskBtn.addEventListener("click", () => {
+  try {
+    if (!state.customMaskImage) {
+      setDebug("no custom mask image loaded yet");
+      return;
+    }
+
+    const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
+      size: 800,
+      threshold: Number(customMaskThreshold.value || 180),
+      invert: customMaskInvert.checked
+    });
+
+    state.customMaskCanvas = builtMaskCanvas;
+
+    customMaskCanvas.width = builtMaskCanvas.width;
+    customMaskCanvas.height = builtMaskCanvas.height;
+    const ctx = customMaskCanvas.getContext("2d");
+    ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
+    ctx.drawImage(builtMaskCanvas, 0, 0);
+
+    setDebug("custom mask built");
+  } catch (err) {
+    console.error(err);
+    setDebug(`build mask error: ${err.message}`);
   }
 });
 
 generateBtn.addEventListener("click", async () => {
   try {
     if (!state.qrImageData) {
-      setDebug("no image data loaded yet");
+      setDebug("no QR image data loaded yet");
       return;
     }
 
@@ -112,15 +186,26 @@ generateBtn.addEventListener("click", async () => {
     const tiles = extractTiles(inner, modulePixelSize);
     setDebug(`tiles extracted from inner crop: ${tiles.length}`);
 
-    const selectedMask = maskSelect.value;
-    const mask = await loadMask(maskPresets[selectedMask]);
-    setDebug(`mask loaded: ${selectedMask}`);
+    let maskSource = null;
+
+    if (maskModeSelect.value === "custom") {
+      if (!state.customMaskCanvas) {
+        setDebug("build a custom mask first");
+        return;
+      }
+      maskSource = state.customMaskCanvas;
+      setDebug("using custom mask");
+    } else {
+      const selectedMask = maskSelect.value;
+      maskSource = await loadMask(maskPresets[selectedMask]);
+      setDebug(`using preset mask: ${selectedMask}`);
+    }
 
     const sourceQrCanvas = imageDataToCanvas(trimmed);
 
     render({
       tiles,
-      maskImg: mask,
+      maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas,
       modulePixelSize
