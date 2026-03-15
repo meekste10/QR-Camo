@@ -4,11 +4,10 @@ import { loadImage, drawToCanvas } from "./image-utils.js";
 import {
   threshold,
   trimWhiteBorder,
-  innerCrop,
-  estimateModuleSize,
-  imageDataToCanvas
+  normalizeQrToModuleGrid,
+  innerCropFromModuleCanvas
 } from "./qr-preprocess.js";
-import { extractTiles } from "./tile-engine.js";
+import { extractTilesFromModuleCanvas } from "./tile-engine.js";
 import { loadMask } from "./mask-engine.js";
 import { buildMaskFromImage } from "./mask-builder.js";
 import { render } from "./render-engine.js";
@@ -49,6 +48,7 @@ state.customMaskCanvas = null;
 
 function syncMaskModeUI() {
   const mode = maskModeSelect.value;
+  presetMaskSection.style.display = mode === "block" ? "block" : "block";
   presetMaskSection.style.display = mode === "preset" ? "block" : "none";
   customMaskSection.style.display = mode === "custom" ? "block" : "none";
   setDebug(`mask mode: ${mode}`);
@@ -168,23 +168,36 @@ generateBtn.addEventListener("click", async () => {
 
     const trimmed = trimWhiteBorder(thresholded, 1);
 
-    setDebug("making inner crop for tile source");
+    setDebug("normalizing QR to module grid");
 
-    const inner = innerCrop(trimmed, 24);
+    const normalized = normalizeQrToModuleGrid(trimmed);
+    const sourceQrCanvas = normalized.moduleCanvas;
 
-    cropCanvas.width = inner.width;
-    cropCanvas.height = inner.height;
-    cropCanvas.getContext("2d").putImageData(inner, 0, 0);
+    setDebug(`normalized module count: ${normalized.moduleCount}`);
 
-    let modulePixelSize = estimateModuleSize(trimmed);
-    if (!modulePixelSize || modulePixelSize < 1) {
-      modulePixelSize = 4;
-    }
+    setDebug("making inner module crop for tile source");
 
-    setDebug(`estimated native module size: ${modulePixelSize}px`);
+    const innerModuleCanvas = innerCropFromModuleCanvas(sourceQrCanvas, 8);
 
-    const tiles = extractTiles(inner, modulePixelSize);
-    setDebug(`tiles extracted from inner crop: ${tiles.length}`);
+    cropCanvas.width = innerModuleCanvas.width * 8;
+    cropCanvas.height = innerModuleCanvas.height * 8;
+    const cropCtx = cropCanvas.getContext("2d");
+    cropCtx.imageSmoothingEnabled = false;
+    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    cropCtx.drawImage(
+      innerModuleCanvas,
+      0,
+      0,
+      innerModuleCanvas.width,
+      innerModuleCanvas.height,
+      0,
+      0,
+      cropCanvas.width,
+      cropCanvas.height
+    );
+
+    const tiles = extractTilesFromModuleCanvas(innerModuleCanvas);
+    setDebug(`tiles extracted from module grid: ${tiles.length}`);
 
     let maskSource = null;
 
@@ -201,14 +214,12 @@ generateBtn.addEventListener("click", async () => {
       setDebug(`using preset mask: ${selectedMask}`);
     }
 
-    const sourceQrCanvas = imageDataToCanvas(trimmed);
-
     render({
       tiles,
       maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas,
-      modulePixelSize
+      modulePixelSize: 1
     });
 
     setDebug("render complete");
