@@ -14,8 +14,6 @@ function getTileStats(tileCanvas) {
 
   const total = blackCount + whiteCount;
   const blackRatio = total ? blackCount / total : 0;
-
-  // strongest visually when not too empty and not too solid
   const contrastScore = 1 - Math.abs(0.5 - blackRatio) * 2;
 
   return {
@@ -26,27 +24,24 @@ function getTileStats(tileCanvas) {
   };
 }
 
-export function extractTiles(imageData, tileSize) {
+export function extractTilesFromModuleCanvas(moduleCanvas) {
   const tiles = [];
+  const w = moduleCanvas.width;
+  const h = moduleCanvas.height;
+  const sctx = moduleCanvas.getContext("2d");
 
-  const sourceCanvas = document.createElement("canvas");
-  sourceCanvas.width = imageData.width;
-  sourceCanvas.height = imageData.height;
-  const sctx = sourceCanvas.getContext("2d");
-  sctx.putImageData(imageData, 0, 0);
-
-  for (let y = 0; y + tileSize <= imageData.height; y += tileSize) {
-    for (let x = 0; x + tileSize <= imageData.width; x += tileSize) {
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
       const tileCanvas = document.createElement("canvas");
-      tileCanvas.width = tileSize;
-      tileCanvas.height = tileSize;
+      tileCanvas.width = 1;
+      tileCanvas.height = 1;
       const tctx = tileCanvas.getContext("2d");
       tctx.imageSmoothingEnabled = false;
 
       tctx.drawImage(
-        sourceCanvas,
-        x, y, tileSize, tileSize,
-        0, 0, tileSize, tileSize
+        moduleCanvas,
+        x, y, 1, 1,
+        0, 0, 1, 1
       );
 
       const stats = getTileStats(tileCanvas);
@@ -72,7 +67,6 @@ export function buildWeightedTilePool(tiles) {
     const score = tile.stats.contrastScore;
     const blackRatio = tile.stats.blackRatio;
 
-    // discard tiles that are almost all one color
     if (blackRatio < 0.05 || blackRatio > 0.95) {
       weak.push(tile);
     } else if (score >= 0.55) {
@@ -84,7 +78,6 @@ export function buildWeightedTilePool(tiles) {
     }
   }
 
-  // weighted pool: stronger tiles appear more often
   const pool = [];
 
   strong.forEach(tile => {
