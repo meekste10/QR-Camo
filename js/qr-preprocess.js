@@ -46,9 +46,7 @@ export function trimWhiteBorder(imageData, keepMarginPx = 1) {
   while (left < width && !colHasDark(left)) left++;
   while (right >= 0 && !colHasDark(right)) right--;
 
-  if (top > bottom || left > right) {
-    return imageData;
-  }
+  if (top > bottom || left > right) return imageData;
 
   top = Math.max(0, top - keepMarginPx);
   left = Math.max(0, left - keepMarginPx);
@@ -70,6 +68,36 @@ export function trimWhiteBorder(imageData, keepMarginPx = 1) {
   const tctx = targetCanvas.getContext("2d");
 
   tctx.drawImage(sourceCanvas, left, top, newW, newH, 0, 0, newW, newH);
+
+  return tctx.getImageData(0, 0, newW, newH);
+}
+
+export function innerCrop(imageData, insetPercent = 24) {
+  const w = imageData.width;
+  const h = imageData.height;
+
+  const insetX = Math.floor(w * (insetPercent / 100));
+  const insetY = Math.floor(h * (insetPercent / 100));
+
+  const newW = Math.max(1, w - insetX * 2);
+  const newH = Math.max(1, h - insetY * 2);
+
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = w;
+  sourceCanvas.height = h;
+  const sctx = sourceCanvas.getContext("2d");
+  sctx.putImageData(imageData, 0, 0);
+
+  const targetCanvas = document.createElement("canvas");
+  targetCanvas.width = newW;
+  targetCanvas.height = newH;
+  const tctx = targetCanvas.getContext("2d");
+
+  tctx.drawImage(
+    sourceCanvas,
+    insetX, insetY, newW, newH,
+    0, 0, newW, newH
+  );
 
   return tctx.getImageData(0, 0, newW, newH);
 }
@@ -126,8 +154,4 @@ export function estimateModuleSize(imageData) {
   const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
 
   return Math.max(1, Math.round(avg));
-}
-
-export function cropInterior(imageData) {
-  return trimWhiteBorder(imageData, 1);
 }
