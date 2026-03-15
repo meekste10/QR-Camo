@@ -1,14 +1,16 @@
 import { pointInsideMask } from "./mask-engine.js";
 
-function drawCenteredQr(ctx, qrCanvas, outputSize) {
-  const qrSize = Math.floor(outputSize * 0.34);
-  const x = Math.floor((outputSize - qrSize) / 2);
-  const y = Math.floor((outputSize - qrSize) / 2);
+function fitQrCenter(outputSize, qrPixelWidth, moduleCount) {
+  const targetFraction = 0.34;
+  let qrDisplaySize = Math.floor(outputSize * targetFraction);
 
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(qrCanvas, x, y, qrSize, qrSize);
+  const moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / moduleCount));
+  qrDisplaySize = moduleDisplaySize * moduleCount;
 
-  return { x, y, size: qrSize };
+  const x = Math.floor((outputSize - qrDisplaySize) / 2);
+  const y = Math.floor((outputSize - qrDisplaySize) / 2);
+
+  return { x, y, qrDisplaySize, moduleDisplaySize };
 }
 
 function cellIntersectsRect(x, y, size, rect) {
@@ -25,8 +27,8 @@ export function render(options) {
     tiles,
     maskImg,
     outputCanvas,
-    tileSize,
-    sourceQrCanvas
+    sourceQrCanvas,
+    modulePixelSize
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -44,27 +46,52 @@ export function render(options) {
   mctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   mctx.drawImage(maskImg, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
-  let centerQrRect = null;
+  const moduleCount = Math.max(1, Math.round(sourceQrCanvas.width / modulePixelSize));
+  const centerFit = fitQrCenter(OUTPUT_SIZE, sourceQrCanvas.width, moduleCount);
 
-  if (sourceQrCanvas) {
-    centerQrRect = drawCenteredQr(ctx, sourceQrCanvas, OUTPUT_SIZE);
-  }
+  ctx.drawImage(
+    sourceQrCanvas,
+    0,
+    0,
+    sourceQrCanvas.width,
+    sourceQrCanvas.height,
+    centerFit.x,
+    centerFit.y,
+    centerFit.qrDisplaySize,
+    centerFit.qrDisplaySize
+  );
+
+  const centerRect = {
+    x: centerFit.x,
+    y: centerFit.y,
+    size: centerFit.qrDisplaySize
+  };
 
   let tileIndex = 0;
+  const drawSize = centerFit.moduleDisplaySize;
 
-  for (let y = 0; y < OUTPUT_SIZE; y += tileSize) {
-    for (let x = 0; x < OUTPUT_SIZE; x += tileSize) {
-      const cx = Math.floor(x + tileSize / 2);
-      const cy = Math.floor(y + tileSize / 2);
+  for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
+    for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
+      const cx = Math.floor(x + drawSize / 2);
+      const cy = Math.floor(y + drawSize / 2);
 
       if (!pointInsideMask(mctx, cx, cy)) continue;
-
-      if (centerQrRect && cellIntersectsRect(x, y, tileSize, centerQrRect)) {
-        continue;
-      }
+      if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
 
       const tile = tiles[tileIndex % tiles.length];
-      ctx.drawImage(tile, 0, 0, tile.width, tile.height, x, y, tileSize, tileSize);
+
+      ctx.drawImage(
+        tile,
+        0,
+        0,
+        tile.width,
+        tile.height,
+        x,
+        y,
+        drawSize,
+        drawSize
+      );
+
       tileIndex++;
     }
   }
