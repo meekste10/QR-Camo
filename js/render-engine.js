@@ -67,7 +67,6 @@ export function render(options) {
 
   const centerFit = fitQrCenter(OUTPUT_SIZE, moduleCount);
 
-  // Draw center QR first, using the same shared module scale
   ctx.drawImage(
     sourceQrCanvas,
     0,
