@@ -4,6 +4,7 @@ import { loadImage, drawToCanvas } from "./image-utils.js";
 import {
   threshold,
   trimWhiteBorder,
+  innerCrop,
   estimateModuleSize,
   imageDataToCanvas
 } from "./qr-preprocess.js";
@@ -89,23 +90,27 @@ generateBtn.addEventListener("click", async () => {
     thresholdCanvas.height = thresholded.height;
     thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
 
-    setDebug("trimming white border aggressively");
+    setDebug("trimming outer white border");
 
     const trimmed = trimWhiteBorder(thresholded, 1);
 
-    cropCanvas.width = trimmed.width;
-    cropCanvas.height = trimmed.height;
-    cropCanvas.getContext("2d").putImageData(trimmed, 0, 0);
+    setDebug("making inner crop for tile source");
+
+    const inner = innerCrop(trimmed, 24);
+
+    cropCanvas.width = inner.width;
+    cropCanvas.height = inner.height;
+    cropCanvas.getContext("2d").putImageData(inner, 0, 0);
 
     let modulePixelSize = estimateModuleSize(trimmed);
+    if (!modulePixelSize || modulePixelSize < 1) {
+      modulePixelSize = 4;
+    }
 
-if (!modulePixelSize || modulePixelSize < 1) {
-  modulePixelSize = 4;
-}
     setDebug(`estimated native module size: ${modulePixelSize}px`);
 
-    const tiles = extractTiles(trimmed, modulePixelSize);
-    setDebug(`tiles extracted: ${tiles.length}`);
+    const tiles = extractTiles(inner, modulePixelSize);
+    setDebug(`tiles extracted from inner crop: ${tiles.length}`);
 
     const selectedMask = maskSelect.value;
     const mask = await loadMask(maskPresets[selectedMask]);
