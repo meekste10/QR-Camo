@@ -58,6 +58,23 @@
         <button id="buildMaskBtn" type="button">Build Custom Mask</button>
       </div>
 
+      <hr>
+
+      <label>Center QR Size</label>
+      <select id="qrSizeSelect">
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+      </select>
+
+      <label>Center QR X Offset</label>
+      <input type="range" id="qrOffsetX" min="-200" max="200" value="0">
+      <div id="qrOffsetXLabel">0</div>
+
+      <label>Center QR Y Offset</label>
+      <input type="range" id="qrOffsetY" min="-200" max="200" value="0">
+      <div id="qrOffsetYLabel">0</div>
+
       <button id="generateBtn" type="button">Generate</button>
       <button id="exportBtn" type="button">Export PNG</button>
     </aside>
