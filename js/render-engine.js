@@ -166,11 +166,14 @@ export function render(options) {
     size: qrDisplaySize
   };
 
-  // small transition band around QR
-  const blendBand = moduleDisplaySize * 2;
-  const softRect = expandRect(centerRect, blendBand);
-
   const tilePool = buildWeightedTilePool(tiles);
+
+  // New: two zones around the QR
+  const exclusionBand = moduleDisplaySize * 1;   // hard no-tile zone
+  const blendBand = moduleDisplaySize * 3;       // soft transition zone
+
+  const hardRect = expandRect(centerRect, exclusionBand);
+  const softRect = expandRect(centerRect, blendBand);
 
   // 1) draw outer field first
   for (let y = 0; y < OUTPUT_SIZE; y += moduleDisplaySize) {
@@ -179,33 +182,55 @@ export function render(options) {
       const cy = Math.floor(y + moduleDisplaySize / 2);
 
       if (!pointInsideMask(mctx, cx, cy)) continue;
-      if (cellIntersectsRect(x, y, moduleDisplaySize, centerRect)) continue;
+
+      // never draw directly into QR area or immediate hard band
+      if (cellIntersectsRect(x, y, moduleDisplaySize, hardRect)) continue;
 
       const tile = randomTileFromPool(tilePool);
       if (!tile) continue;
 
-      ctx.drawImage(
-        tile.canvas,
-        0,
-        0,
-        tile.canvas.width,
-        tile.canvas.height,
-        x,
-        y,
-        moduleDisplaySize,
-        moduleDisplaySize
-      );
+      // if inside soft transition zone, draw with slightly reduced opacity
+      const inSoftZone = cellIntersectsRect(x, y, moduleDisplaySize, softRect);
+
+      if (inSoftZone) {
+        ctx.save();
+        ctx.globalAlpha = 0.72;
+        ctx.drawImage(
+          tile.canvas,
+          0,
+          0,
+          tile.canvas.width,
+          tile.canvas.height,
+          x,
+          y,
+          moduleDisplaySize,
+          moduleDisplaySize
+        );
+        ctx.restore();
+      } else {
+        ctx.drawImage(
+          tile.canvas,
+          0,
+          0,
+          tile.canvas.width,
+          tile.canvas.height,
+          x,
+          y,
+          moduleDisplaySize,
+          moduleDisplaySize
+        );
+      }
     }
   }
 
-  // 2) add a subtle darkening wash in the transition band
+  // 2) subtle tone bridge around center
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillStyle = "rgba(0,0,0,0.10)";
   ctx.fillRect(softRect.x, softRect.y, softRect.size, softRect.size);
   ctx.clearRect(centerRect.x, centerRect.y, centerRect.size, centerRect.size);
   ctx.restore();
 
-  // 3) draw the center QR with slightly dimmed white
+  // 3) draw center QR with slightly dimmed white
   const qrDisplayCanvas = makeQrDisplayCanvas(sourceQrCanvas, qrDisplaySize, 232);
   ctx.drawImage(qrDisplayCanvas, centerX, centerY);
 }
