@@ -2,7 +2,8 @@ export function buildMaskFromImage(img, options = {}) {
   const {
     size = 800,
     threshold = 180,
-    invert = false
+    invert = false,
+    targetFill = 0.9
   } = options;
 
   const canvas = document.createElement("canvas");
@@ -12,7 +13,12 @@ export function buildMaskFromImage(img, options = {}) {
 
   ctx.clearRect(0, 0, size, size);
 
-  const scale = Math.min(size / img.width, size / img.height);
+  // Scale image to occupy more of the available canvas.
+  const scale = Math.min(
+    (size * targetFill) / img.width,
+    (size * targetFill) / img.height
+  );
+
   const drawW = Math.round(img.width * scale);
   const drawH = Math.round(img.height * scale);
   const drawX = Math.floor((size - drawW) / 2);
