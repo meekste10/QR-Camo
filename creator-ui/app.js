@@ -50,8 +50,20 @@ const cropCanvas = document.getElementById("cropCanvas");
 const customMaskCanvas = document.getElementById("customMaskCanvas");
 const outputCanvas = document.getElementById("outputCanvas");
 
+const tabButtons = document.querySelectorAll(".tab-btn");
+const tabPanels = document.querySelectorAll(".tab-panel");
+const sizeButtons = document.querySelectorAll(".pill-btn");
+
+const nudgeUp = document.getElementById("nudgeUp");
+const nudgeLeft = document.getElementById("nudgeLeft");
+const nudgeRight = document.getElementById("nudgeRight");
+const nudgeDown = document.getElementById("nudgeDown");
+const resetPositionBtn = document.getElementById("resetPositionBtn");
+
 state.customMaskImage = null;
 state.customMaskCanvas = null;
+
+const NUDGE_STEP = 12;
 
 function getErrorMessage(err) {
   if (!err) return "Unknown error";
@@ -92,6 +104,23 @@ function setMaskReady(isReady) {
 function syncOffsetLabels() {
   qrOffsetXLabel.textContent = qrOffsetX.value;
   qrOffsetYLabel.textContent = qrOffsetY.value;
+}
+
+function syncSizePills() {
+  const current = qrSizeSelect.value;
+  sizeButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.size === current);
+  });
+}
+
+function activateTab(tabId) {
+  tabButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tabId);
+  });
+
+  tabPanels.forEach((panel) => {
+    panel.classList.toggle("active", panel.id === tabId);
+  });
 }
 
 function resolveMaskPath(path) {
@@ -273,43 +302,17 @@ async function buildQrFromText(text) {
     throw new Error("QRCode library not loaded");
   }
 
-  const qrModel = window.QRCode.create(text, {
-    errorCorrectionLevel: "H"
-  });
-
-  const moduleCount = qrModel.modules.size;
-
-  // Pick an exact pixel size per module so there is no leftover edge padding.
-  const pixelsPerModule = 12;
-  const qrPixelSize = moduleCount * pixelsPerModule;
-
   const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = qrPixelSize;
-  tempCanvas.height = qrPixelSize;
 
-  const ctx = tempCanvas.getContext("2d");
-  ctx.clearRect(0, 0, qrPixelSize, qrPixelSize);
-  ctx.imageSmoothingEnabled = false;
-
-  // White background
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, qrPixelSize, qrPixelSize);
-
-  // Draw modules manually with exact alignment
-  ctx.fillStyle = "#000000";
-
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (qrModel.modules.get(row, col)) {
-        ctx.fillRect(
-          col * pixelsPerModule,
-          row * pixelsPerModule,
-          pixelsPerModule,
-          pixelsPerModule
-        );
-      }
+  await window.QRCode.toCanvas(tempCanvas, text, {
+    width: 900,
+    margin: 0,
+    errorCorrectionLevel: "H",
+    color: {
+      dark: "#000000",
+      light: "#ffffff"
     }
-  }
+  });
 
   originalCanvas.width = tempCanvas.width;
   originalCanvas.height = tempCanvas.height;
@@ -347,17 +350,47 @@ function autoBuildCustomMaskIfNeeded() {
   return builtMaskCanvas;
 }
 
+function nudgePosition(dx, dy) {
+  qrOffsetX.value = String(Number(qrOffsetX.value || 0) + dx);
+  qrOffsetY.value = String(Number(qrOffsetY.value || 0) + dy);
+  syncOffsetLabels();
+}
+
+tabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    activateTab(btn.dataset.tab);
+  });
+});
+
+sizeButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    qrSizeSelect.value = btn.dataset.size;
+    syncSizePills();
+  });
+});
+
+nudgeUp.addEventListener("click", () => nudgePosition(0, -NUDGE_STEP));
+nudgeDown.addEventListener("click", () => nudgePosition(0, NUDGE_STEP));
+nudgeLeft.addEventListener("click", () => nudgePosition(-NUDGE_STEP, 0));
+nudgeRight.addEventListener("click", () => nudgePosition(NUDGE_STEP, 0));
+
+resetPositionBtn.addEventListener("click", () => {
+  qrOffsetX.value = "0";
+  qrOffsetY.value = "0";
+  syncOffsetLabels();
+});
+
 setDebug("Creator UI loaded");
 setMeta("Waiting for QR upload or generation");
 setSourceMeta("Nothing loaded yet");
 populatePresetMasks();
 syncOffsetLabels();
+syncSizePills();
 updateContrastWarning();
 setQrReady(false);
 setMaskReady(false);
+activateTab("sourceTab");
 
-qrOffsetX.addEventListener("input", syncOffsetLabels);
-qrOffsetY.addEventListener("input", syncOffsetLabels);
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
 backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
 transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
