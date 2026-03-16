@@ -4,6 +4,7 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
   let targetFraction = 0.34;
+  if (qrSize === "xsmall") targetFraction = 0.20;
   if (qrSize === "small") targetFraction = 0.26;
   if (qrSize === "medium") targetFraction = 0.34;
   if (qrSize === "large") targetFraction = 0.42;
