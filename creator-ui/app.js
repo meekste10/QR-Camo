@@ -28,7 +28,6 @@ const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
 const customMaskThreshold = document.getElementById("customMaskThreshold");
 const customMaskInvert = document.getElementById("customMaskInvert");
-const buildMaskBtn = document.getElementById("buildMaskBtn");
 const generateBtn = document.getElementById("generateBtn");
 const exportBtn = document.getElementById("exportBtn");
 
@@ -47,6 +46,11 @@ const transparentBackground = document.getElementById("transparentBackground");
 
 const presetMaskSection = document.getElementById("presetMaskSection");
 const customMaskSection = document.getElementById("customMaskSection");
+
+const qrReadyBadge = document.getElementById("qrReadyBadge");
+const maskReadyBadge = document.getElementById("maskReadyBadge");
+const sourceCard = document.getElementById("sourceCard");
+const toggleSourceBtn = document.getElementById("toggleSourceBtn");
 
 const sourcePreviewCanvas = document.getElementById("sourcePreviewCanvas");
 const originalCanvas = document.getElementById("originalCanvas");
@@ -100,6 +104,14 @@ function syncOffsetLabels() {
 
 function syncWorkspace() {
   labPanels.classList.toggle("hidden", workspaceMode.value !== "lab");
+}
+
+function setQrReady(isReady) {
+  qrReadyBadge.classList.toggle("hidden", !isReady);
+}
+
+function setMaskReady(isReady) {
+  maskReadyBadge.classList.toggle("hidden", !isReady);
 }
 
 function hexToRgb(hex) {
@@ -295,6 +307,40 @@ async function buildQrFromText(text) {
   syncSourcePreviewFromOriginal();
 }
 
+function autoBuildCustomMaskIfNeeded() {
+  if (maskModeSelect.value !== "custom") {
+    return null;
+  }
+
+  if (!state.customMaskImage) {
+    throw new Error("Upload a custom silhouette first");
+  }
+
+  const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
+    size: 800,
+    threshold: Number(customMaskThreshold.value || 180),
+    invert: customMaskInvert.checked
+  });
+
+  state.customMaskCanvas = builtMaskCanvas;
+
+  customMaskCanvas.width = builtMaskCanvas.width;
+  customMaskCanvas.height = builtMaskCanvas.height;
+
+  const ctx = customMaskCanvas.getContext("2d");
+  ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
+  ctx.drawImage(builtMaskCanvas, 0, 0);
+
+  setMaskReady(true);
+  return builtMaskCanvas;
+}
+
+toggleSourceBtn.addEventListener("click", () => {
+  const willShow = sourceCard.classList.contains("hidden");
+  sourceCard.classList.toggle("hidden", !willShow);
+  toggleSourceBtn.textContent = willShow ? "Hide Source QR" : "Show Source QR";
+});
+
 setDebug("Creator UI loaded");
 setMeta("Waiting for QR upload or generation");
 setSourceMeta("Nothing loaded yet");
@@ -303,9 +349,15 @@ syncMaskModeUI();
 syncOffsetLabels();
 syncWorkspace();
 updateContrastWarning();
+setQrReady(false);
+setMaskReady(false);
 
 workspaceMode.addEventListener("change", syncWorkspace);
-maskModeSelect.addEventListener("change", syncMaskModeUI);
+maskModeSelect.addEventListener("change", () => {
+  syncMaskModeUI();
+  setMaskReady(false);
+});
+
 qrOffsetX.addEventListener("input", syncOffsetLabels);
 qrOffsetY.addEventListener("input", syncOffsetLabels);
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
@@ -321,8 +373,9 @@ makeQrBtn.addEventListener("click", async () => {
     }
 
     await buildQrFromText(text);
+    setQrReady(true);
     setSourceMeta("Generated from link/text");
-    setMeta("QR generated. Pick a shape and generate QR-Camo.");
+    setMeta("QR ready. Pick a shape and click Generate.");
     setEngineReady("QR generated");
     setDebug("QR generated from text/link");
   } catch (err) {
@@ -345,9 +398,9 @@ qrUpload.addEventListener("change", async (e) => {
     state.qrImageData = drawImageToCanvas(img, originalCanvas);
 
     syncSourcePreviewFromOriginal();
-
+    setQrReady(true);
     setSourceMeta(`Uploaded QR: ${file.name}`);
-    setMeta("QR uploaded. Pick a shape and generate.");
+    setMeta("QR ready. Pick a shape and click Generate.");
     setEngineReady("QR loaded");
     setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
   } catch (err) {
@@ -367,48 +420,20 @@ customMaskUpload.addEventListener("change", async (e) => {
 
     const img = await loadImageFromFile(file);
     state.customMaskImage = img;
+    state.customMaskCanvas = null;
+    setMaskReady(true);
     setDebug(`Custom mask source loaded: ${img.width}×${img.height}`);
-    setMeta("Custom silhouette source loaded.");
+    setMeta("Custom silhouette ready. Click Generate.");
   } catch (err) {
     console.error(err);
     setDebug(`Custom mask upload error: ${getErrorMessage(err)}`);
   }
 });
 
-buildMaskBtn.addEventListener("click", () => {
-  try {
-    if (!state.customMaskImage) {
-      setDebug("Load a custom mask image first");
-      return;
-    }
-
-    const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
-      size: 800,
-      threshold: Number(customMaskThreshold.value || 180),
-      invert: customMaskInvert.checked
-    });
-
-    state.customMaskCanvas = builtMaskCanvas;
-
-    customMaskCanvas.width = builtMaskCanvas.width;
-    customMaskCanvas.height = builtMaskCanvas.height;
-
-    const ctx = customMaskCanvas.getContext("2d");
-    ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
-    ctx.drawImage(builtMaskCanvas, 0, 0);
-
-    setDebug("Custom mask built");
-    setMeta("Custom mask ready. Generate when ready.");
-  } catch (err) {
-    console.error(err);
-    setDebug(`Build mask error: ${getErrorMessage(err)}`);
-  }
-});
-
 generateBtn.addEventListener("click", async () => {
   try {
     if (!state.qrImageData) {
-      throw new Error("Upload or generate a QR first");
+      throw new Error("Generate or upload a QR first");
     }
 
     const thresholded = threshold(
@@ -443,10 +468,7 @@ generateBtn.addEventListener("click", async () => {
     let maskSource = null;
 
     if (maskModeSelect.value === "custom") {
-      if (!state.customMaskCanvas) {
-        throw new Error("Build a custom mask first");
-      }
-      maskSource = state.customMaskCanvas;
+      maskSource = autoBuildCustomMaskIfNeeded();
     } else {
       const selectedMask = maskSelect.value;
       if (!selectedMask || !maskPresets[selectedMask]) {
