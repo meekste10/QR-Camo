@@ -11,9 +11,7 @@
   --radius:18px;
 }
 
-*{
-  box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 html,body{
   margin:0;
@@ -23,9 +21,7 @@ html,body{
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
 }
 
-body{
-  min-height:100vh;
-}
+body{min-height:100vh}
 
 .shell{
   display:grid;
@@ -89,9 +85,7 @@ body{
   box-shadow:var(--shadow);
 }
 
-.panel.subtle{
-  padding:12px;
-}
+.panel.subtle{padding:12px}
 
 .panel-head{
   display:flex;
@@ -129,6 +123,7 @@ body{
 
 select,
 input[type="file"],
+input[type="text"],
 input[type="color"],
 input[type="range"],
 button{
@@ -136,7 +131,8 @@ button{
 }
 
 select,
-input[type="file"]{
+input[type="file"],
+input[type="text"]{
   background:var(--panel-2);
   color:var(--text);
   border:1px solid var(--line);
@@ -226,6 +222,12 @@ button.secondary{
   max-width:720px;
 }
 
+.preview-grid{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:18px;
+}
+
 .canvas-card{
   background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
   border:1px solid rgba(255,255,255,.08);
@@ -264,12 +266,24 @@ button.secondary{
   background-position:0 0,18px 18px,0 0;
 }
 
+.small-wrap{
+  min-height:320px;
+}
+
 #outputCanvas{
   max-width:min(92vw,860px);
   width:100%;
   background:white;
   border-radius:20px;
   box-shadow:0 12px 40px rgba(0,0,0,.35);
+}
+
+#sourcePreviewCanvas{
+  width:100%;
+  max-width:260px;
+  background:white;
+  border-radius:18px;
+  box-shadow:0 12px 30px rgba(0,0,0,.28);
 }
 
 .lab-grid{
@@ -326,5 +340,9 @@ button.secondary{
   .sidebar{
     border-right:none;
     border-bottom:1px solid rgba(255,255,255,.06);
+  }
+
+  .preview-grid{
+    grid-template-columns:1fr;
   }
 }
