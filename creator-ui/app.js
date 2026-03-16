@@ -292,7 +292,7 @@ async function buildQrFromText(text) {
 
   await window.QRCode.toCanvas(tempCanvas, text, {
     width: 900,
-    margin: 2,
+    margin: 0,
     errorCorrectionLevel: "H",
     color: {
       dark: "#000000",
