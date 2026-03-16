@@ -23,16 +23,12 @@ const qrTextInput = document.getElementById("qrTextInput");
 const makeQrBtn = document.getElementById("makeQrBtn");
 const qrUpload = document.getElementById("qrUpload");
 
-const maskModeSelect = document.getElementById("maskModeSelect");
 const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
 const customMaskThreshold = document.getElementById("customMaskThreshold");
 const customMaskInvert = document.getElementById("customMaskInvert");
 const generateBtn = document.getElementById("generateBtn");
 const exportBtn = document.getElementById("exportBtn");
-
-const workspaceMode = document.getElementById("workspaceMode");
-const labPanels = document.getElementById("labPanels");
 
 const qrSizeSelect = document.getElementById("qrSizeSelect");
 const qrOffsetX = document.getElementById("qrOffsetX");
@@ -44,13 +40,8 @@ const foregroundColor = document.getElementById("foregroundColor");
 const backgroundColor = document.getElementById("backgroundColor");
 const transparentBackground = document.getElementById("transparentBackground");
 
-const presetMaskSection = document.getElementById("presetMaskSection");
-const customMaskSection = document.getElementById("customMaskSection");
-
 const qrReadyBadge = document.getElementById("qrReadyBadge");
 const maskReadyBadge = document.getElementById("maskReadyBadge");
-const sourceCard = document.getElementById("sourceCard");
-const toggleSourceBtn = document.getElementById("toggleSourceBtn");
 
 const sourcePreviewCanvas = document.getElementById("sourcePreviewCanvas");
 const originalCanvas = document.getElementById("originalCanvas");
@@ -90,22 +81,6 @@ function setEngineReady(msg = "Engine ready") {
   engineStatus.textContent = msg;
 }
 
-function syncMaskModeUI() {
-  const mode = maskModeSelect.value;
-  presetMaskSection.classList.toggle("hidden", mode !== "preset");
-  customMaskSection.classList.toggle("hidden", mode !== "custom");
-  setDebug(`Mask mode: ${mode}`);
-}
-
-function syncOffsetLabels() {
-  qrOffsetXLabel.textContent = qrOffsetX.value;
-  qrOffsetYLabel.textContent = qrOffsetY.value;
-}
-
-function syncWorkspace() {
-  labPanels.classList.toggle("hidden", workspaceMode.value !== "lab");
-}
-
 function setQrReady(isReady) {
   qrReadyBadge.classList.toggle("hidden", !isReady);
 }
@@ -114,9 +89,19 @@ function setMaskReady(isReady) {
   maskReadyBadge.classList.toggle("hidden", !isReady);
 }
 
+function syncOffsetLabels() {
+  qrOffsetXLabel.textContent = qrOffsetX.value;
+  qrOffsetYLabel.textContent = qrOffsetY.value;
+}
+
 function resolveMaskPath(path) {
   if (!path) return path;
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("/") || path.startsWith("../")) {
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("/") ||
+    path.startsWith("../")
+  ) {
     return path;
   }
   return `../${path}`;
@@ -315,11 +300,7 @@ async function buildQrFromText(text) {
 }
 
 function autoBuildCustomMaskIfNeeded() {
-  if (maskModeSelect.value !== "custom") return null;
-
-  if (!state.customMaskImage) {
-    throw new Error("Upload a custom silhouette first");
-  }
+  if (!state.customMaskImage) return null;
 
   const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
     size: 800,
@@ -340,28 +321,14 @@ function autoBuildCustomMaskIfNeeded() {
   return builtMaskCanvas;
 }
 
-toggleSourceBtn.addEventListener("click", () => {
-  const willShow = sourceCard.classList.contains("hidden");
-  sourceCard.classList.toggle("hidden", !willShow);
-  toggleSourceBtn.textContent = willShow ? "Hide Source QR" : "Show Source QR";
-});
-
 setDebug("Creator UI loaded");
 setMeta("Waiting for QR upload or generation");
 setSourceMeta("Nothing loaded yet");
 populatePresetMasks();
-syncMaskModeUI();
 syncOffsetLabels();
-syncWorkspace();
 updateContrastWarning();
 setQrReady(false);
 setMaskReady(false);
-
-workspaceMode.addEventListener("change", syncWorkspace);
-maskModeSelect.addEventListener("change", () => {
-  syncMaskModeUI();
-  setMaskReady(false);
-});
 
 qrOffsetX.addEventListener("input", syncOffsetLabels);
 qrOffsetY.addEventListener("input", syncOffsetLabels);
@@ -453,7 +420,7 @@ generateBtn.addEventListener("click", async () => {
     thresholdCanvas.height = thresholded.height;
     thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
 
-    const trimmed = trimWhiteBorder(thresholded, 1);
+    const trimmed = trimWhiteBorder(thresholded, 0);
     const inner = innerCrop(trimmed, 24);
 
     cropCanvas.width = inner.width;
@@ -472,7 +439,7 @@ generateBtn.addEventListener("click", async () => {
 
     let maskSource = null;
 
-    if (maskModeSelect.value === "custom") {
+    if (state.customMaskImage) {
       maskSource = autoBuildCustomMaskIfNeeded();
     } else {
       const selectedMask = maskSelect.value;
