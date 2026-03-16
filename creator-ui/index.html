@@ -56,8 +56,13 @@
           <input type="file" id="qrUpload" accept="image/*" />
         </label>
 
+        <div class="ready-row">
+          <div id="qrReadyBadge" class="ready-badge hidden">✓ QR ready</div>
+          <button id="toggleSourceBtn" class="mini-btn" type="button">Show Source QR</button>
+        </div>
+
         <div class="hint">
-          The QR should appear in the Source QR box below before you generate QR-Camo.
+          Generate or upload a QR, then pick a shape and click Generate.
         </div>
       </section>
 
@@ -97,7 +102,7 @@
             <span>Invert mask</span>
           </label>
 
-          <button id="buildMaskBtn" class="secondary" type="button">Build custom mask</button>
+          <div id="maskReadyBadge" class="ready-badge hidden">✓ Custom shape ready</div>
         </div>
       </section>
 
@@ -174,26 +179,24 @@
         </div>
       </section>
 
-      <section class="preview-grid">
-        <section class="canvas-card source-card">
-          <div class="canvas-toolbar">
-            <div class="canvas-title">Source QR</div>
-            <div class="canvas-meta" id="sourceMeta">Nothing loaded yet</div>
-          </div>
-          <div class="canvas-wrap small-wrap">
-            <canvas id="sourcePreviewCanvas"></canvas>
-          </div>
-        </section>
+      <section id="sourceCard" class="canvas-card source-card hidden">
+        <div class="canvas-toolbar">
+          <div class="canvas-title">Source QR</div>
+          <div class="canvas-meta" id="sourceMeta">Nothing loaded yet</div>
+        </div>
+        <div class="canvas-wrap small-wrap">
+          <canvas id="sourcePreviewCanvas"></canvas>
+        </div>
+      </section>
 
-        <section class="canvas-card main-card">
-          <div class="canvas-toolbar">
-            <div class="canvas-title">QR-Camo Preview</div>
-            <div class="canvas-meta" id="previewMeta">Waiting for QR upload or generation</div>
-          </div>
-          <div class="canvas-wrap">
-            <canvas id="outputCanvas"></canvas>
-          </div>
-        </section>
+      <section class="canvas-card main-card">
+        <div class="canvas-toolbar">
+          <div class="canvas-title">QR-Camo Preview</div>
+          <div class="canvas-meta" id="previewMeta">Waiting for QR upload or generation</div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="outputCanvas"></canvas>
+        </div>
       </section>
 
       <section id="labPanels" class="lab-grid hidden">
