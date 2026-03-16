@@ -273,17 +273,43 @@ async function buildQrFromText(text) {
     throw new Error("QRCode library not loaded");
   }
 
-  const tempCanvas = document.createElement("canvas");
-
-  await window.QRCode.toCanvas(tempCanvas, text, {
-    width: 900,
-    margin: 0,
-    errorCorrectionLevel: "H",
-    color: {
-      dark: "#000000",
-      light: "#ffffff"
-    }
+  const qrModel = window.QRCode.create(text, {
+    errorCorrectionLevel: "H"
   });
+
+  const moduleCount = qrModel.modules.size;
+
+  // Pick an exact pixel size per module so there is no leftover edge padding.
+  const pixelsPerModule = 12;
+  const qrPixelSize = moduleCount * pixelsPerModule;
+
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = qrPixelSize;
+  tempCanvas.height = qrPixelSize;
+
+  const ctx = tempCanvas.getContext("2d");
+  ctx.clearRect(0, 0, qrPixelSize, qrPixelSize);
+  ctx.imageSmoothingEnabled = false;
+
+  // White background
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, qrPixelSize, qrPixelSize);
+
+  // Draw modules manually with exact alignment
+  ctx.fillStyle = "#000000";
+
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qrModel.modules.get(row, col)) {
+        ctx.fillRect(
+          col * pixelsPerModule,
+          row * pixelsPerModule,
+          pixelsPerModule,
+          pixelsPerModule
+        );
+      }
+    }
+  }
 
   originalCanvas.width = tempCanvas.width;
   originalCanvas.height = tempCanvas.height;
