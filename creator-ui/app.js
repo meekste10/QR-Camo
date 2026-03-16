@@ -114,6 +114,14 @@ function setMaskReady(isReady) {
   maskReadyBadge.classList.toggle("hidden", !isReady);
 }
 
+function resolveMaskPath(path) {
+  if (!path) return path;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("/") || path.startsWith("../")) {
+    return path;
+  }
+  return `../${path}`;
+}
+
 function hexToRgb(hex) {
   const clean = hex.replace("#", "");
   const full = clean.length === 3
@@ -195,7 +203,6 @@ function applyCurrentColorsToOutput() {
   );
 
   updateContrastWarning();
-  setDebug("Colors applied");
 }
 
 function populatePresetMasks() {
@@ -308,9 +315,7 @@ async function buildQrFromText(text) {
 }
 
 function autoBuildCustomMaskIfNeeded() {
-  if (maskModeSelect.value !== "custom") {
-    return null;
-  }
+  if (maskModeSelect.value !== "custom") return null;
 
   if (!state.customMaskImage) {
     throw new Error("Upload a custom silhouette first");
@@ -474,7 +479,8 @@ generateBtn.addEventListener("click", async () => {
       if (!selectedMask || !maskPresets[selectedMask]) {
         throw new Error("No valid preset mask selected");
       }
-      maskSource = await loadMask(maskPresets[selectedMask]);
+      const resolvedPath = resolveMaskPath(maskPresets[selectedMask]);
+      maskSource = await loadMask(resolvedPath);
     }
 
     const sourceQrCanvas = imageDataToCanvas(trimmed);
