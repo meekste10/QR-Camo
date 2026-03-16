@@ -171,6 +171,16 @@ button.secondary{
   border:1px solid rgba(255,255,255,.08);
 }
 
+button.mini-btn{
+  width:auto;
+  padding:8px 12px;
+  font-size:12px;
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:999px;
+}
+
 .actions{
   display:grid;
   gap:10px;
@@ -192,6 +202,27 @@ button.secondary{
   padding:8px 10px;
   border-radius:999px;
   font-size:12px;
+}
+
+.ready-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:10px 0 4px;
+}
+
+.ready-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:rgba(57,217,138,.14);
+  color:#9ff2c4;
+  border:1px solid rgba(57,217,138,.25);
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
 }
 
 .warning{
@@ -220,12 +251,6 @@ button.secondary{
   color:var(--muted);
   font-size:16px;
   max-width:720px;
-}
-
-.preview-grid{
-  display:grid;
-  grid-template-columns:320px 1fr;
-  gap:18px;
 }
 
 .canvas-card{
@@ -340,9 +365,5 @@ button.secondary{
   .sidebar{
     border-right:none;
     border-bottom:1px solid rgba(255,255,255,.06);
-  }
-
-  .preview-grid{
-    grid-template-columns:1fr;
   }
 }
