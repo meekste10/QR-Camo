@@ -16,6 +16,7 @@ import { exportPNG } from "../js/export.js";
 
 const debugPanel = document.getElementById("debugPanel");
 const previewMeta = document.getElementById("previewMeta");
+const sourceMeta = document.getElementById("sourceMeta");
 const engineStatus = document.getElementById("engineStatus");
 const contrastWarning = document.getElementById("contrastWarning");
 
@@ -48,6 +49,7 @@ const transparentBackground = document.getElementById("transparentBackground");
 const presetMaskSection = document.getElementById("presetMaskSection");
 const customMaskSection = document.getElementById("customMaskSection");
 
+const sourcePreviewCanvas = document.getElementById("sourcePreviewCanvas");
 const originalCanvas = document.getElementById("originalCanvas");
 const thresholdCanvas = document.getElementById("thresholdCanvas");
 const cropCanvas = document.getElementById("cropCanvas");
@@ -57,6 +59,17 @@ const outputCanvas = document.getElementById("outputCanvas");
 state.customMaskImage = null;
 state.customMaskCanvas = null;
 
+function getErrorMessage(err) {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (err.message) return err.message;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "Unknown error";
+  }
+}
+
 function setDebug(msg) {
   debugPanel.textContent = msg;
   console.log(msg);
@@ -64,6 +77,10 @@ function setDebug(msg) {
 
 function setMeta(msg) {
   previewMeta.textContent = msg;
+}
+
+function setSourceMeta(msg) {
+  sourceMeta.textContent = msg;
 }
 
 function setEngineReady(msg = "Engine ready") {
@@ -179,6 +196,34 @@ function populatePresetMasks() {
     option.textContent = key;
     maskSelect.appendChild(option);
   });
+
+  if (maskSelect.options.length > 0) {
+    maskSelect.selectedIndex = 0;
+  }
+}
+
+function syncSourcePreviewFromOriginal() {
+  if (!originalCanvas.width || !originalCanvas.height) return;
+
+  const targetSize = 320;
+  sourcePreviewCanvas.width = targetSize;
+  sourcePreviewCanvas.height = targetSize;
+
+  const ctx = sourcePreviewCanvas.getContext("2d");
+  ctx.clearRect(0, 0, targetSize, targetSize);
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.drawImage(
+    originalCanvas,
+    0,
+    0,
+    originalCanvas.width,
+    originalCanvas.height,
+    0,
+    0,
+    targetSize,
+    targetSize
+  );
 }
 
 async function buildQrFromText(text) {
@@ -207,10 +252,13 @@ async function buildQrFromText(text) {
 
   state.qrImage = null;
   state.qrImageData = octx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+  syncSourcePreviewFromOriginal();
 }
 
 setDebug("Creator UI loaded");
 setMeta("Waiting for QR upload or generation");
+setSourceMeta("Nothing loaded yet");
 populatePresetMasks();
 syncMaskModeUI();
 syncOffsetLabels();
@@ -235,12 +283,14 @@ makeQrBtn.addEventListener("click", async () => {
     }
 
     await buildQrFromText(text);
+
     setDebug("QR generated from text/link");
     setMeta("QR generated. Pick a shape and generate QR-Camo.");
+    setSourceMeta("Generated from link/text");
     setEngineReady("QR generated");
   } catch (err) {
     console.error(err);
-    setDebug(`QR generation error: ${err.message}`);
+    setDebug(`QR generation error: ${getErrorMessage(err)}`);
     setEngineReady("Engine error");
   }
 });
@@ -257,12 +307,15 @@ qrUpload.addEventListener("change", async (e) => {
     state.qrImage = img;
     state.qrImageData = drawToCanvas(img, originalCanvas);
 
+    syncSourcePreviewFromOriginal();
+
     setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
     setMeta("QR uploaded. Pick a shape and generate.");
+    setSourceMeta(`Uploaded QR: ${file.name}`);
     setEngineReady("QR loaded");
   } catch (err) {
     console.error(err);
-    setDebug(`QR upload error: ${err.message}`);
+    setDebug(`QR upload error: ${getErrorMessage(err)}`);
     setEngineReady("Engine error");
   }
 });
@@ -281,7 +334,7 @@ customMaskUpload.addEventListener("change", async (e) => {
     setMeta("Custom silhouette source loaded.");
   } catch (err) {
     console.error(err);
-    setDebug(`Custom mask upload error: ${err.message}`);
+    setDebug(`Custom mask upload error: ${getErrorMessage(err)}`);
   }
 });
 
@@ -310,7 +363,7 @@ buildMaskBtn.addEventListener("click", () => {
     setMeta("Custom mask ready. Generate when ready.");
   } catch (err) {
     console.error(err);
-    setDebug(`Build mask error: ${err.message}`);
+    setDebug(`Build mask error: ${getErrorMessage(err)}`);
   }
 });
 
@@ -360,7 +413,11 @@ generateBtn.addEventListener("click", async () => {
       }
       maskSource = state.customMaskCanvas;
     } else {
-      maskSource = await loadMask(maskPresets[maskSelect.value]);
+      const selectedMask = maskSelect.value;
+      if (!selectedMask || !maskPresets[selectedMask]) {
+        throw new Error("No valid preset mask selected");
+      }
+      maskSource = await loadMask(maskPresets[selectedMask]);
     }
 
     const sourceQrCanvas = imageDataToCanvas(trimmed);
@@ -383,7 +440,7 @@ generateBtn.addEventListener("click", async () => {
     setEngineReady("Render complete");
   } catch (err) {
     console.error(err);
-    setDebug(`Generate error: ${err.message}`);
+    setDebug(`Generate error: ${getErrorMessage(err)}`);
     setEngineReady("Engine error");
   }
 });
@@ -394,6 +451,6 @@ exportBtn.addEventListener("click", () => {
     setDebug("Export triggered");
   } catch (err) {
     console.error(err);
-    setDebug(`Export error: ${err.message}`);
+    setDebug(`Export error: ${getErrorMessage(err)}`);
   }
 });
