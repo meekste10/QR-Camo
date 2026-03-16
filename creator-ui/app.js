@@ -1,6 +1,5 @@
 import { state } from "../js/state.js";
 import { maskPresets } from "../js/presets.js";
-import { loadImage, drawToCanvas } from "../js/image-utils.js";
 import {
   threshold,
   trimWhiteBorder,
@@ -202,16 +201,39 @@ function populatePresetMasks() {
   }
 }
 
+function drawImageToCanvas(img, canvas) {
+  const max = 900;
+  const scale = Math.min(max / img.width, max / img.height, 1);
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+
+  canvas.width = w;
+  canvas.height = h;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, w, h);
+
+  return ctx.getImageData(0, 0, w, h);
+}
+
 function syncSourcePreviewFromOriginal() {
   if (!originalCanvas.width || !originalCanvas.height) return;
 
-  const targetSize = 320;
-  sourcePreviewCanvas.width = targetSize;
-  sourcePreviewCanvas.height = targetSize;
+  const size = 320;
+  sourcePreviewCanvas.width = size;
+  sourcePreviewCanvas.height = size;
 
   const ctx = sourcePreviewCanvas.getContext("2d");
-  ctx.clearRect(0, 0, targetSize, targetSize);
+  ctx.clearRect(0, 0, size, size);
   ctx.imageSmoothingEnabled = false;
+
+  const scale = Math.min(size / originalCanvas.width, size / originalCanvas.height);
+  const drawW = Math.round(originalCanvas.width * scale);
+  const drawH = Math.round(originalCanvas.height * scale);
+  const drawX = Math.floor((size - drawW) / 2);
+  const drawY = Math.floor((size - drawH) / 2);
 
   ctx.drawImage(
     originalCanvas,
@@ -219,11 +241,27 @@ function syncSourcePreviewFromOriginal() {
     0,
     originalCanvas.width,
     originalCanvas.height,
-    0,
-    0,
-    targetSize,
-    targetSize
+    drawX,
+    drawY,
+    drawW,
+    drawH
   );
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not load image file"));
+      img.src = reader.result;
+    };
+
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function buildQrFromText(text) {
@@ -248,6 +286,7 @@ async function buildQrFromText(text) {
 
   const octx = originalCanvas.getContext("2d");
   octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+  octx.imageSmoothingEnabled = false;
   octx.drawImage(tempCanvas, 0, 0);
 
   state.qrImage = null;
@@ -269,7 +308,6 @@ workspaceMode.addEventListener("change", syncWorkspace);
 maskModeSelect.addEventListener("change", syncMaskModeUI);
 qrOffsetX.addEventListener("input", syncOffsetLabels);
 qrOffsetY.addEventListener("input", syncOffsetLabels);
-
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
 backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
 transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
@@ -283,11 +321,10 @@ makeQrBtn.addEventListener("click", async () => {
     }
 
     await buildQrFromText(text);
-
-    setDebug("QR generated from text/link");
-    setMeta("QR generated. Pick a shape and generate QR-Camo.");
     setSourceMeta("Generated from link/text");
+    setMeta("QR generated. Pick a shape and generate QR-Camo.");
     setEngineReady("QR generated");
+    setDebug("QR generated from text/link");
   } catch (err) {
     console.error(err);
     setDebug(`QR generation error: ${getErrorMessage(err)}`);
@@ -303,16 +340,16 @@ qrUpload.addEventListener("change", async (e) => {
       return;
     }
 
-    const img = await loadImage(file);
+    const img = await loadImageFromFile(file);
     state.qrImage = img;
-    state.qrImageData = drawToCanvas(img, originalCanvas);
+    state.qrImageData = drawImageToCanvas(img, originalCanvas);
 
     syncSourcePreviewFromOriginal();
 
-    setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
-    setMeta("QR uploaded. Pick a shape and generate.");
     setSourceMeta(`Uploaded QR: ${file.name}`);
+    setMeta("QR uploaded. Pick a shape and generate.");
     setEngineReady("QR loaded");
+    setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
   } catch (err) {
     console.error(err);
     setDebug(`QR upload error: ${getErrorMessage(err)}`);
@@ -328,7 +365,7 @@ customMaskUpload.addEventListener("change", async (e) => {
       return;
     }
 
-    const img = await loadImage(file);
+    const img = await loadImageFromFile(file);
     state.customMaskImage = img;
     setDebug(`Custom mask source loaded: ${img.width}×${img.height}`);
     setMeta("Custom silhouette source loaded.");
@@ -355,6 +392,7 @@ buildMaskBtn.addEventListener("click", () => {
 
     customMaskCanvas.width = builtMaskCanvas.width;
     customMaskCanvas.height = builtMaskCanvas.height;
+
     const ctx = customMaskCanvas.getContext("2d");
     ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
     ctx.drawImage(builtMaskCanvas, 0, 0);
@@ -370,11 +408,8 @@ buildMaskBtn.addEventListener("click", () => {
 generateBtn.addEventListener("click", async () => {
   try {
     if (!state.qrImageData) {
-      setDebug("Upload or generate a QR first");
-      return;
+      throw new Error("Upload or generate a QR first");
     }
-
-    setDebug("Thresholding QR");
 
     const thresholded = threshold(
       new ImageData(
@@ -388,10 +423,7 @@ generateBtn.addEventListener("click", async () => {
     thresholdCanvas.height = thresholded.height;
     thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
 
-    setDebug("Trimming outer border");
     const trimmed = trimWhiteBorder(thresholded, 1);
-
-    setDebug("Building inner tile source");
     const inner = innerCrop(trimmed, 24);
 
     cropCanvas.width = inner.width;
@@ -404,12 +436,15 @@ generateBtn.addEventListener("click", async () => {
     }
 
     const tiles = extractTiles(inner, modulePixelSize);
+    if (!tiles || !tiles.length) {
+      throw new Error("No tiles could be extracted from this QR");
+    }
 
     let maskSource = null;
+
     if (maskModeSelect.value === "custom") {
       if (!state.customMaskCanvas) {
-        setDebug("Build a custom mask first");
-        return;
+        throw new Error("Build a custom mask first");
       }
       maskSource = state.customMaskCanvas;
     } else {
