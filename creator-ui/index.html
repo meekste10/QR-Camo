@@ -57,7 +57,7 @@
         </label>
 
         <div class="hint">
-          Use any working QR style and let the engine do the rest.
+          The generated or uploaded QR will appear in the Source QR preview and is then ready for QR-Camo generation.
         </div>
       </section>
 
@@ -176,15 +176,28 @@
         </div>
       </section>
 
-      <section class="canvas-card">
-        <div class="canvas-toolbar">
-          <div class="canvas-title">Live Preview</div>
-          <div class="canvas-meta" id="previewMeta">Waiting for QR upload or generation</div>
-        </div>
+      <section class="preview-grid">
+        <section class="canvas-card source-card">
+          <div class="canvas-toolbar">
+            <div class="canvas-title">Source QR</div>
+            <div class="canvas-meta" id="sourceMeta">Nothing loaded yet</div>
+          </div>
 
-        <div class="canvas-wrap">
-          <canvas id="outputCanvas"></canvas>
-        </div>
+          <div class="canvas-wrap small-wrap">
+            <canvas id="sourcePreviewCanvas"></canvas>
+          </div>
+        </section>
+
+        <section class="canvas-card main-card">
+          <div class="canvas-toolbar">
+            <div class="canvas-title">QR-Camo Preview</div>
+            <div class="canvas-meta" id="previewMeta">Waiting for QR upload or generation</div>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas id="outputCanvas"></canvas>
+          </div>
+        </section>
       </section>
 
       <section id="labPanels" class="lab-grid hidden">
