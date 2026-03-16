@@ -39,7 +39,20 @@
         </div>
 
         <label class="field">
-          <span>Upload QR</span>
+          <span>Generate QR from link or text</span>
+          <input
+            type="text"
+            id="qrTextInput"
+            placeholder="https://example.com or any text"
+          />
+        </label>
+
+        <button id="makeQrBtn" class="secondary" type="button">
+          Generate QR from Link / Text
+        </button>
+
+        <label class="field">
+          <span>Or upload an existing QR</span>
           <input type="file" id="qrUpload" accept="image/*" />
         </label>
 
@@ -96,6 +109,7 @@
         <label class="field">
           <span>Center QR size</span>
           <select id="qrSizeSelect">
+            <option value="xsmall">Extra Small</option>
             <option value="small">Small</option>
             <option value="medium" selected>Medium</option>
             <option value="large">Large</option>
@@ -143,7 +157,7 @@
       </section>
 
       <section class="panel actions">
-        <button id="generateBtn" class="primary" type="button">Generate</button>
+        <button id="generateBtn" class="primary" type="button">Generate QR-Camo</button>
         <button id="exportBtn" class="secondary" type="button">Export PNG</button>
       </section>
 
@@ -157,7 +171,7 @@
         <div>
           <h2>Create QR codes people understand at a glance.</h2>
           <p>
-            Turn square scans into icons, symbols, and silhouettes that still work in the real world.
+            Turn links, text, and existing QR codes into icons, symbols, and silhouettes that still scan in the real world.
           </p>
         </div>
       </section>
@@ -165,7 +179,7 @@
       <section class="canvas-card">
         <div class="canvas-toolbar">
           <div class="canvas-title">Live Preview</div>
-          <div class="canvas-meta" id="previewMeta">Waiting for QR upload</div>
+          <div class="canvas-meta" id="previewMeta">Waiting for QR upload or generation</div>
         </div>
 
         <div class="canvas-wrap">
@@ -197,6 +211,7 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
