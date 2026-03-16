@@ -19,7 +19,10 @@ const previewMeta = document.getElementById("previewMeta");
 const engineStatus = document.getElementById("engineStatus");
 const contrastWarning = document.getElementById("contrastWarning");
 
+const qrTextInput = document.getElementById("qrTextInput");
+const makeQrBtn = document.getElementById("makeQrBtn");
 const qrUpload = document.getElementById("qrUpload");
+
 const maskModeSelect = document.getElementById("maskModeSelect");
 const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
@@ -178,8 +181,36 @@ function populatePresetMasks() {
   });
 }
 
+async function buildQrFromText(text) {
+  if (!window.QRCode) {
+    throw new Error("QRCode library not loaded");
+  }
+
+  const tempCanvas = document.createElement("canvas");
+
+  await window.QRCode.toCanvas(tempCanvas, text, {
+    width: 900,
+    margin: 2,
+    errorCorrectionLevel: "H",
+    color: {
+      dark: "#000000",
+      light: "#ffffff"
+    }
+  });
+
+  originalCanvas.width = tempCanvas.width;
+  originalCanvas.height = tempCanvas.height;
+
+  const octx = originalCanvas.getContext("2d");
+  octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+  octx.drawImage(tempCanvas, 0, 0);
+
+  state.qrImage = null;
+  state.qrImageData = octx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+}
+
 setDebug("Creator UI loaded");
-setMeta("Waiting for QR upload");
+setMeta("Waiting for QR upload or generation");
 populatePresetMasks();
 syncMaskModeUI();
 syncOffsetLabels();
@@ -194,6 +225,25 @@ qrOffsetY.addEventListener("input", syncOffsetLabels);
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
 backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
 transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
+
+makeQrBtn.addEventListener("click", async () => {
+  try {
+    const text = qrTextInput.value.trim();
+    if (!text) {
+      setDebug("Enter a link or text first");
+      return;
+    }
+
+    await buildQrFromText(text);
+    setDebug("QR generated from text/link");
+    setMeta("QR generated. Pick a shape and generate QR-Camo.");
+    setEngineReady("QR generated");
+  } catch (err) {
+    console.error(err);
+    setDebug(`QR generation error: ${err.message}`);
+    setEngineReady("Engine error");
+  }
+});
 
 qrUpload.addEventListener("change", async (e) => {
   try {
@@ -267,7 +317,7 @@ buildMaskBtn.addEventListener("click", () => {
 generateBtn.addEventListener("click", async () => {
   try {
     if (!state.qrImageData) {
-      setDebug("Upload a QR first");
+      setDebug("Upload or generate a QR first");
       return;
     }
 
