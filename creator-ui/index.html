@@ -186,14 +186,29 @@
           </section>
 
           <section class="preview-card main-preview-card">
-            <div class="preview-head">
-              <div>QR-Camo Preview</div>
-              <div id="previewMeta" class="meta">Waiting for QR upload or generation</div>
-            </div>
-            <div class="preview-body main-preview">
-              <canvas id="outputCanvas"></canvas>
-            </div>
-          </section>
+  <div class="preview-head">
+    <div>QR-Camo Preview</div>
+    <div id="previewMeta" class="meta">Waiting for QR upload or generation</div>
+  </div>
+  <div class="preview-body main-preview">
+    <div class="canvas-stage" id="canvasStage">
+      <div class="canvas-placeholder" id="canvasPlaceholder">
+        <div class="placeholder-icon">▣</div>
+        <div class="placeholder-title">Your QR-Camo will appear here</div>
+        <div class="placeholder-copy">
+          Create or upload a QR, choose a shape, then click Generate.
+        </div>
+      </div>
+
+      <div class="canvas-loader hidden" id="canvasLoader">
+        <div class="spinner"></div>
+        <div>Building QR-Camo...</div>
+      </div>
+
+      <canvas id="outputCanvas"></canvas>
+    </div>
+  </div>
+</section>
         </div>
 
         <details class="lab-drawer">
