@@ -39,6 +39,8 @@ const qrOffsetYLabel = document.getElementById("qrOffsetYLabel");
 const foregroundColor = document.getElementById("foregroundColor");
 const backgroundColor = document.getElementById("backgroundColor");
 const transparentBackground = document.getElementById("transparentBackground");
+const foregroundSwatch = document.getElementById("foregroundSwatch");
+const backgroundSwatch = document.getElementById("backgroundSwatch");
 
 const qrReadyBadge = document.getElementById("qrReadyBadge");
 const maskReadyBadge = document.getElementById("maskReadyBadge");
@@ -81,9 +83,7 @@ function getErrorMessage(err) {
 }
 
 function setDebug(msg) {
-  if (debugPanel) {
-    debugPanel.textContent = msg;
-  }
+  if (debugPanel) debugPanel.textContent = msg;
   console.log(msg);
 }
 
@@ -144,6 +144,16 @@ function activateTab(tabId) {
   tabPanels.forEach((panel) => {
     panel.classList.toggle("active", panel.id === tabId);
   });
+}
+
+function updateSwatchVisuals() {
+  if (foregroundSwatch) foregroundSwatch.style.background = foregroundColor.value;
+  if (backgroundSwatch) {
+    backgroundSwatch.style.background = transparentBackground.checked
+      ? "linear-gradient(45deg,#ffffff 25%, #d9d9d9 25%, #d9d9d9 50%, #ffffff 50%, #ffffff 75%, #d9d9d9 75%, #d9d9d9 100%)"
+      : backgroundColor.value;
+    backgroundSwatch.style.backgroundSize = transparentBackground.checked ? "16px 16px" : "";
+  }
 }
 
 function resolveMaskPath(path) {
@@ -231,6 +241,7 @@ function recolorOutputCanvas(canvas, fgHex, bgHex, transparent) {
 
 function applyCurrentColorsToOutput() {
   updateContrastWarning();
+  updateSwatchVisuals();
 
   if (!outputCanvas.width || !outputCanvas.height) return;
   if (!canvasStage.classList.contains("has-output")) return;
@@ -318,15 +329,6 @@ function loadImageFromFile(file) {
 
     reader.onerror = () => reject(new Error("Could not read file"));
     reader.readAsDataURL(file);
-  });
-}
-
-function loadImageFromPath(path) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Could not load template image: ${path}`));
-    img.src = path;
   });
 }
 
@@ -421,7 +423,7 @@ function nudgePosition(dx, dy) {
   qrOffsetX.value = String(Number(qrOffsetX.value || 0) + dx);
   qrOffsetY.value = String(Number(qrOffsetY.value || 0) + dy);
   syncOffsetLabels();
-  setMeta("Position updated. Click Generate to refresh preview.");
+  setMeta("Refinement updated. Click Generate to refresh preview.");
 }
 
 tabButtons.forEach((btn) => {
@@ -434,7 +436,7 @@ sizeButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     qrSizeSelect.value = btn.dataset.size;
     syncSizePills();
-    setMeta("Adjustment updated. Click Generate to refresh preview.");
+    setMeta("Refinement updated. Click Generate to refresh preview.");
   });
 });
 
@@ -469,6 +471,7 @@ populatePresetMasks();
 syncOffsetLabels();
 syncSizePills();
 updateContrastWarning();
+updateSwatchVisuals();
 setQrReady(false);
 setMaskReady(false);
 setHasOutput(false);
@@ -545,8 +548,8 @@ customMaskUpload.addEventListener("change", async (e) => {
     clearOutputPreview();
     setMaskReady(true);
     setDebug(`Custom mask source loaded: ${img.width}×${img.height}`);
-    setMeta("Custom silhouette ready. Click Generate.");
-    activateTab("adjustTab");
+    setMeta("Custom silhouette ready. Refine it or click Generate.");
+    activateTab("refineTab");
     setEngineReady("Custom shape loaded", "success");
   } catch (err) {
     console.error(err);
