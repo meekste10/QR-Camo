@@ -7,14 +7,16 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="ambient-glow"></div>
+
   <div class="page-shell">
     <div class="app-shell">
       <header class="topbar">
         <div class="brand">
           <div class="brand-mark">▣</div>
-          <div>
+          <div class="brand-copy">
             <h1>QR-Camo</h1>
-            <p>Turn links into scannable icons</p>
+            <p>Turn ordinary QR codes into scannable silhouettes</p>
           </div>
         </div>
 
@@ -27,24 +29,57 @@
 
       <main class="workspace">
         <section class="controls-pane">
-          <div class="controls-intro">
-            <div class="controls-kicker">Create your code</div>
-            <h2>Build a scannable icon in a few quick steps</h2>
-            <p>Start with a link or QR, choose a shape, refine it, then export your finished QR-Camo.</p>
-          </div>
-
-          <div class="tabs-card">
-            <div class="tabs tabs-3">
-              <button class="tab-btn active" data-tab="sourceTab" type="button">Source</button>
-              <button class="tab-btn" data-tab="shapeTab" type="button">Shape</button>
-              <button class="tab-btn" data-tab="refineTab" type="button">Refine</button>
+          <section class="hero-card">
+            <div class="hero-copy">
+              <div class="hero-kicker">Creator</div>
+              <h2>Build a branded QR that feels like part of the design</h2>
+              <p>
+                Add your link, choose a silhouette, refine placement, dial in spacing,
+                apply light effects, then export a finished QR-Camo.
+              </p>
             </div>
 
-            <div class="tab-panels">
-              <section id="sourceTab" class="tab-panel active">
-                <div class="panel-kicker">Step 1</div>
-                <h2>Source QR</h2>
+            <div class="hero-mini-steps">
+              <div class="hero-step">
+                <span class="hero-step-num">1</span>
+                <span>Source</span>
+              </div>
+              <div class="hero-step">
+                <span class="hero-step-num">2</span>
+                <span>Shape</span>
+              </div>
+              <div class="hero-step">
+                <span class="hero-step-num">3</span>
+                <span>Position</span>
+              </div>
+              <div class="hero-step">
+                <span class="hero-step-num">4</span>
+                <span>Spacing</span>
+              </div>
+              <div class="hero-step">
+                <span class="hero-step-num">5</span>
+                <span>Effects</span>
+              </div>
+            </div>
+          </section>
 
+          <div class="editor-stack">
+            <!-- SOURCE -->
+            <section class="editor-card" id="sourceCard">
+              <div class="editor-card-head">
+                <div class="editor-card-head-left">
+                  <div class="editor-card-icon">⌁</div>
+                  <div>
+                    <div class="editor-card-kicker">Step 1</div>
+                    <h3>Source</h3>
+                  </div>
+                </div>
+                <div class="editor-card-head-right">
+                  <span class="editor-card-status" id="sourceCardStatus">Waiting</span>
+                </div>
+              </div>
+
+              <div class="editor-card-body">
                 <label class="field">
                   <span>Paste link or text</span>
                   <input
@@ -63,15 +98,28 @@
                   <input type="file" id="qrUpload" accept="image/*" />
                 </label>
 
-                <div class="hint">
-                  Create or upload a QR first. Then move to Shape and Generate.
+                <p class="helper">
+                  Start with a fresh link or drop in an existing QR image to reshape it.
+                </p>
+              </div>
+            </section>
+
+            <!-- SHAPE -->
+            <section class="editor-card" id="shapeCard">
+              <div class="editor-card-head">
+                <div class="editor-card-head-left">
+                  <div class="editor-card-icon">⬢</div>
+                  <div>
+                    <div class="editor-card-kicker">Step 2</div>
+                    <h3>Shape</h3>
+                  </div>
                 </div>
-              </section>
+                <div class="editor-card-head-right">
+                  <span class="editor-card-status" id="shapeCardStatus">Preset</span>
+                </div>
+              </div>
 
-              <section id="shapeTab" class="tab-panel">
-                <div class="panel-kicker">Step 2</div>
-                <h2>Shape</h2>
-
+              <div class="editor-card-body">
                 <label class="field">
                   <span>Preset shape</span>
                   <select id="maskSelect"></select>
@@ -92,15 +140,28 @@
                   <span>Invert custom shape</span>
                 </label>
 
-                <div class="hint">
-                  Preset is used by default. A custom upload overrides the preset automatically.
+                <p class="helper">
+                  Upload a bold silhouette for best results. Clean black-on-white shapes work best.
+                </p>
+              </div>
+            </section>
+
+            <!-- POSITION + COLOR -->
+            <section class="editor-card" id="positionCard">
+              <div class="editor-card-head">
+                <div class="editor-card-head-left">
+                  <div class="editor-card-icon">✦</div>
+                  <div>
+                    <div class="editor-card-kicker">Step 3</div>
+                    <h3>QR Position and Color</h3>
+                  </div>
                 </div>
-              </section>
+                <div class="editor-card-head-right">
+                  <span class="editor-card-status">Refine</span>
+                </div>
+              </div>
 
-              <section id="refineTab" class="tab-panel">
-                <div class="panel-kicker">Step 3</div>
-                <h2>Refine</h2>
-
+              <div class="editor-card-body">
                 <div class="field">
                   <span>QR core size</span>
                   <div class="pill-row">
@@ -112,7 +173,7 @@
                 </div>
 
                 <div class="field">
-                  <span>Quick position</span>
+                  <span>QR position</span>
                   <div class="nudge-wrap">
                     <button class="nudge-btn up" id="nudgeUp" type="button">↑</button>
                     <button class="nudge-btn left" id="nudgeLeft" type="button">←</button>
@@ -125,6 +186,28 @@
                 <div class="field compact-values">
                   <div class="value-chip">X: <span id="qrOffsetXLabel">0</span></div>
                   <div class="value-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+                </div>
+
+                <div class="field">
+                  <span>Mask size</span>
+                  <input type="range" id="maskScale" min="50" max="180" value="100" />
+                </div>
+
+                <div class="field">
+                  <span>Mask position</span>
+                  <div class="nudge-wrap">
+                    <button class="nudge-btn up" id="maskNudgeUp" type="button">↑</button>
+                    <button class="nudge-btn left" id="maskNudgeLeft" type="button">←</button>
+                    <button class="nudge-btn center" id="resetMaskPositionBtn" type="button">Center</button>
+                    <button class="nudge-btn right" id="maskNudgeRight" type="button">→</button>
+                    <button class="nudge-btn down" id="maskNudgeDown" type="button">↓</button>
+                  </div>
+                </div>
+
+                <div class="field compact-values">
+                  <div class="value-chip">Mask X: <span id="maskOffsetXLabel">0</span></div>
+                  <div class="value-chip">Mask Y: <span id="maskOffsetYLabel">0</span></div>
+                  <div class="value-chip">Mask %: <span id="maskScaleLabel">100</span></div>
                 </div>
 
                 <div class="field">
@@ -153,12 +236,14 @@
                   Low contrast may not scan reliably.
                 </div>
 
-                <div class="hint">
-                  Fine-tune placement and colors, then generate again to preview the latest version.
-                </div>
+                <p class="helper">
+                  Keep strong contrast for best scan performance. Transparent works best on clean backgrounds.
+                </p>
 
                 <input type="hidden" id="qrOffsetX" value="0" />
                 <input type="hidden" id="qrOffsetY" value="0" />
+                <input type="hidden" id="maskOffsetX" value="0" />
+                <input type="hidden" id="maskOffsetY" value="0" />
 
                 <select id="qrSizeSelect" class="visually-hidden">
                   <option value="xsmall">Extra Small</option>
@@ -166,13 +251,94 @@
                   <option value="medium" selected>Medium</option>
                   <option value="large">Large</option>
                 </select>
-              </section>
-            </div>
-          </div>
+              </div>
+            </section>
 
-          <div class="action-bar">
-            <button id="generateBtn" class="primary" type="button">Generate QR-Camo</button>
-            <button id="exportBtn" class="secondary" type="button">Export PNG</button>
+            <!-- SPACING + QUIET ZONE -->
+            <section class="editor-card" id="spacingCard">
+              <div class="editor-card-head">
+                <div class="editor-card-head-left">
+                  <div class="editor-card-icon">◻</div>
+                  <div>
+                    <div class="editor-card-kicker">Step 4</div>
+                    <h3>Spacing &amp; Quiet Zone</h3>
+                  </div>
+                </div>
+                <div class="editor-card-head-right">
+                  <span class="editor-card-status">Safety</span>
+                </div>
+              </div>
+
+              <div class="editor-card-body">
+                <label class="field">
+                  <span>Outer quiet zone</span>
+                  <input type="range" id="quietZone" min="0" max="40" value="8" />
+                </label>
+
+                <label class="field">
+                  <span>Inner crop trim</span>
+                  <input type="range" id="innerTrim" min="0" max="40" value="24" />
+                </label>
+
+                <label class="field">
+                  <span>Blend tightness</span>
+                  <input type="range" id="blendTightness" min="0" max="100" value="50" />
+                </label>
+
+                <div class="field compact-values">
+                  <div class="value-chip">Quiet: <span id="quietZoneLabel">8</span></div>
+                  <div class="value-chip">Trim: <span id="innerTrimLabel">24</span></div>
+                  <div class="value-chip">Blend: <span id="blendTightnessLabel">50</span></div>
+                </div>
+
+                <p class="helper">
+                  More quiet zone improves scan reliability. Tighter blending hides the QR deeper inside the silhouette.
+                </p>
+              </div>
+            </section>
+
+            <!-- SPECIAL EFFECTS -->
+            <section class="editor-card" id="effectsCard">
+              <div class="editor-card-head">
+                <div class="editor-card-head-left">
+                  <div class="editor-card-icon">✧</div>
+                  <div>
+                    <div class="editor-card-kicker">Step 5</div>
+                    <h3>Special Effects</h3>
+                  </div>
+                </div>
+                <div class="editor-card-head-right">
+                  <span class="editor-card-status">Polish</span>
+                </div>
+              </div>
+
+              <div class="editor-card-body">
+                <label class="field">
+                  <span>Glow</span>
+                  <input type="range" id="effectGlow" min="0" max="100" value="0" />
+                </label>
+
+                <label class="field">
+                  <span>Shadow</span>
+                  <input type="range" id="effectShadow" min="0" max="100" value="0" />
+                </label>
+
+                <label class="field">
+                  <span>Grain texture</span>
+                  <input type="range" id="effectGrain" min="0" max="100" value="0" />
+                </label>
+
+                <div class="field compact-values">
+                  <div class="value-chip">Glow: <span id="effectGlowLabel">0</span></div>
+                  <div class="value-chip">Shadow: <span id="effectShadowLabel">0</span></div>
+                  <div class="value-chip">Grain: <span id="effectGrainLabel">0</span></div>
+                </div>
+
+                <p class="helper">
+                  Keep effects subtle. A little polish can help. Too much can reduce scan performance.
+                </p>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -193,13 +359,14 @@
                 <div>QR-Camo Preview</div>
                 <div id="previewMeta" class="meta">Waiting for QR upload or generation</div>
               </div>
+
               <div class="preview-body main-preview">
                 <div class="canvas-stage" id="canvasStage">
                   <div class="canvas-placeholder" id="canvasPlaceholder">
                     <div class="placeholder-icon">▣</div>
                     <div class="placeholder-title">Your QR-Camo will appear here</div>
                     <div class="placeholder-copy">
-                      Create or upload a QR, choose a shape, refine it, then click Generate.
+                      Generate or upload a QR, choose a shape, refine it, then export your design.
                     </div>
                   </div>
 
@@ -211,14 +378,37 @@
                   <canvas id="outputCanvas"></canvas>
                 </div>
               </div>
+
+              <div class="preview-foot">
+                <div class="scan-meter">
+                  <div class="scan-meter-top">
+                    <div class="scan-label">Scan Strength</div>
+                    <div id="scanStrengthText" class="scan-strength-text">Analyzing</div>
+                  </div>
+                  <div class="scan-bar">
+                    <div id="scanStrengthFill"></div>
+                  </div>
+                  <p class="scan-helper">
+                    Strong contrast, reasonable quiet zone, and moderate blending usually scan best.
+                  </p>
+                </div>
+
+                <div class="action-bar">
+                  <button id="generateBtn" class="primary" type="button">
+                    <span>Generate QR-Camo</span>
+                  </button>
+                  <button id="exportBtn" class="secondary" type="button">Export PNG</button>
+                </div>
+              </div>
             </section>
           </div>
 
+          <!-- EXPLORE IDEAS -->
           <section class="explore-card-shell">
             <div class="explore-head">
               <div>
-                <h3>Explore ideas</h3>
-                <p>Try a ready-made direction and load its matching shape with one tap.</p>
+                <h3>Explore Use Cases</h3>
+                <p>Load a direction fast, then refine it in the creator.</p>
               </div>
             </div>
 
@@ -227,46 +417,119 @@
                 <div class="explore-icon">🐟</div>
                 <div class="explore-title">Restaurant Menu</div>
                 <div class="explore-copy">Use a fish silhouette to open a seafood menu or chef special.</div>
-                <button class="secondary template-btn" type="button" data-template="fish">Try this shape</button>
+                <button class="secondary template-btn" type="button" data-template="fish">Use this</button>
               </article>
 
               <article class="explore-card">
                 <div class="explore-icon">🍷</div>
                 <div class="explore-title">Wine List</div>
                 <div class="explore-copy">Hide tasting notes or bottle details inside a wine-glass icon.</div>
-                <button class="secondary template-btn" type="button" data-template="wine">Try this shape</button>
+                <button class="secondary template-btn" type="button" data-template="wine">Use this</button>
               </article>
 
               <article class="explore-card">
                 <div class="explore-icon">🏠</div>
                 <div class="explore-title">Real Estate Flyer</div>
-                <div class="explore-copy">Turn a home icon into a scannable property tour or listing page.</div>
-                <button class="secondary template-btn" type="button" data-template="house">Try this shape</button>
+                <div class="explore-copy">Turn a home icon into a scannable listing or property tour.</div>
+                <button class="secondary template-btn" type="button" data-template="house">Use this</button>
               </article>
 
               <article class="explore-card">
                 <div class="explore-icon">☕</div>
                 <div class="explore-title">Cafe Loyalty</div>
-                <div class="explore-copy">Use a coffee mug to link guests to rewards, Wi-Fi, or seasonal drinks.</div>
-                <button class="secondary template-btn" type="button" data-template="coffee">Try this shape</button>
+                <div class="explore-copy">Use a coffee mug to link guests to rewards or a seasonal menu.</div>
+                <button class="secondary template-btn" type="button" data-template="coffee">Use this</button>
               </article>
 
               <article class="explore-card">
                 <div class="explore-icon">🏷️</div>
                 <div class="explore-title">Retail Promo</div>
                 <div class="explore-copy">Wrap a discount or product story inside a price-tag silhouette.</div>
-                <button class="secondary template-btn" type="button" data-template="tag">Try this shape</button>
+                <button class="secondary template-btn" type="button" data-template="tag">Use this</button>
               </article>
 
               <article class="explore-card">
                 <div class="explore-icon">🎟️</div>
-                <div class="explore-title">Event Access</div>
-                <div class="explore-copy">Make schedules, digital tickets, or artist info feel part of the event brand.</div>
-                <button class="secondary template-btn" type="button" data-template="ticket">Try this shape</button>
+                <div class="explore-title">Event Ticket</div>
+                <div class="explore-copy">Make schedules, tickets, or guest info feel part of the event design.</div>
+                <button class="secondary template-btn" type="button" data-template="ticket">Use this</button>
               </article>
             </div>
           </section>
 
+          <!-- MINI EXAMPLES -->
+          <section class="examples-shell">
+            <div class="examples-head">
+              <div>
+                <h3>Quick Inspiration</h3>
+                <p>A few example directions to spark the next idea.</p>
+              </div>
+            </div>
+
+            <div class="examples-rail">
+              <button class="example-tile" type="button" data-template="fish">
+                <span class="example-tile-icon">🐟</span>
+                <span class="example-tile-label">Seafood</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="wine">
+                <span class="example-tile-icon">🍷</span>
+                <span class="example-tile-label">Wine</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="house">
+                <span class="example-tile-icon">🏠</span>
+                <span class="example-tile-label">Home</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="coffee">
+                <span class="example-tile-icon">☕</span>
+                <span class="example-tile-label">Cafe</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="tag">
+                <span class="example-tile-icon">🏷️</span>
+                <span class="example-tile-label">Retail</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="ticket">
+                <span class="example-tile-icon">🎟️</span>
+                <span class="example-tile-label">Events</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="leaf">
+                <span class="example-tile-icon">🍃</span>
+                <span class="example-tile-label">Natural</span>
+              </button>
+
+              <button class="example-tile" type="button" data-template="gift">
+                <span class="example-tile-icon">🎁</span>
+                <span class="example-tile-label">Promo</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- MICRO HELP -->
+          <section class="micro-help-shell">
+            <div class="micro-help-grid">
+              <article class="micro-help-card">
+                <h4>Best silhouette uploads</h4>
+                <p>Simple, bold shapes with clean contrast usually produce the best results.</p>
+              </article>
+
+              <article class="micro-help-card">
+                <h4>Strong scans</h4>
+                <p>Dark foreground and enough breathing room around the QR core improve reliability.</p>
+              </article>
+
+              <article class="micro-help-card">
+                <h4>Transparent export</h4>
+                <p>Transparent backgrounds work best when placed on clean, uncluttered surfaces.</p>
+              </article>
+            </div>
+          </section>
+
+          <!-- LAB / DIAGNOSTICS -->
           <details class="lab-drawer">
             <summary>Developer diagnostics</summary>
 
