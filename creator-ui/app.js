@@ -49,6 +49,9 @@ const thresholdCanvas = document.getElementById("thresholdCanvas");
 const cropCanvas = document.getElementById("cropCanvas");
 const customMaskCanvas = document.getElementById("customMaskCanvas");
 const outputCanvas = document.getElementById("outputCanvas");
+const canvasStage = document.getElementById("canvasStage");
+const canvasPlaceholder = document.getElementById("canvasPlaceholder");
+const canvasLoader = document.getElementById("canvasLoader");
 
 const tabButtons = document.querySelectorAll(".tab-btn");
 const tabPanels = document.querySelectorAll(".tab-panel");
@@ -89,8 +92,10 @@ function setSourceMeta(msg) {
   sourceMeta.textContent = msg;
 }
 
-function setEngineReady(msg = "Engine ready") {
+function setEngineReady(msg = "Engine ready", stateType = "neutral") {
   engineStatus.textContent = msg;
+  engineStatus.classList.remove("is-neutral", "is-success", "is-error", "is-working");
+  engineStatus.classList.add(`is-${stateType}`);
 }
 
 function setQrReady(isReady) {
@@ -99,6 +104,21 @@ function setQrReady(isReady) {
 
 function setMaskReady(isReady) {
   maskReadyBadge.classList.toggle("hidden", !isReady);
+}
+
+function setCanvasLoading(isLoading) {
+  canvasLoader.classList.toggle("hidden", !isLoading);
+}
+
+function setHasOutput(hasOutput) {
+  canvasStage.classList.toggle("has-output", hasOutput);
+}
+
+function clearOutputPreview() {
+  const ctx = outputCanvas.getContext("2d");
+  ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+  setHasOutput(false);
+  exportBtn.disabled = true;
 }
 
 function syncOffsetLabels() {
@@ -207,7 +227,10 @@ function recolorOutputCanvas(canvas, fgHex, bgHex, transparent) {
 }
 
 function applyCurrentColorsToOutput() {
+  updateContrastWarning();
+
   if (!outputCanvas.width || !outputCanvas.height) return;
+  if (!canvasStage.classList.contains("has-output")) return;
 
   recolorOutputCanvas(
     outputCanvas,
@@ -215,8 +238,6 @@ function applyCurrentColorsToOutput() {
     backgroundColor.value,
     transparentBackground.checked
   );
-
-  updateContrastWarning();
 }
 
 function populatePresetMasks() {
@@ -354,6 +375,7 @@ function nudgePosition(dx, dy) {
   qrOffsetX.value = String(Number(qrOffsetX.value || 0) + dx);
   qrOffsetY.value = String(Number(qrOffsetY.value || 0) + dy);
   syncOffsetLabels();
+  setMeta("Position updated. Click Generate to refresh preview.");
 }
 
 tabButtons.forEach((btn) => {
@@ -366,6 +388,7 @@ sizeButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     qrSizeSelect.value = btn.dataset.size;
     syncSizePills();
+    setMeta("Adjustment updated. Click Generate to refresh preview.");
   });
 });
 
@@ -378,6 +401,7 @@ resetPositionBtn.addEventListener("click", () => {
   qrOffsetX.value = "0";
   qrOffsetY.value = "0";
   syncOffsetLabels();
+  setMeta("Position reset. Click Generate to refresh preview.");
 });
 
 setDebug("Creator UI loaded");
@@ -389,6 +413,10 @@ syncSizePills();
 updateContrastWarning();
 setQrReady(false);
 setMaskReady(false);
+setHasOutput(false);
+setCanvasLoading(false);
+setEngineReady("Engine ready", "neutral");
+exportBtn.disabled = true;
 activateTab("sourceTab");
 
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
@@ -404,15 +432,17 @@ makeQrBtn.addEventListener("click", async () => {
     }
 
     await buildQrFromText(text);
+    clearOutputPreview();
     setQrReady(true);
     setSourceMeta("Generated from link/text");
     setMeta("QR ready. Pick a shape and click Generate.");
-    setEngineReady("QR generated");
+    setEngineReady("QR generated", "success");
+activateTab("shapeTab");
     setDebug("QR generated from text/link");
   } catch (err) {
     console.error(err);
-    setDebug(`QR generation error: ${getErrorMessage(err)}`);
-    setEngineReady("Engine error");
+    setDebug(`QR upload error: ${getErrorMessage(err)}`);
+    setEngineReady("Engine error", "error");
   }
 });
 
@@ -429,10 +459,12 @@ qrUpload.addEventListener("change", async (e) => {
     state.qrImageData = drawImageToCanvas(img, originalCanvas);
 
     syncSourcePreviewFromOriginal();
+    clearOutputPreview();
     setQrReady(true);
     setSourceMeta(`Uploaded QR: ${file.name}`);
     setMeta("QR ready. Pick a shape and click Generate.");
-    setEngineReady("QR loaded");
+    setEngineReady("QR loaded", "success");
+activateTab("shapeTab");
     setDebug(`QR loaded: ${state.qrImageData.width}×${state.qrImageData.height}`);
   } catch (err) {
     console.error(err);
@@ -452,9 +484,11 @@ customMaskUpload.addEventListener("change", async (e) => {
     const img = await loadImageFromFile(file);
     state.customMaskImage = img;
     state.customMaskCanvas = null;
+    clearOutputPreview();
     setMaskReady(true);
     setDebug(`Custom mask source loaded: ${img.width}×${img.height}`);
     setMeta("Custom silhouette ready. Click Generate.");
+    activateTab("adjustTab");
   } catch (err) {
     console.error(err);
     setDebug(`Custom mask upload error: ${getErrorMessage(err)}`);
@@ -463,6 +497,9 @@ customMaskUpload.addEventListener("change", async (e) => {
 
 generateBtn.addEventListener("click", async () => {
   try {
+    setCanvasLoading(true);
+    setEngineReady("Generating...", "working");
+
     if (!state.qrImageData) {
       throw new Error("Generate or upload a QR first");
     }
@@ -523,14 +560,18 @@ generateBtn.addEventListener("click", async () => {
     });
 
     applyCurrentColorsToOutput();
+    setHasOutput(true);
+    exportBtn.disabled = false;
 
     setDebug("Render complete");
     setMeta("Live preview ready. Export when satisfied.");
-    setEngineReady("Render complete");
+    setEngineReady("Render complete", "success");
   } catch (err) {
     console.error(err);
     setDebug(`Generate error: ${getErrorMessage(err)}`);
-    setEngineReady("Engine error");
+    setEngineReady("Engine error", "error");
+  } finally {
+    setCanvasLoading(false);
   }
 });
 
