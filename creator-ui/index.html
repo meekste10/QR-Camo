@@ -27,16 +27,22 @@
 
       <main class="workspace">
         <section class="controls-pane">
+          <div class="controls-intro">
+            <div class="controls-kicker">Create your code</div>
+            <h2>Build a scannable icon in a few quick steps</h2>
+            <p>Start with a link or QR, choose a shape, refine it, then export your finished QR-Camo.</p>
+          </div>
+
           <div class="tabs-card">
-            <div class="tabs">
+            <div class="tabs tabs-3">
               <button class="tab-btn active" data-tab="sourceTab" type="button">Source</button>
               <button class="tab-btn" data-tab="shapeTab" type="button">Shape</button>
-              <button class="tab-btn" data-tab="adjustTab" type="button">Adjust</button>
-              <button class="tab-btn" data-tab="colorTab" type="button">Color</button>
+              <button class="tab-btn" data-tab="refineTab" type="button">Refine</button>
             </div>
 
             <div class="tab-panels">
               <section id="sourceTab" class="tab-panel active">
+                <div class="panel-kicker">Step 1</div>
                 <h2>Source QR</h2>
 
                 <label class="field">
@@ -63,6 +69,7 @@
               </section>
 
               <section id="shapeTab" class="tab-panel">
+                <div class="panel-kicker">Step 2</div>
                 <h2>Shape</h2>
 
                 <label class="field">
@@ -90,8 +97,9 @@
                 </div>
               </section>
 
-              <section id="adjustTab" class="tab-panel">
-                <h2>Adjust</h2>
+              <section id="refineTab" class="tab-panel">
+                <div class="panel-kicker">Step 3</div>
+                <h2>Refine</h2>
 
                 <div class="field">
                   <span>QR core size</span>
@@ -119,34 +127,21 @@
                   <div class="value-chip">Y: <span id="qrOffsetYLabel">0</span></div>
                 </div>
 
-                <input type="hidden" id="qrOffsetX" value="0" />
-                <input type="hidden" id="qrOffsetY" value="0" />
+                <div class="field">
+                  <span>Colors</span>
+                  <div class="color-swatch-grid">
+                    <label class="swatch-card">
+                      <span class="swatch-label">Foreground</span>
+                      <span class="swatch-visual swatch-visual-fg" id="foregroundSwatch"></span>
+                      <input type="color" id="foregroundColor" value="#000000" />
+                    </label>
 
-                <select id="qrSizeSelect" class="visually-hidden">
-                  <option value="xsmall">Extra Small</option>
-                  <option value="small">Small</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="large">Large</option>
-                </select>
-
-                <div class="hint">
-                  Use arrows to nudge the QR core into place. Center resets it instantly.
-                </div>
-              </section>
-
-              <section id="colorTab" class="tab-panel">
-                <h2>Color</h2>
-
-                <div class="color-grid">
-                  <label class="field">
-                    <span>Foreground</span>
-                    <input type="color" id="foregroundColor" value="#000000" />
-                  </label>
-
-                  <label class="field">
-                    <span>Background</span>
-                    <input type="color" id="backgroundColor" value="#ffffff" />
-                  </label>
+                    <label class="swatch-card">
+                      <span class="swatch-label">Background</span>
+                      <span class="swatch-visual swatch-visual-bg" id="backgroundSwatch"></span>
+                      <input type="color" id="backgroundColor" value="#ffffff" />
+                    </label>
+                  </div>
                 </div>
 
                 <label class="field inline">
@@ -159,8 +154,18 @@
                 </div>
 
                 <div class="hint">
-                  Color is applied after generation, so the QR structure stays stable.
+                  Fine-tune placement and colors, then generate again to preview the latest version.
                 </div>
+
+                <input type="hidden" id="qrOffsetX" value="0" />
+                <input type="hidden" id="qrOffsetY" value="0" />
+
+                <select id="qrSizeSelect" class="visually-hidden">
+                  <option value="xsmall">Extra Small</option>
+                  <option value="small">Small</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="large">Large</option>
+                </select>
               </section>
             </div>
           </div>
@@ -194,7 +199,7 @@
                     <div class="placeholder-icon">▣</div>
                     <div class="placeholder-title">Your QR-Camo will appear here</div>
                     <div class="placeholder-copy">
-                      Create or upload a QR, choose a shape, then click Generate.
+                      Create or upload a QR, choose a shape, refine it, then click Generate.
                     </div>
                   </div>
 
@@ -213,7 +218,7 @@
             <div class="explore-head">
               <div>
                 <h3>Explore ideas</h3>
-                <p>See a few ways QR-Camo can turn ordinary links into useful little visual portals.</p>
+                <p>Try a ready-made direction and load its matching shape with one tap.</p>
               </div>
             </div>
 
