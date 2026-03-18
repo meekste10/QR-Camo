@@ -6,6 +6,7 @@ import {
   trimWhiteBorder,
   innerCrop,
   estimateModuleSize,
+  estimateTextureTileSize,
   imageDataToCanvas
 } from "./qr-preprocess.js";
 import { extractTiles } from "./tile-engine.js";
@@ -356,7 +357,13 @@ async function renderOutput() {
       modulePixelSize = 4;
     }
 
-    const tiles = extractTiles(inner, modulePixelSize);
+    const textureTileSize = estimateTextureTileSize(inner, modulePixelSize);
+
+    const tiles = extractTiles(inner, textureTileSize, {
+      stride: Math.max(1, Math.floor(textureTileSize * 0.75)),
+      rejectMostlySolid: true
+    });
+
     if (!tiles || !tiles.length) {
       throw new Error("No tiles could be extracted from this QR");
     }
@@ -389,7 +396,7 @@ async function renderOutput() {
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
-    setPreviewMeta("QR-Camo ready");
+    setPreviewMeta(`QR-Camo ready · core ${modulePixelSize}px · texture ${textureTileSize}px`);
     setDebug("Render complete");
   } catch (err) {
     console.error(err);
