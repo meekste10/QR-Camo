@@ -37,13 +37,13 @@
           <div class="eyebrow">Quick flow</div>
           <h1>Make it. Shape it. Export it.</h1>
           <p>
-            Start with a QR, choose a preset or upload your own silhouette,
-            fine-tune the preview, and export a clean QR-Camo without the clutter.
+            Create or upload a QR, choose a preset or custom silhouette, preview it in one shared panel,
+            then refine and export your final QR-Camo.
           </p>
         </div>
       </section>
 
-      <section class="workflow-grid">
+      <section class="workflow-grid workflow-grid-single-preview">
         <div class="workflow-left">
 
           <!-- STEP 1 -->
@@ -51,55 +51,120 @@
             <div class="step-head">
               <div class="step-badge">1</div>
               <div class="step-title-wrap">
-                <h2>Create or upload your QR</h2>
+                <h2>Build your base</h2>
                 <p>
-                  Paste a link or text to generate one, or upload a QR you already have.
+                  Start with a QR, then immediately shape it with a preset or your own uploaded silhouette.
                 </p>
               </div>
             </div>
 
-            <div class="step-body compact-step-body">
-              <div class="step-main-grid source-step-grid">
+            <div class="step-body shared-builder-layout">
+              <div class="builder-controls">
 
-                <div class="field-block">
-                  <label class="field-label" for="qrTextInput">Paste link or text</label>
-                  <div class="inline-action-row">
-                    <input
-                      id="qrTextInput"
-                      type="text"
-                      class="input"
-                      placeholder="https://example.com"
-                      autocomplete="off"
-                      spellcheck="false"
-                    />
-                    <button id="makeQrBtn" class="btn-primary" type="button">
-                      Create QR
-                    </button>
+                <div class="builder-group">
+                  <div class="builder-group-title">Create or upload your QR</div>
+
+                  <div class="field-block">
+                    <label class="field-label" for="qrTextInput">Paste link or text</label>
+                    <div class="inline-action-row">
+                      <input
+                        id="qrTextInput"
+                        type="text"
+                        class="input"
+                        placeholder="https://example.com"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                      <button id="makeQrBtn" class="btn-primary" type="button">
+                        Create QR
+                      </button>
+                    </div>
                   </div>
+
+                  <div class="field-block">
+                    <label class="field-label">Or upload an existing QR</label>
+                    <label class="upload-tile upload-tile-compact">
+                      <input type="file" id="qrUpload" accept="image/*" />
+                      <div>
+                        <div class="upload-tile-title">Upload source QR</div>
+                        <div class="upload-tile-sub">PNG, JPG, or screenshot</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  <!-- hidden mirror to satisfy existing app.js references -->
+                  <input type="file" id="qrUploadMirror" accept="image/*" class="visually-hidden" />
                 </div>
 
-                <div class="field-block">
-                  <label class="field-label">Or upload an existing QR</label>
-                  <label class="upload-tile upload-tile-compact">
-                    <input type="file" id="qrUpload" accept="image/*" />
-                    <div>
-                      <div class="upload-tile-title">Upload source QR</div>
-                      <div class="upload-tile-sub">
-                        PNG, JPG, or screenshot
+                <div class="builder-group">
+                  <div class="builder-group-title">Choose or upload your shape</div>
+
+                  <div class="field-block">
+                    <label class="field-label" for="maskSelect">Preset shape</label>
+                    <select id="maskSelect" class="select"></select>
+                  </div>
+
+                  <div class="field-block">
+                    <label class="field-label">Upload custom QR shape</label>
+                    <label class="upload-tile upload-tile-compact">
+                      <input type="file" id="customMaskUpload" accept="image/*" />
+                      <div>
+                        <div class="upload-tile-title">Upload your silhouette here</div>
+                        <div class="upload-tile-sub">High contrast works best</div>
                       </div>
+                    </label>
+                  </div>
+
+                  <div class="shape-controls-row">
+                    <div class="field-block grow">
+                      <label class="field-label" for="customMaskThreshold">Shape threshold</label>
+                      <input
+                        type="range"
+                        id="customMaskThreshold"
+                        min="0"
+                        max="255"
+                        value="180"
+                      />
                     </div>
-                  </label>
+
+                    <div class="field-block invert-block">
+                      <label class="field-label">&nbsp;</label>
+                      <label class="toggle-chip">
+                        <input type="checkbox" id="customMaskInvert" />
+                        <span>Invert</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <aside class="mini-preview-panel">
-                <div class="field-label">Source preview</div>
-                <label class="source-preview-box source-preview-box-small" for="qrUpload">
-                  <canvas id="sourcePreviewCanvas"></canvas>
-                  <div class="source-preview-meta" id="sourceMeta">
-                    Nothing loaded yet
+              <aside class="shared-preview-panel">
+                <div class="preview-header-row">
+                  <div class="field-label preview-title">Working preview</div>
+                  <div id="previewMeta" class="helper preview-helper">
+                    Start by creating or uploading a QR
                   </div>
-                </label>
+                </div>
+
+                <div class="preview-stage preview-stage-shared preview-stage-tall preview-has-source">
+                  <canvas id="sourcePreviewCanvas"></canvas>
+                  <canvas id="outputCanvas"></canvas>
+
+                  <div class="shared-preview-overlay shared-preview-overlay-source">
+                    <div id="sourceMeta" class="source-preview-meta source-preview-meta-center">
+                      Nothing loaded yet
+                    </div>
+                  </div>
+                </div>
+
+                <div class="shared-preview-minirow">
+                  <div class="mini-thumb-card">
+                    <div class="mini-thumb-label">Shape preview</div>
+                    <div class="mini-thumb-box">
+                      <canvas id="customMaskCanvas"></canvas>
+                    </div>
+                  </div>
+                </div>
               </aside>
             </div>
           </section>
@@ -109,74 +174,9 @@
             <div class="step-head">
               <div class="step-badge">2</div>
               <div class="step-title-wrap">
-                <h2>Choose or upload your shape</h2>
-                <p>
-                  Pick a preset for speed, or upload your own silhouette to shape the QR.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-body compact-step-body">
-              <div class="step-main-grid shape-step-grid">
-
-                <div class="field-block">
-                  <label class="field-label" for="maskSelect">Preset shape</label>
-                  <select id="maskSelect" class="select"></select>
-                </div>
-
-                <div class="field-block">
-                  <label class="field-label">Upload custom QR shape</label>
-                  <label class="upload-tile upload-tile-compact">
-                    <input type="file" id="customMaskUpload" accept="image/*" />
-                    <div>
-                      <div class="upload-tile-title">Upload your silhouette here</div>
-                      <div class="upload-tile-sub">
-                        High contrast works best
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                <div class="shape-controls-row">
-                  <div class="field-block grow">
-                    <label class="field-label" for="customMaskThreshold">Shape threshold</label>
-                    <input
-                      type="range"
-                      id="customMaskThreshold"
-                      min="0"
-                      max="255"
-                      value="180"
-                    />
-                  </div>
-
-                  <div class="field-block invert-block">
-                    <label class="field-label">&nbsp;</label>
-                    <label class="toggle-chip">
-                      <input type="checkbox" id="customMaskInvert" />
-                      <span>Invert</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <aside class="mini-preview-panel">
-                <div class="field-label">Shape preview</div>
-                <div class="source-preview-box source-preview-box-small">
-                  <canvas id="customMaskCanvas"></canvas>
-                  <div class="source-preview-meta">Shape preview</div>
-                </div>
-              </aside>
-            </div>
-          </section>
-
-          <!-- STEP 3 -->
-          <section class="step-card" id="step3Card">
-            <div class="step-head">
-              <div class="step-badge">3</div>
-              <div class="step-title-wrap">
                 <h2>Refine and export</h2>
                 <p>
-                  Adjust size, position, and colors, then generate and export your final QR-Camo.
+                  Adjust size, position, and colors. Then generate and export your final QR-Camo.
                 </p>
               </div>
             </div>
@@ -278,22 +278,6 @@
             </div>
           </details>
         </div>
-
-        <!-- RIGHT PREVIEW -->
-        <aside class="workflow-right">
-          <section class="preview-card main-preview-card">
-            <div class="preview-header-row">
-              <div class="field-label preview-title">Final preview</div>
-              <div id="previewMeta" class="helper preview-helper">
-                Awaiting generation
-              </div>
-            </div>
-
-            <div class="preview-stage preview-stage-tall">
-              <canvas id="outputCanvas"></canvas>
-            </div>
-          </section>
-        </aside>
       </section>
     </main>
   </div>
