@@ -19,27 +19,26 @@
           <div class="brand-mark">▣</div>
           <div class="brand-copy">
             <div class="brand-text">QR-Camo</div>
-            <p>Create a scannable shape in a few quick steps</p>
+            <p>Turn a QR into a scannable silhouette</p>
           </div>
         </div>
 
         <div class="status-group compact-status">
           <div id="qrReadyBadge" class="ready-badge hidden">QR loaded</div>
           <div id="maskReadyBadge" class="ready-badge hidden">Shape loaded</div>
-          <div id="engineStatus" class="status-pill">Preview live</div>
+          <div id="engineStatus" class="status-pill">Engine ready</div>
         </div>
       </div>
     </header>
 
     <main class="creator-main">
-      <section class="hero-card">
+      <section class="hero-card hero-card-compact">
         <div class="hero-copy">
-          <div class="eyebrow">Fast flow</div>
-          <h1>Build your QR-Camo without the clutter</h1>
+          <div class="eyebrow">Quick flow</div>
+          <h1>Make it. Shape it. Export it.</h1>
           <p>
-            First make or upload your QR. Then choose a preset or upload your own
-            silhouette. Then refine the preview and export. Clean, quick, and much
-            less scroll-heavy.
+            Start with a QR, choose a preset or upload your own silhouette,
+            fine-tune the preview, and export a clean QR-Camo without the clutter.
           </p>
         </div>
       </section>
@@ -52,55 +51,56 @@
             <div class="step-head">
               <div class="step-badge">1</div>
               <div class="step-title-wrap">
-                <h2>Create or upload your source QR</h2>
+                <h2>Create or upload your QR</h2>
                 <p>
-                  Paste a link or some text to make a QR, or upload one you already have.
+                  Paste a link or text to generate one, or upload a QR you already have.
                 </p>
               </div>
             </div>
 
-            <div class="tight-grid">
-              <div class="tight-row">
+            <div class="step-body compact-step-body">
+              <div class="step-main-grid source-step-grid">
+
                 <div class="field-block">
                   <label class="field-label" for="qrTextInput">Paste link or text</label>
-                  <input
-                    id="qrTextInput"
-                    type="text"
-                    placeholder="https://example.com"
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
+                  <div class="inline-action-row">
+                    <input
+                      id="qrTextInput"
+                      type="text"
+                      class="input"
+                      placeholder="https://example.com"
+                      autocomplete="off"
+                      spellcheck="false"
+                    />
+                    <button id="makeQrBtn" class="btn-primary" type="button">
+                      Create QR
+                    </button>
+                  </div>
                 </div>
 
-                <button id="makeQrBtn" class="btn-primary" type="button">
-                  Create QR
-                </button>
-              </div>
-
-              <div class="source-row">
                 <div class="field-block">
                   <label class="field-label">Or upload an existing QR</label>
-                  <label class="upload-tile">
+                  <label class="upload-tile upload-tile-compact">
                     <input type="file" id="qrUpload" accept="image/*" />
                     <div>
                       <div class="upload-tile-title">Upload source QR</div>
                       <div class="upload-tile-sub">
-                        PNG, JPG, or screenshot of a QR code
+                        PNG, JPG, or screenshot
                       </div>
                     </div>
                   </label>
                 </div>
-
-                <div class="mini-stack">
-                  <div class="field-label">Source preview</div>
-                  <label class="source-preview-box" for="qrUpload">
-                    <canvas id="sourcePreviewCanvas"></canvas>
-                    <div class="source-preview-meta" id="sourceMeta">
-                      Nothing loaded yet
-                    </div>
-                  </label>
-                </div>
               </div>
+
+              <aside class="mini-preview-panel">
+                <div class="field-label">Source preview</div>
+                <label class="source-preview-box source-preview-box-small" for="qrUpload">
+                  <canvas id="sourcePreviewCanvas"></canvas>
+                  <div class="source-preview-meta" id="sourceMeta">
+                    Nothing loaded yet
+                  </div>
+                </label>
+              </aside>
             </div>
           </section>
 
@@ -109,62 +109,63 @@
             <div class="step-head">
               <div class="step-badge">2</div>
               <div class="step-title-wrap">
-                <h2>Choose a preset or upload your own shape</h2>
+                <h2>Choose or upload your shape</h2>
                 <p>
-                  Pick a quick preset, or upload a silhouette that becomes the actual QR-Camo shape.
+                  Pick a preset for speed, or upload your own silhouette to shape the QR.
                 </p>
               </div>
             </div>
 
-            <div class="tight-grid">
-              <div class="field-block">
-                <label class="field-label" for="maskSelect">Preset shape</label>
-                <select id="maskSelect" class="select"></select>
-              </div>
+            <div class="step-body compact-step-body">
+              <div class="step-main-grid shape-step-grid">
 
-              <div class="source-row">
+                <div class="field-block">
+                  <label class="field-label" for="maskSelect">Preset shape</label>
+                  <select id="maskSelect" class="select"></select>
+                </div>
+
                 <div class="field-block">
                   <label class="field-label">Upload custom QR shape</label>
-                  <label class="upload-tile">
+                  <label class="upload-tile upload-tile-compact">
                     <input type="file" id="customMaskUpload" accept="image/*" />
                     <div>
                       <div class="upload-tile-title">Upload your silhouette here</div>
                       <div class="upload-tile-sub">
-                        Best with a bold high-contrast shape on a plain background
+                        High contrast works best
                       </div>
                     </div>
                   </label>
                 </div>
 
-                <div class="mini-stack">
-                  <div class="field-label">Shape preview</div>
-                  <div class="source-preview-box">
-                    <canvas id="customMaskCanvas"></canvas>
-                    <div class="source-preview-meta">Shape preview</div>
+                <div class="shape-controls-row">
+                  <div class="field-block grow">
+                    <label class="field-label" for="customMaskThreshold">Shape threshold</label>
+                    <input
+                      type="range"
+                      id="customMaskThreshold"
+                      min="0"
+                      max="255"
+                      value="180"
+                    />
+                  </div>
+
+                  <div class="field-block invert-block">
+                    <label class="field-label">&nbsp;</label>
+                    <label class="toggle-chip">
+                      <input type="checkbox" id="customMaskInvert" />
+                      <span>Invert</span>
+                    </label>
                   </div>
                 </div>
               </div>
 
-              <div class="tight-row">
-                <div class="field-block">
-                  <label class="field-label" for="customMaskThreshold">Shape threshold</label>
-                  <input
-                    type="range"
-                    id="customMaskThreshold"
-                    min="0"
-                    max="255"
-                    value="180"
-                  />
+              <aside class="mini-preview-panel">
+                <div class="field-label">Shape preview</div>
+                <div class="source-preview-box source-preview-box-small">
+                  <canvas id="customMaskCanvas"></canvas>
+                  <div class="source-preview-meta">Shape preview</div>
                 </div>
-
-                <div class="field-block">
-                  <label class="field-label">&nbsp;</label>
-                  <label class="color-chip">
-                    <input type="checkbox" id="customMaskInvert" />
-                    <span>Invert shape</span>
-                  </label>
-                </div>
-              </div>
+              </aside>
             </div>
           </section>
 
@@ -173,90 +174,93 @@
             <div class="step-head">
               <div class="step-badge">3</div>
               <div class="step-title-wrap">
-                <h2>Refine and generate</h2>
+                <h2>Refine and export</h2>
                 <p>
-                  Adjust size, position, and color. Then generate and export.
+                  Adjust size, position, and colors, then generate and export your final QR-Camo.
                 </p>
               </div>
             </div>
 
-            <div class="tight-grid">
-              <div class="field-block">
-                <div class="field-label">QR core size</div>
-                <div class="pill-group" id="qrSizePills">
-                  <button class="pill-btn" data-size="xsmall" type="button">XS</button>
-                  <button class="pill-btn" data-size="small" type="button">S</button>
-                  <button class="pill-btn active" data-size="medium" type="button">M</button>
-                  <button class="pill-btn" data-size="large" type="button">L</button>
+            <div class="step-body final-step-body">
+              <div class="final-controls-grid">
+
+                <div class="control-panel">
+                  <div class="field-label">QR core size</div>
+                  <div class="pill-group size-pill-group" id="qrSizePills">
+                    <button class="pill-btn" data-size="xsmall" type="button">XS</button>
+                    <button class="pill-btn" data-size="small" type="button">S</button>
+                    <button class="pill-btn active" data-size="medium" type="button">M</button>
+                    <button class="pill-btn" data-size="large" type="button">L</button>
+                  </div>
                 </div>
+
+                <div class="control-panel">
+                  <div class="field-label">Position</div>
+
+                  <div class="nudge-orbit">
+                    <div></div>
+                    <button class="nudge-btn" id="nudgeUp" type="button" aria-label="Move up">↑</button>
+                    <div></div>
+
+                    <button class="nudge-btn" id="nudgeLeft" type="button" aria-label="Move left">←</button>
+                    <button class="nudge-btn nudge-center" id="resetPositionBtn" type="button" aria-label="Center QR">•</button>
+                    <button class="nudge-btn" id="nudgeRight" type="button" aria-label="Move right">→</button>
+
+                    <div></div>
+                    <button class="nudge-btn" id="nudgeDown" type="button" aria-label="Move down">↓</button>
+                    <div></div>
+                  </div>
+
+                  <div class="offset-readout-row">
+                    <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
+                    <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+                  </div>
+                </div>
+
+                <div class="control-panel">
+                  <div class="field-label">Colors</div>
+
+                  <div class="color-control-row">
+                    <label class="color-well">
+                      <span>Foreground</span>
+                      <input type="color" id="foregroundColor" value="#000000" />
+                    </label>
+
+                    <label class="color-well">
+                      <span>Background</span>
+                      <input type="color" id="backgroundColor" value="#ffffff" />
+                    </label>
+
+                    <label class="toggle-chip toggle-chip-strong">
+                      <input type="checkbox" id="transparentBackground" />
+                      <span>Transparent</span>
+                    </label>
+                  </div>
+
+                  <div id="contrastWarning" class="helper hidden">
+                    Low contrast may reduce scan reliability.
+                  </div>
+                </div>
+
+                <div class="action-row">
+                  <button id="generateBtn" class="btn-primary action-btn" type="button">
+                    Generate QR-Camo
+                  </button>
+                  <button id="exportBtn" class="btn-secondary action-btn" type="button">
+                    Export PNG
+                  </button>
+                </div>
+
+                <div id="debugPanel" class="helper debug-helper">Ready.</div>
               </div>
-
-              <div class="field-block">
-                <div class="field-label">Position</div>
-                <div class="nudge-grid">
-                  <div></div>
-                  <button class="nudge-btn" id="nudgeUp" type="button" aria-label="Move up">↑</button>
-                  <div></div>
-
-                  <button class="nudge-btn" id="nudgeLeft" type="button" aria-label="Move left">←</button>
-                  <button class="nudge-btn" id="resetPositionBtn" type="button" aria-label="Center QR">•</button>
-                  <button class="nudge-btn" id="nudgeRight" type="button" aria-label="Move right">→</button>
-
-                  <div></div>
-                  <button class="nudge-btn" id="nudgeDown" type="button" aria-label="Move down">↓</button>
-                  <div></div>
-                </div>
-
-                <div class="pill-group">
-                  <div class="color-chip">X: <span id="qrOffsetXLabel">0</span></div>
-                  <div class="color-chip">Y: <span id="qrOffsetYLabel">0</span></div>
-                </div>
-              </div>
-
-              <div class="field-block">
-                <div class="field-label">Colors</div>
-                <div class="color-row">
-                  <label class="color-chip" for="foregroundColor">
-                    <span>Foreground</span>
-                    <input type="color" id="foregroundColor" value="#000000" />
-                  </label>
-
-                  <label class="color-chip" for="backgroundColor">
-                    <span>Background</span>
-                    <input type="color" id="backgroundColor" value="#ffffff" />
-                  </label>
-
-                  <label class="color-chip" for="transparentBackground">
-                    <input type="checkbox" id="transparentBackground" />
-                    <span>Transparent</span>
-                  </label>
-                </div>
-
-                <div id="contrastWarning" class="helper hidden">
-                  Low contrast may reduce scan reliability.
-                </div>
-              </div>
-
-              <div class="pill-group">
-                <button id="generateBtn" class="btn-primary" type="button">
-                  Generate QR-Camo
-                </button>
-                <button id="exportBtn" class="btn-secondary" type="button">
-                  Export PNG
-                </button>
-              </div>
-
-              <div id="debugPanel" class="helper">Ready.</div>
             </div>
           </section>
 
           <!-- TECHNICAL -->
-          <details class="panel-card" style="padding:18px;">
-            <summary style="cursor:pointer; font-weight:700; color:var(--muted);">
-              Show technical panels
-            </summary>
+          <details class="panel-card tech-panel">
+            <summary>Show technical panels</summary>
 
-            <div class="tight-grid" style="margin-top:14px;">
+            <div class="tech-grid">
               <div class="field-block">
                 <div class="field-label">Original QR</div>
                 <canvas id="originalCanvas"></canvas>
@@ -278,14 +282,15 @@
         <!-- RIGHT PREVIEW -->
         <aside class="workflow-right">
           <section class="preview-card main-preview-card">
-            <div class="field-label">Final QR-Camo Preview</div>
-
-            <div class="preview-stage">
-              <canvas id="outputCanvas"></canvas>
+            <div class="preview-header-row">
+              <div class="field-label preview-title">Final preview</div>
+              <div id="previewMeta" class="helper preview-helper">
+                Awaiting generation
+              </div>
             </div>
 
-            <div class="preview-footer">
-              <div id="previewMeta" class="helper">Live preview ready. Export when satisfied.</div>
+            <div class="preview-stage preview-stage-tall">
+              <canvas id="outputCanvas"></canvas>
             </div>
           </section>
         </aside>
