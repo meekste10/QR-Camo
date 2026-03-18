@@ -1,5 +1,3 @@
-import { extractTiles, buildWeightedTilePool } from "./tile-engine.js";
-
 export function threshold(imageData, thresholdValue = 128) {
   const d = imageData.data;
 
@@ -19,7 +17,7 @@ function isWhitePixel(data, index) {
   return data[index] > 250 && data[index + 1] > 250 && data[index + 2] > 250;
 }
 
-export function trimWhiteBorder(imageData, keepMarginPx = 1) {
+export function trimWhiteBorder(imageData, keepMarginPx = 0) {
   const { width, height, data } = imageData;
 
   let top = 0;
@@ -68,6 +66,7 @@ export function trimWhiteBorder(imageData, keepMarginPx = 1) {
   targetCanvas.width = newW;
   targetCanvas.height = newH;
   const tctx = targetCanvas.getContext("2d");
+  tctx.imageSmoothingEnabled = false;
 
   tctx.drawImage(sourceCanvas, left, top, newW, newH, 0, 0, newW, newH);
 
@@ -94,6 +93,7 @@ export function innerCrop(imageData, insetPercent = 24) {
   targetCanvas.width = newW;
   targetCanvas.height = newH;
   const tctx = targetCanvas.getContext("2d");
+  tctx.imageSmoothingEnabled = false;
 
   tctx.drawImage(
     sourceCanvas,
@@ -153,64 +153,18 @@ export function estimateModuleSize(imageData) {
     if (run > 0) runLengths.push(run);
   }
 
-  const filtered = runLengths.filter((v) => v >= 1 && v <= Math.max(width, height) / 4);
+  const filtered = runLengths.filter(
+    (v) => v >= 1 && v <= Math.max(width, height) / 4
+  );
+
   if (!filtered.length) return 4;
 
   filtered.sort((a, b) => a - b);
-  const lowerHalf = filtered.slice(0, Math.max(1, Math.floor(filtered.length * 0.35)));
-  const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
-
-  return Math.max(1, Math.round(avg));
-}
-
-export function buildTilesFromQr({
-  sourceQrCanvas,
-  originalCanvas,
-  thresholdCanvas,
-  cropCanvas
-}) {
-  const srcCtx = sourceQrCanvas.getContext("2d", { willReadFrequently: true });
-  const srcImageData = srcCtx.getImageData(0, 0, sourceQrCanvas.width, sourceQrCanvas.height);
-
-  if (originalCanvas) {
-    originalCanvas.width = sourceQrCanvas.width;
-    originalCanvas.height = sourceQrCanvas.height;
-    const octx = originalCanvas.getContext("2d");
-    octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
-    octx.drawImage(sourceQrCanvas, 0, 0);
-  }
-
-  const thresholded = threshold(
-    new ImageData(
-      new Uint8ClampedArray(srcImageData.data),
-      srcImageData.width,
-      srcImageData.height
-    ),
-    128
+  const lowerHalf = filtered.slice(
+    0,
+    Math.max(1, Math.floor(filtered.length * 0.35))
   );
 
-  const trimmed = trimWhiteBorder(thresholded, 1);
-  const cropped = innerCrop(trimmed, 24);
-  const modulePixelSize = estimateModuleSize(cropped);
-
-  if (thresholdCanvas) {
-    thresholdCanvas.width = trimmed.width;
-    thresholdCanvas.height = trimmed.height;
-    thresholdCanvas.getContext("2d").putImageData(trimmed, 0, 0);
-  }
-
-  if (cropCanvas) {
-    cropCanvas.width = cropped.width;
-    cropCanvas.height = cropped.height;
-    cropCanvas.getContext("2d").putImageData(cropped, 0, 0);
-  }
-
-  const extractedTiles = extractTiles(cropped, modulePixelSize);
-  const tilePool = buildWeightedTilePool(extractedTiles);
-
-  return {
-    tiles: tilePool,
-    thresholdCanvasForRender: imageDataToCanvas(thresholded),
-    modulePixelSize
-  };
+  const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
+  return Math.max(1, Math.round(avg));
 }
