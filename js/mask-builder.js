@@ -1,28 +1,29 @@
-export function createThresholdMaskCanvas({
-  image,
-  size = 800,
-  threshold = 180,
-  invert = false,
-  targetFill = 0.9
-}) {
+export function buildMaskFromImage(img, options = {}) {
+  const {
+    size = 800,
+    threshold = 180,
+    invert = false,
+    targetFill = 0.9
+  } = options;
+
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
-
   const ctx = canvas.getContext("2d");
+
   ctx.clearRect(0, 0, size, size);
 
   const scale = Math.min(
-    (size * targetFill) / image.width,
-    (size * targetFill) / image.height
+    (size * targetFill) / img.width,
+    (size * targetFill) / img.height
   );
 
-  const drawW = Math.round(image.width * scale);
-  const drawH = Math.round(image.height * scale);
+  const drawW = Math.round(img.width * scale);
+  const drawH = Math.round(img.height * scale);
   const drawX = Math.floor((size - drawW) / 2);
   const drawY = Math.floor((size - drawH) / 2);
 
-  ctx.drawImage(image, drawX, drawY, drawW, drawH);
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
   const imageData = ctx.getImageData(0, 0, size, size);
   const d = imageData.data;
@@ -42,8 +43,8 @@ export function createThresholdMaskCanvas({
     }
 
     const gray = Math.round((r + g + b) / 3);
-    let inside = gray < threshold;
 
+    let inside = gray < threshold;
     if (invert) inside = !inside;
 
     if (inside) {
