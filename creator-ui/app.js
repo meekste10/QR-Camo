@@ -20,7 +20,8 @@ const state = {
   customMaskImage: null,
   customMaskThreshold: 180,
   customMaskInvert: false,
-  lastRenderOk: false
+  lastRenderOk: false,
+  previewMode: "source"
 };
 
 const els = {
@@ -68,7 +69,9 @@ const els = {
   nudgeUp: document.getElementById("nudgeUp"),
   nudgeRight: document.getElementById("nudgeRight"),
   nudgeDown: document.getElementById("nudgeDown"),
-  nudgeLeft: document.getElementById("nudgeLeft")
+  nudgeLeft: document.getElementById("nudgeLeft"),
+
+  previewStageShared: document.querySelector(".preview-stage-shared")
 };
 
 function setStatus(text) {
@@ -238,6 +241,23 @@ function tintQrCanvas(sourceCanvas, fgColor, bgColor, transparentBackground) {
   return out;
 }
 
+function setPreviewMode(mode) {
+  state.previewMode = mode;
+
+  const stage = els.previewStageShared;
+  if (!stage) return;
+
+  stage.classList.remove("preview-has-source", "preview-has-output");
+
+  if (mode === "source") {
+    stage.classList.add("preview-has-source");
+  }
+
+  if (mode === "output") {
+    stage.classList.add("preview-has-output");
+  }
+}
+
 async function buildQrFromText() {
   const value = (els.qrTextInput?.value || "").trim();
   if (!value) {
@@ -258,7 +278,10 @@ async function buildQrFromText() {
 
     state.sourceQrCanvas = qrCanvas;
     state.sourceQrImage = null;
+
     hydrateSourceOutputs();
+    setPreviewMode("source");
+
     setStatus("QR created from text.");
     show(els.qrReadyBadge, true);
     maybeAutoRender();
@@ -282,6 +305,8 @@ async function handleQrUpload(file) {
     state.sourceQrCanvas = qrCanvas;
 
     hydrateSourceOutputs(file);
+    setPreviewMode("source");
+
     setStatus("Existing QR uploaded.");
     show(els.qrReadyBadge, true);
     maybeAutoRender();
@@ -441,6 +466,7 @@ function renderOutput() {
     });
 
     state.lastRenderOk = true;
+    setPreviewMode("output");
     setPreviewMeta("Live preview ready");
     setStatus("Render complete");
   } catch (error) {
@@ -584,6 +610,7 @@ function initialUiSync() {
   syncOffsetLabels();
   updateContrastWarning();
   setQrSize("medium");
+  setPreviewMode("source");
   setPreviewMeta("Awaiting generation");
   setStatus("Engine ready");
   show(els.qrReadyBadge, false);
