@@ -1,36 +1,38 @@
-export function loadImage(file) {
+export function loadImage(fileOrSrc) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+
     img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => reject(new Error("Failed to load image"));
+
+    if (typeof fileOrSrc === "string") {
+      img.src = fileOrSrc;
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(fileOrSrc);
   });
 }
 
-export function drawToCanvas(img, canvas, maxSize = 1200) {
-  const ctx = canvas.getContext("2d");
+export function drawToCanvas(img, canvas) {
+  const maxSize = 900;
+  const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
 
-  let width = img.width;
-  let height = img.height;
-
-  if (width > maxSize || height > maxSize) {
-    const scale = Math.min(maxSize / width, maxSize / height);
-    width = Math.round(width * scale);
-    height = Math.round(height * scale);
-  }
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
 
   canvas.width = width;
   canvas.height = height;
 
+  const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, 0, 0, width, height);
 
   return ctx.getImageData(0, 0, width, height);
-}
-
-export function downloadCanvas(canvas, name = "qr-camo.png") {
-  const link = document.createElement("a");
-  link.download = name;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
 }
