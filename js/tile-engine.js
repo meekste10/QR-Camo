@@ -24,7 +24,12 @@ function getTileStats(tileCanvas) {
   };
 }
 
-export function extractTiles(imageData, tileSize) {
+export function extractTiles(imageData, tileSize, options = {}) {
+  const {
+    stride = tileSize,
+    rejectMostlySolid = false
+  } = options;
+
   const tiles = [];
 
   const sourceCanvas = document.createElement("canvas");
@@ -33,8 +38,8 @@ export function extractTiles(imageData, tileSize) {
   const sctx = sourceCanvas.getContext("2d");
   sctx.putImageData(imageData, 0, 0);
 
-  for (let y = 0; y + tileSize <= imageData.height; y += tileSize) {
-    for (let x = 0; x + tileSize <= imageData.width; x += tileSize) {
+  for (let y = 0; y + tileSize <= imageData.height; y += stride) {
+    for (let x = 0; x + tileSize <= imageData.width; x += stride) {
       const tileCanvas = document.createElement("canvas");
       tileCanvas.width = tileSize;
       tileCanvas.height = tileSize;
@@ -49,6 +54,12 @@ export function extractTiles(imageData, tileSize) {
       );
 
       const stats = getTileStats(tileCanvas);
+
+      if (rejectMostlySolid) {
+        if (stats.blackRatio < 0.03 || stats.blackRatio > 0.97) {
+          continue;
+        }
+      }
 
       tiles.push({
         canvas: tileCanvas,
