@@ -360,7 +360,7 @@ async function renderOutput() {
     const textureTileSize = estimateTextureTileSize(inner, modulePixelSize);
 
     const tiles = extractTiles(inner, textureTileSize, {
-      stride: Math.max(1, Math.floor(textureTileSize * 0.75)),
+      stride: Math.max(1, Math.floor(textureTileSize * 0.5)),
       rejectMostlySolid: true
     });
 
