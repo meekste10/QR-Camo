@@ -20,7 +20,10 @@ const setDebug = (msg) => {
   console.log(msg);
 };
 
+const qrTextInput = document.getElementById("qrTextInput");
+const makeQrBtn = document.getElementById("makeQrBtn");
 const qrUpload = document.getElementById("qrUpload");
+
 const maskModeSelect = document.getElementById("maskModeSelect");
 const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
@@ -89,9 +92,7 @@ function recolorOutputCanvas(canvas, fgHex, bgHex, useTransparentBackground) {
   for (let i = 0; i < d.length; i += 4) {
     const alpha = d[i + 3];
 
-    if (alpha === 0) {
-      continue;
-    }
+    if (alpha === 0) continue;
 
     const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
     const isDark = avg < 128;
@@ -132,6 +133,35 @@ function applyCurrentColorsToOutput() {
   setDebug("Colors applied");
 }
 
+async function buildQrFromText(text) {
+  if (!window.QRCode) {
+    throw new Error("QRCode library not loaded");
+  }
+
+  const tempCanvas = document.createElement("canvas");
+
+  await window.QRCode.toCanvas(tempCanvas, text, {
+    width: 900,
+    margin: 0,
+    errorCorrectionLevel: "H",
+    color: {
+      dark: "#000000",
+      light: "#ffffff"
+    }
+  });
+
+  originalCanvas.width = tempCanvas.width;
+  originalCanvas.height = tempCanvas.height;
+
+  const octx = originalCanvas.getContext("2d");
+  octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(tempCanvas, 0, 0);
+
+  state.qrImage = null;
+  state.qrImageData = octx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+}
+
 setDebug("Root lab loaded");
 
 if (maskSelect && maskSelect.options.length === 0) {
@@ -153,6 +183,41 @@ qrOffsetY.addEventListener("input", syncOffsetLabels);
 foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
 backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
 transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
+
+makeQrBtn.addEventListener("click", async () => {
+  try {
+    const text = qrTextInput.value.trim();
+    if (!text) {
+      setDebug("Enter a link or text first");
+      return;
+    }
+
+    await buildQrFromText(text);
+    setDebug(`QR generated from text: ${text}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`QR generation error: ${err.message}`);
+  }
+});
+
+qrTextInput.addEventListener("keydown", async (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+
+  try {
+    const text = qrTextInput.value.trim();
+    if (!text) {
+      setDebug("Enter a link or text first");
+      return;
+    }
+
+    await buildQrFromText(text);
+    setDebug(`QR generated from text: ${text}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`QR generation error: ${err.message}`);
+  }
+});
 
 qrUpload.addEventListener("change", async (e) => {
   try {
@@ -226,7 +291,7 @@ generateBtn.addEventListener("click", async () => {
       return;
     }
 
-    setDebug("Thresholding uploaded QR");
+    setDebug("Thresholding uploaded/generated QR");
 
     const thresholded = threshold(
       new ImageData(
@@ -242,7 +307,7 @@ generateBtn.addEventListener("click", async () => {
 
     setDebug("Trimming outer white border");
 
-    const trimmed = trimWhiteBorder(thresholded, 1);
+    const trimmed = trimWhiteBorder(thresholded, 0);
 
     setDebug("Making inner crop for tile source");
 
