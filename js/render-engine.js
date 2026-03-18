@@ -1,9 +1,5 @@
 import { pointInsideMask } from "./mask-engine.js";
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
@@ -39,59 +35,6 @@ function normalizeTile(tile) {
   return tile;
 }
 
-function hash2D(x, y, seed = 0) {
-  let h = x * 374761393 + y * 668265263 + seed * 1442695041;
-  h = (h ^ (h >>> 13)) * 1274126177;
-  h = h ^ (h >>> 16);
-  return Math.abs(h);
-}
-
-function pickTileIndex(gridX, gridY, tileCount, seed = 0) {
-  if (!tileCount) return 0;
-  return hash2D(gridX, gridY, seed) % tileCount;
-}
-
-function cellMaskCoverage(mctx, x, y, size) {
-  const inset = Math.max(1, Math.floor(size * 0.18));
-
-  const samples = [
-    [x + Math.floor(size / 2), y + Math.floor(size / 2)],
-    [x + inset, y + inset],
-    [x + size - inset, y + inset],
-    [x + inset, y + size - inset],
-    [x + size - inset, y + size - inset],
-    [x + Math.floor(size / 2), y + inset],
-    [x + Math.floor(size / 2), y + size - inset],
-    [x + inset, y + Math.floor(size / 2)],
-    [x + size - inset, y + Math.floor(size / 2)]
-  ];
-
-  let inside = 0;
-  for (const [sx, sy] of samples) {
-    if (pointInsideMask(mctx, sx, sy)) inside++;
-  }
-
-  return inside / samples.length;
-}
-
-function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
-  const destX = dx - bleed;
-  const destY = dy - bleed;
-  const destSize = drawSize + bleed * 2;
-
-  ctx.drawImage(
-    tileCanvas,
-    0,
-    0,
-    tileCanvas.width,
-    tileCanvas.height,
-    destX,
-    destY,
-    destSize,
-    destSize
-  );
-}
-
 export function render(options) {
   const {
     tiles,
@@ -101,27 +44,16 @@ export function render(options) {
     modulePixelSize,
     qrSize = "medium",
     qrOffsetX = 0,
-    qrOffsetY = 0,
-    blendTightness = 50
+    qrOffsetY = 0
   } = options;
 
   const OUTPUT_SIZE = 800;
-  const ctx = outputCanvas.getContext("2d");
 
+  const ctx = outputCanvas.getContext("2d");
   outputCanvas.width = OUTPUT_SIZE;
   outputCanvas.height = OUTPUT_SIZE;
   ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   ctx.imageSmoothingEnabled = false;
-
-  if (!tiles || !tiles.length) {
-    throw new Error("Render failed: no tiles available");
-  }
-  if (!maskImg) {
-    throw new Error("Render failed: no mask image available");
-  }
-  if (!sourceQrCanvas) {
-    throw new Error("Render failed: no source QR canvas available");
-  }
 
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
@@ -129,16 +61,7 @@ export function render(options) {
 
   const mctx = maskCanvas.getContext("2d");
   mctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  mctx.imageSmoothingEnabled = true;
   mctx.drawImage(maskImg, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-
-  const camoCanvas = document.createElement("canvas");
-  camoCanvas.width = OUTPUT_SIZE;
-  camoCanvas.height = OUTPUT_SIZE;
-
-  const cctx = camoCanvas.getContext("2d");
-  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  cctx.imageSmoothingEnabled = false;
 
   let safeModulePixelSize = modulePixelSize;
   if (!safeModulePixelSize || safeModulePixelSize < 1) {
@@ -155,42 +78,6 @@ export function render(options) {
   const centerX = centerFit.x + qrOffsetX;
   const centerY = centerFit.y + qrOffsetY;
 
-  const centerRect = {
-    x: centerX,
-    y: centerY,
-    size: centerFit.qrDisplaySize
-  };
-
-  const drawSize = centerFit.moduleDisplaySize;
-  const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.20 + tightness * 0.40;
-  const bleed = Math.max(1, Math.floor(drawSize * 0.04));
-
-  for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
-    for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
-      if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
-
-      const coverage = cellMaskCoverage(mctx, x, y, drawSize);
-      if (coverage < minCoverage) continue;
-
-      const gridX = Math.floor(x / drawSize);
-      const gridY = Math.floor(y / drawSize);
-
-      const tileA = normalizeTile(
-        tiles[pickTileIndex(gridX, gridY, tiles.length, 17)]
-      );
-      if (!tileA) continue;
-
-      drawTileWithBleed(cctx, tileA, x, y, drawSize, bleed);
-    }
-  }
-
-  cctx.globalCompositeOperation = "destination-in";
-  cctx.drawImage(maskCanvas, 0, 0);
-  cctx.globalCompositeOperation = "source-over";
-
-  ctx.drawImage(camoCanvas, 0, 0);
-
   ctx.drawImage(
     sourceQrCanvas,
     0,
@@ -202,4 +89,41 @@ export function render(options) {
     centerFit.qrDisplaySize,
     centerFit.qrDisplaySize
   );
+
+  const centerRect = {
+    x: centerX,
+    y: centerY,
+    size: centerFit.qrDisplaySize
+  };
+
+  const drawSize = centerFit.moduleDisplaySize;
+  let tileIndex = 0;
+
+  for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
+    for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
+      const cx = Math.floor(x + drawSize / 2);
+      const cy = Math.floor(y + drawSize / 2);
+
+      if (!pointInsideMask(mctx, cx, cy)) continue;
+      if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
+
+      const rawTile = tiles[tileIndex % tiles.length];
+      const tileCanvas = normalizeTile(rawTile);
+      if (!tileCanvas) continue;
+
+      ctx.drawImage(
+        tileCanvas,
+        0,
+        0,
+        tileCanvas.width,
+        tileCanvas.height,
+        x,
+        y,
+        drawSize,
+        drawSize
+      );
+
+      tileIndex++;
+    }
+  }
 }
