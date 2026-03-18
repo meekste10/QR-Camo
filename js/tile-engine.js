@@ -38,6 +38,7 @@ export function extractTiles(imageData, tileSize) {
       const tileCanvas = document.createElement("canvas");
       tileCanvas.width = tileSize;
       tileCanvas.height = tileSize;
+
       const tctx = tileCanvas.getContext("2d");
       tctx.imageSmoothingEnabled = false;
 
