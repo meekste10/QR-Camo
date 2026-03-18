@@ -1,4 +1,5 @@
 import { pointInsideMask } from "./mask-engine.js";
+import { buildWeightedTilePool, randomTileFromPool } from "./tile-engine.js";
 
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
@@ -33,6 +34,32 @@ function normalizeTile(tile) {
   if (!tile) return null;
   if (tile.canvas) return tile.canvas;
   return tile;
+}
+
+function drawTileVariant(ctx, tileCanvas, x, y, drawSize, variantIndex) {
+  ctx.save();
+  ctx.translate(x + drawSize / 2, y + drawSize / 2);
+
+  const rotation = (variantIndex % 4) * (Math.PI / 2);
+  ctx.rotate(rotation);
+
+  const flipX = variantIndex % 2 === 1 ? -1 : 1;
+  const flipY = variantIndex % 3 === 2 ? -1 : 1;
+  ctx.scale(flipX, flipY);
+
+  ctx.drawImage(
+    tileCanvas,
+    0,
+    0,
+    tileCanvas.width,
+    tileCanvas.height,
+    -drawSize / 2,
+    -drawSize / 2,
+    drawSize,
+    drawSize
+  );
+
+  ctx.restore();
 }
 
 export function render(options) {
@@ -97,7 +124,9 @@ export function render(options) {
   };
 
   const drawSize = centerFit.moduleDisplaySize;
-  let tileIndex = 0;
+  const weightedPool = buildWeightedTilePool(tiles);
+
+  let previousTile = null;
 
   for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
@@ -107,23 +136,36 @@ export function render(options) {
       if (!pointInsideMask(mctx, cx, cy)) continue;
       if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
 
-      const rawTile = tiles[tileIndex % tiles.length];
-      const tileCanvas = normalizeTile(rawTile);
-      if (!tileCanvas) continue;
+      let picked = null;
+      let attempts = 0;
 
-      ctx.drawImage(
-        tileCanvas,
-        0,
-        0,
-        tileCanvas.width,
-        tileCanvas.height,
-        x,
-        y,
-        drawSize,
-        drawSize
-      );
+      while (attempts < 5) {
+        const candidate = randomTileFromPool(weightedPool);
+        const tileCanvas = normalizeTile(candidate);
 
-      tileIndex++;
+        if (!tileCanvas) {
+          attempts++;
+          continue;
+        }
+
+        if (tileCanvas !== previousTile || weightedPool.length < 3) {
+          picked = tileCanvas;
+          break;
+        }
+
+        attempts++;
+      }
+
+      if (!picked) {
+        const fallback = randomTileFromPool(weightedPool);
+        picked = normalizeTile(fallback);
+      }
+
+      if (!picked) continue;
+
+      const variantIndex = Math.floor(Math.random() * 8);
+      drawTileVariant(ctx, picked, x, y, drawSize, variantIndex);
+      previousTile = picked;
     }
   }
 }
