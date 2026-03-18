@@ -119,42 +119,84 @@ export function imageDataToCanvas(imageData) {
   return canvas;
 }
 
-export function estimateModuleSize(imageData) {
+function collectRunLengths(imageData, rowsOrCols = "rows") {
   const { width, height, data } = imageData;
-
-  const sampleRows = [
-    Math.floor(height * 0.25),
-    Math.floor(height * 0.5),
-    Math.floor(height * 0.75)
-  ];
-
   const runLengths = [];
 
-  for (const y of sampleRows) {
-    let current = null;
-    let run = 0;
+  if (rowsOrCols === "rows") {
+    const sampleRows = [
+      Math.floor(height * 0.2),
+      Math.floor(height * 0.35),
+      Math.floor(height * 0.5),
+      Math.floor(height * 0.65),
+      Math.floor(height * 0.8)
+    ];
 
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const isBlack = data[i] < 128;
+    for (const y of sampleRows) {
+      let current = null;
+      let run = 0;
 
-      if (current === null) {
-        current = isBlack;
-        run = 1;
-      } else if (current === isBlack) {
-        run++;
-      } else {
-        runLengths.push(run);
-        current = isBlack;
-        run = 1;
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        const isBlack = data[i] < 128;
+
+        if (current === null) {
+          current = isBlack;
+          run = 1;
+        } else if (current === isBlack) {
+          run++;
+        } else {
+          runLengths.push(run);
+          current = isBlack;
+          run = 1;
+        }
       }
-    }
 
-    if (run > 0) runLengths.push(run);
+      if (run > 0) runLengths.push(run);
+    }
+  } else {
+    const sampleCols = [
+      Math.floor(width * 0.2),
+      Math.floor(width * 0.35),
+      Math.floor(width * 0.5),
+      Math.floor(width * 0.65),
+      Math.floor(width * 0.8)
+    ];
+
+    for (const x of sampleCols) {
+      let current = null;
+      let run = 0;
+
+      for (let y = 0; y < height; y++) {
+        const i = (y * width + x) * 4;
+        const isBlack = data[i] < 128;
+
+        if (current === null) {
+          current = isBlack;
+          run = 1;
+        } else if (current === isBlack) {
+          run++;
+        } else {
+          runLengths.push(run);
+          current = isBlack;
+          run = 1;
+        }
+      }
+
+      if (run > 0) runLengths.push(run);
+    }
   }
 
+  return runLengths;
+}
+
+export function estimateModuleSize(imageData) {
+  const rowRuns = collectRunLengths(imageData, "rows");
+  const colRuns = collectRunLengths(imageData, "cols");
+  const runLengths = [...rowRuns, ...colRuns];
+
   const filtered = runLengths.filter(
-    (v) => v >= 1 && v <= Math.max(width, height) / 4
+    (v) => v >= 1 && v <= Math.max(imageData.width, imageData.height) / 4
   );
 
   if (!filtered.length) return 4;
@@ -167,4 +209,38 @@ export function estimateModuleSize(imageData) {
 
   const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
   return Math.max(1, Math.round(avg));
+}
+
+export function estimateTextureTileSize(imageData, modulePixelSize) {
+  const rowRuns = collectRunLengths(imageData, "rows");
+  const colRuns = collectRunLengths(imageData, "cols");
+  const allRuns = [...rowRuns, ...colRuns].filter(
+    (v) => v >= 1 && v <= Math.max(imageData.width, imageData.height) / 5
+  );
+
+  if (!allRuns.length) {
+    return Math.max(2, modulePixelSize);
+  }
+
+  allRuns.sort((a, b) => a - b);
+
+  const tinyRuns = allRuns.filter((v) => v <= Math.max(1, modulePixelSize * 0.45));
+  const tinyRunRatio = tinyRuns.length / allRuns.length;
+
+  const p15 = allRuns[Math.floor((allRuns.length - 1) * 0.15)];
+  const p25 = allRuns[Math.floor((allRuns.length - 1) * 0.25)];
+
+  if (tinyRunRatio > 0.28) {
+    const stylizedSize = Math.max(
+      2,
+      Math.min(
+        Math.round(modulePixelSize * 0.5),
+        Math.max(p15, p25)
+      )
+    );
+
+    return stylizedSize;
+  }
+
+  return Math.max(2, modulePixelSize);
 }
