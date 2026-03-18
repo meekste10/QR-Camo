@@ -1,32 +1,28 @@
-export function buildMaskFromImage(img, options = {}) {
-  const {
-    size = 800,
-    threshold = 180,
-    invert = false,
-    targetFill = 0.9
-  } = options;
-
+export function createThresholdMaskCanvas({
+  image,
+  size = 800,
+  threshold = 180,
+  invert = false,
+  targetFill = 0.9
+}) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext("2d");
 
+  const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, size, size);
 
-  // Scale image to occupy more of the available canvas.
-  // This helps narrow or small uploaded silhouettes become more usable
-  // for the QR core without changing the engine itself.
   const scale = Math.min(
-    (size * targetFill) / img.width,
-    (size * targetFill) / img.height
+    (size * targetFill) / image.width,
+    (size * targetFill) / image.height
   );
 
-  const drawW = Math.round(img.width * scale);
-  const drawH = Math.round(img.height * scale);
+  const drawW = Math.round(image.width * scale);
+  const drawH = Math.round(image.height * scale);
   const drawX = Math.floor((size - drawW) / 2);
   const drawY = Math.floor((size - drawH) / 2);
 
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  ctx.drawImage(image, drawX, drawY, drawW, drawH);
 
   const imageData = ctx.getImageData(0, 0, size, size);
   const d = imageData.data;
@@ -37,7 +33,6 @@ export function buildMaskFromImage(img, options = {}) {
     const b = d[i + 2];
     const a = d[i + 3];
 
-    // Preserve true transparency outside the uploaded image
     if (a === 0) {
       d[i] = 0;
       d[i + 1] = 0;
@@ -47,18 +42,16 @@ export function buildMaskFromImage(img, options = {}) {
     }
 
     const gray = Math.round((r + g + b) / 3);
-
     let inside = gray < threshold;
+
     if (invert) inside = !inside;
 
     if (inside) {
-      // White = inside mask
       d[i] = 255;
       d[i + 1] = 255;
       d[i + 2] = 255;
       d[i + 3] = 255;
     } else {
-      // Transparent = outside mask
       d[i] = 0;
       d[i + 1] = 0;
       d[i + 2] = 0;
