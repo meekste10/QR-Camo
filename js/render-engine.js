@@ -1,7 +1,41 @@
 import { pointInsideMask } from "./mask-engine.js";
 import { buildWeightedTilePool, randomTileFromPool } from "./tile-engine.js";
 
-function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
+function getMaskBounds(maskCtx, width, height) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pointInsideMask(maskCtx, x, y)) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0 || maxY < 0) {
+    return {
+      x: 0,
+      y: 0,
+      width,
+      height
+    };
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
+}
+
+function fitQrCenterToMask(maskBounds, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
   let targetFraction = 0.34;
@@ -10,13 +44,14 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (qrSize === "medium") targetFraction = 0.34;
   if (qrSize === "large") targetFraction = 0.42;
 
-  let qrDisplaySize = Math.floor(outputSize * targetFraction);
+  const usableBase = Math.min(maskBounds.width, maskBounds.height);
 
+  let qrDisplaySize = Math.floor(usableBase * targetFraction);
   const moduleDisplaySize = Math.max(2, Math.floor(qrDisplaySize / moduleCount));
   qrDisplaySize = moduleDisplaySize * moduleCount;
 
-  const x = Math.floor((outputSize - qrDisplaySize) / 2);
-  const y = Math.floor((outputSize - qrDisplaySize) / 2);
+  const x = Math.floor(maskBounds.x + (maskBounds.width - qrDisplaySize) / 2);
+  const y = Math.floor(maskBounds.y + (maskBounds.height - qrDisplaySize) / 2);
 
   return { x, y, qrDisplaySize, moduleDisplaySize };
 }
@@ -100,7 +135,8 @@ export function render(options) {
     Math.round(sourceQrCanvas.width / safeModulePixelSize)
   );
 
-  const centerFit = fitQrCenter(OUTPUT_SIZE, moduleCount, qrSize);
+  const maskBounds = getMaskBounds(mctx, OUTPUT_SIZE, OUTPUT_SIZE);
+  const centerFit = fitQrCenterToMask(maskBounds, moduleCount, qrSize);
 
   const centerX = centerFit.x + qrOffsetX;
   const centerY = centerFit.y + qrOffsetY;
