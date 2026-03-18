@@ -28,7 +28,7 @@ function cellIntersectsRect(x, y, size, rect) {
   return !(
     x + size <= rect.x ||
     x >= rect.x + rect.size ||
-    y + size <= rect.y + 0 ||
+    y + size <= rect.y ||
     y >= rect.y + rect.size
   );
 }
@@ -39,11 +39,6 @@ function normalizeTile(tile) {
   return tile;
 }
 
-/**
- * Stable spatial hash.
- * This avoids tileIndex scanline banding and gives each cell
- * a consistent tile choice based on position.
- */
 function hash2D(x, y, seed = 0) {
   let h = x * 374761393 + y * 668265263 + seed * 1442695041;
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -56,21 +51,15 @@ function pickTileIndex(gridX, gridY, tileCount, seed = 0) {
   return hash2D(gridX, gridY, seed) % tileCount;
 }
 
-/**
- * Sample the mask more intelligently than just the center point.
- * This makes edges, rooflines, and bottom silhouette areas much cleaner.
- */
 function cellMaskCoverage(mctx, x, y, size) {
   const inset = Math.max(1, Math.floor(size * 0.18));
 
   const samples = [
     [x + Math.floor(size / 2), y + Math.floor(size / 2)],
-
     [x + inset, y + inset],
     [x + size - inset, y + inset],
     [x + inset, y + size - inset],
     [x + size - inset, y + size - inset],
-
     [x + Math.floor(size / 2), y + inset],
     [x + Math.floor(size / 2), y + size - inset],
     [x + inset, y + Math.floor(size / 2)],
@@ -85,9 +74,6 @@ function cellMaskCoverage(mctx, x, y, size) {
   return inside / samples.length;
 }
 
-/**
- * Draw a tile with optional tiny overscan to hide seams.
- */
 function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
   const destX = dx - bleed;
   const destY = dy - bleed;
@@ -137,9 +123,6 @@ export function render(options) {
     throw new Error("Render failed: no source QR canvas available");
   }
 
-  /* ------------------------------
-     MASK CANVAS
-  ------------------------------ */
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
   maskCanvas.height = OUTPUT_SIZE;
@@ -149,9 +132,6 @@ export function render(options) {
   mctx.imageSmoothingEnabled = true;
   mctx.drawImage(maskImg, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
-  /* ------------------------------
-     CAMO CANVAS
-  ------------------------------ */
   const camoCanvas = document.createElement("canvas");
   camoCanvas.width = OUTPUT_SIZE;
   camoCanvas.height = OUTPUT_SIZE;
@@ -182,30 +162,10 @@ export function render(options) {
   };
 
   const drawSize = centerFit.moduleDisplaySize;
-
-  /**
-   * Blend tightness:
-   * lower = more forgiving fill
-   * higher = tighter adherence to mask edge
-   */
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-
-  /**
-   * Edge rules:
-   * - loose mode allows lower mask coverage, creates fuller fill
-   * - tight mode requires stronger coverage, creates sharper silhouette edge
-   */
   const minCoverage = 0.20 + tightness * 0.40;
-
-  /**
-   * Small bleed helps remove seams between tiles.
-   * Keep it subtle so it does not mush the image.
-   */
   const bleed = Math.max(1, Math.floor(drawSize * 0.04));
 
-  /* ------------------------------
-     DRAW CAMOUFLAGE FILL
-  ------------------------------ */
   for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
       if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
@@ -216,34 +176,21 @@ export function render(options) {
       const gridX = Math.floor(x / drawSize);
       const gridY = Math.floor(y / drawSize);
 
-      /**
-       * Use spatially stable tile picking so the fill feels distributed,
-       * not like it is marching row by row through the QR source.
-       */
-      const tileA = normalizeTile(tiles[pickTileIndex(gridX, gridY, tiles.length, 17)]);
+      const tileA = normalizeTile(
+        tiles[pickTileIndex(gridX, gridY, tiles.length, 17)]
+      );
       if (!tileA) continue;
 
       drawTileWithBleed(cctx, tileA, x, y, drawSize, bleed);
     }
   }
 
-  /* ------------------------------
-     HARD MASK THE ENTIRE CAMO LAYER
-     This is the big edge cleanup move.
-  ------------------------------ */
   cctx.globalCompositeOperation = "destination-in";
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
-  /* ------------------------------
-     DRAW CAMO TO OUTPUT
-  ------------------------------ */
   ctx.drawImage(camoCanvas, 0, 0);
 
-  /* ------------------------------
-     DRAW CENTER QR LAST
-     Keeps the scan-critical core crisp.
-  ------------------------------ */
   ctx.drawImage(
     sourceQrCanvas,
     0,
