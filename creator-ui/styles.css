@@ -895,3 +895,298 @@ summary::-webkit-details-marker {
     justify-content: center;
   }
 }
+/* ================================
+   STUDIO LAYOUT (MERGED STEP 1+2)
+================================ */
+
+.workflow-grid-single-preview {
+  grid-template-columns: 1fr;
+}
+
+.studio-card {
+  padding: 18px 18px 20px;
+}
+
+.studio-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* LEFT SIDE */
+
+.studio-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.studio-section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  opacity: 0.9;
+}
+
+.inline-action-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.upload-tile-compact {
+  min-height: 92px;
+  border-radius: 18px;
+}
+
+.studio-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(110, 140, 255, 0.25),
+    transparent
+  );
+  margin: 4px 0 2px;
+}
+
+.shape-controls-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.invert-block {
+  display: flex;
+  align-items: flex-end;
+}
+
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* CTA */
+
+.studio-actions {
+  margin-top: 6px;
+}
+
+.action-btn {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1rem;
+  border-radius: 18px;
+}
+
+/* ================================
+   SHARED PREVIEW (FIX CORE ISSUES)
+================================ */
+
+.studio-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-title {
+  font-size: 0.9rem;
+}
+
+.preview-stage-shared {
+  min-height: 420px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 🚨 CRITICAL FIX: bunny overflow + mask issues */
+.preview-stage canvas {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  max-width: 92%;
+  max-height: 92%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* hide source until needed */
+.source-preview-overlay {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* show when QR exists but not generated */
+.preview-has-source .source-preview-overlay {
+  opacity: 1;
+}
+
+.preview-has-output #outputCanvas {
+  opacity: 1;
+}
+
+#outputCanvas {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* EMPTY STATE */
+
+.preview-empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+  opacity: 0.65;
+}
+
+.preview-empty-icon {
+  font-size: 28px;
+  opacity: 0.7;
+}
+
+.preview-empty-title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.preview-empty-copy {
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 240px;
+}
+
+/* ================================
+   REFINEMENT SECTION (TIGHTER)
+================================ */
+
+.refine-card {
+  padding: 18px;
+}
+
+.refine-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.control-panel {
+  display: grid;
+  gap: 10px;
+}
+
+/* better orbit layout */
+
+.nudge-orbit {
+  display: grid;
+  grid-template-columns: 48px 48px 48px;
+  grid-template-rows: 48px 48px 48px;
+  gap: 8px;
+  width: fit-content;
+}
+
+.nudge-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+}
+
+.nudge-center {
+  background: linear-gradient(
+    135deg,
+    rgba(75, 110, 255, 0.95),
+    rgba(130, 90, 255, 0.95)
+  );
+}
+
+/* offsets */
+
+.offset-readout-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.offset-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(40, 48, 80, 0.7);
+  font-size: 0.85rem;
+}
+
+/* COLORS — MUCH STRONGER */
+
+.color-control-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.color-well {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.color-well input[type="color"] {
+  width: 58px;
+  height: 58px;
+  border: 3px solid rgba(120, 150, 255, 0.3);
+  box-shadow:
+    0 0 0 2px rgba(40, 70, 180, 0.2),
+    0 14px 26px rgba(0,0,0,0.35);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 980px) {
+  .studio-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-stage-shared {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 600px) {
+  .preview-stage-shared {
+    min-height: 300px;
+  }
+
+  .nudge-orbit {
+    grid-template-columns: 44px 44px 44px;
+    grid-template-rows: 44px 44px 44px;
+  }
+
+  .nudge-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
