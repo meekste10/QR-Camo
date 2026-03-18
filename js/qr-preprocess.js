@@ -93,17 +93,7 @@ export function innerCrop(imageData, insetPercent = 24) {
   targetCanvas.height = newH;
   const tctx = targetCanvas.getContext("2d");
 
-  tctx.drawImage(
-    sourceCanvas,
-    insetX,
-    insetY,
-    newW,
-    newH,
-    0,
-    0,
-    newW,
-    newH
-  );
+  tctx.drawImage(sourceCanvas, insetX, insetY, newW, newH, 0, 0, newW, newH);
 
   return tctx.getImageData(0, 0, newW, newH);
 }
@@ -159,4 +149,100 @@ export function estimateModuleSize(imageData) {
   const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
 
   return Math.max(1, Math.round(avg));
+}
+
+export function buildTilesFromQr({
+  sourceQrCanvas,
+  originalCanvas = null,
+  thresholdCanvas = null,
+  cropCanvas = null
+}) {
+  if (!sourceQrCanvas) {
+    return {
+      tiles: [],
+      thresholdCanvasForRender: null
+    };
+  }
+
+  const srcCtx = sourceQrCanvas.getContext("2d", { willReadFrequently: true });
+  const srcImage = srcCtx.getImageData(0, 0, sourceQrCanvas.width, sourceQrCanvas.height);
+
+  const thresholded = threshold(
+    new ImageData(
+      new Uint8ClampedArray(srcImage.data),
+      srcImage.width,
+      srcImage.height
+    ),
+    128
+  );
+
+  const trimmed = trimWhiteBorder(thresholded, 1);
+  const cropped = innerCrop(trimmed, 24);
+  const moduleSize = estimateModuleSize(trimmed);
+
+  const thresholdCanvasBuilt = imageDataToCanvas(trimmed);
+  const cropCanvasBuilt = imageDataToCanvas(cropped);
+
+  if (originalCanvas) {
+    originalCanvas.width = sourceQrCanvas.width;
+    originalCanvas.height = sourceQrCanvas.height;
+    const octx = originalCanvas.getContext("2d");
+    octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+    octx.imageSmoothingEnabled = false;
+    octx.drawImage(sourceQrCanvas, 0, 0);
+  }
+
+  if (thresholdCanvas) {
+    thresholdCanvas.width = thresholdCanvasBuilt.width;
+    thresholdCanvas.height = thresholdCanvasBuilt.height;
+    const tctx = thresholdCanvas.getContext("2d");
+    tctx.clearRect(0, 0, thresholdCanvas.width, thresholdCanvas.height);
+    tctx.imageSmoothingEnabled = false;
+    tctx.drawImage(thresholdCanvasBuilt, 0, 0);
+  }
+
+  if (cropCanvas) {
+    cropCanvas.width = cropCanvasBuilt.width;
+    cropCanvas.height = cropCanvasBuilt.height;
+    const cctx = cropCanvas.getContext("2d");
+    cctx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    cctx.imageSmoothingEnabled = false;
+    cctx.drawImage(cropCanvasBuilt, 0, 0);
+  }
+
+  const tiles = [];
+  const tileSize = Math.max(1, moduleSize);
+
+  for (let y = 0; y < cropped.height; y += tileSize) {
+    for (let x = 0; x < cropped.width; x += tileSize) {
+      const w = Math.min(tileSize, cropped.width - x);
+      const h = Math.min(tileSize, cropped.height - y);
+      if (w <= 0 || h <= 0) continue;
+
+      const tileCanvas = document.createElement("canvas");
+      tileCanvas.width = w;
+      tileCanvas.height = h;
+      const tileCtx = tileCanvas.getContext("2d");
+      tileCtx.imageSmoothingEnabled = false;
+
+      tileCtx.drawImage(
+        cropCanvasBuilt,
+        x,
+        y,
+        w,
+        h,
+        0,
+        0,
+        w,
+        h
+      );
+
+      tiles.push(tileCanvas);
+    }
+  }
+
+  return {
+    tiles,
+    thresholdCanvasForRender: thresholdCanvasBuilt
+  };
 }
