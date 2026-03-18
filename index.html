@@ -18,7 +18,15 @@
       <section class="card">
         <h2>QR Input</h2>
 
-        <label class="field-label">Upload QR</label>
+        <label class="field-label">Generate QR from link or text</label>
+        <input
+          type="text"
+          id="qrTextInput"
+          placeholder="https://example.com or any text"
+        />
+        <button id="makeQrBtn" type="button">Create QR</button>
+
+        <label class="field-label">Or upload QR</label>
         <input type="file" id="qrUpload" accept="image/*" />
       </section>
 
@@ -121,6 +129,7 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
