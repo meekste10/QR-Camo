@@ -83,15 +83,15 @@ export function buildWeightedTilePool(tiles) {
 
   const pool = [];
 
-  strong.forEach(tile => {
+  strong.forEach((tile) => {
     pool.push(tile, tile, tile, tile, tile);
   });
 
-  medium.forEach(tile => {
+  medium.forEach((tile) => {
     pool.push(tile, tile, tile);
   });
 
-  weak.forEach(tile => {
+  weak.forEach((tile) => {
     pool.push(tile);
   });
 
