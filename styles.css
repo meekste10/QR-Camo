@@ -586,8 +586,8 @@ button:disabled,
   padding: 18px;
 }
 
-/* shared-stage layered canvases only */
 .preview-stage-shared > #sourcePreviewCanvas,
+.preview-stage-shared > #customMaskCanvas,
 .preview-stage-shared > #outputCanvas {
   position: absolute;
   inset: 0;
@@ -603,15 +603,30 @@ button:disabled,
 }
 
 .preview-stage-shared > #sourcePreviewCanvas {
-  opacity: 1;
+  opacity: 0;
   z-index: 1;
+  transition: opacity 0.2s ease;
+}
+
+.preview-stage-shared > #customMaskCanvas {
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 0.2s ease;
 }
 
 .preview-stage-shared > #outputCanvas {
   opacity: 0;
   z-index: 2;
-  image-rendering: pixelated;
   transition: opacity 0.25s ease;
+  image-rendering: pixelated;
+}
+
+.preview-stage-shared.preview-has-source > #sourcePreviewCanvas {
+  opacity: 1;
+}
+
+.preview-stage-shared.preview-has-mask > #customMaskCanvas {
+  opacity: 1;
 }
 
 .preview-stage-shared.preview-has-output > #outputCanvas {
@@ -619,31 +634,11 @@ button:disabled,
 }
 
 .preview-stage-shared.preview-has-output > #sourcePreviewCanvas {
-  opacity: 0.18;
+  opacity: 0.12;
 }
 
-.source-preview-overlay {
-  position: absolute;
-  inset: auto 10px 10px 10px;
-  z-index: 3;
+.preview-stage-shared.preview-has-output > #customMaskCanvas {
   opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.preview-stage-shared.preview-has-source .source-preview-overlay {
-  opacity: 1;
-}
-
-.source-preview-meta,
-.source-preview-meta-center {
-  padding: 8px 10px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  color: var(--muted);
-  background: rgba(5, 8, 16, 0.68);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  text-align: center;
 }
 
 .preview-empty-state {
@@ -673,7 +668,6 @@ button:disabled,
   color: var(--muted);
   max-width: 240px;
 }
-
 /* ================================
    REFINE CARD
 ================================ */
