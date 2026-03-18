@@ -1,486 +1,204 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-  />
-  <title>QR-Camo Creator</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="app-shell">
-    <div class="ambient ambient-a"></div>
-    <div class="ambient ambient-b"></div>
-    <div class="ambient ambient-c"></div>
-
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark">▣</div>
-        <div class="brand-copy">
-          <h1>QR-Camo</h1>
-          <p>Turn links into scannable icons</p>
-        </div>
-      </div>
-
-      <div class="status-group">
-        <div id="qrReadyBadge" class="ready-badge hidden">✓ QR ready</div>
-        <div id="maskReadyBadge" class="ready-badge hidden">✓ Shape ready</div>
-        <div id="engineStatus" class="status-pill">Engine ready</div>
-      </div>
-    </header>
-
-    <main class="workspace workspace-single">
-      <!-- HERO / BUILDER -->
-      <section class="hero-editor">
-        <div class="hero-copy">
-          <div class="eyebrow">Design your scannable silhouette</div>
-          <h2>Build a QR that looks like art, iconography, and signage</h2>
-          <p>
-            Start with a QR, choose a silhouette, refine the positioning and color,
-            then export a cleaner branded result.
-          </p>
-        </div>
-
-        <div class="hero-builder-card">
-          <div class="editor-grid">
-            <!-- LEFT: CONTROLS -->
-            <section class="controls-pane">
-              <!-- SOURCE -->
-              <fieldset class="editor-card">
-                <div class="card-head">
-                  <div class="card-icon">↗</div>
-                  <div>
-                    <h3>Source QR</h3>
-                    <p>Create one from text or upload an existing QR image.</p>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label for="qrTextInput">Paste link or text</label>
-                  <input
-                    type="text"
-                    id="qrTextInput"
-                    placeholder="https://example.com or any text"
-                    autocomplete="off"
-                  />
-                </div>
-
-                <div class="button-row single">
-                  <button id="makeQrBtn" class="primary glossy-btn" type="button">
-                    <span>Create QR</span>
-                  </button>
-                </div>
-
-                <div class="field">
-                  <label for="qrUpload">Or upload an existing QR</label>
-                  <input type="file" id="qrUpload" accept="image/*" />
-                </div>
-
-                <div class="micro-hint">
-                  Best results come from a clean black-and-white QR with strong contrast.
-                </div>
-              </fieldset>
-
-              <!-- SHAPE -->
-              <fieldset class="editor-card">
-                <div class="card-head">
-                  <div class="card-icon">◇</div>
-                  <div>
-                    <h3>Shape</h3>
-                    <p>Use a preset silhouette or upload your own.</p>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label for="maskSelect">Preset silhouette</label>
-                  <select id="maskSelect"></select>
-                </div>
-
-                <div class="field">
-                  <label for="customMaskUpload">Custom silhouette upload</label>
-                  <input type="file" id="customMaskUpload" accept="image/*" />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="maskScale">Silhouette size</label>
-                    <span id="maskScaleLabel" class="value-inline">100%</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="maskScale"
-                    min="50"
-                    max="160"
-                    value="100"
-                  />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="customMaskThreshold">Mask threshold</label>
-                    <span class="value-inline" id="customMaskThresholdValue">180</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="customMaskThreshold"
-                    min="0"
-                    max="255"
-                    value="180"
-                  />
-                </div>
-
-                <label class="toggle-row" for="customMaskInvert">
-                  <div>
-                    <span class="toggle-title">Invert silhouette</span>
-                    <span class="toggle-subtitle">Flip dark and light interpretation</span>
-                  </div>
-                  <input type="checkbox" id="customMaskInvert" />
-                </label>
-              </fieldset>
-
-              <!-- QR POSITION AND COLOR -->
-              <fieldset class="editor-card">
-                <div class="card-head">
-                  <div class="card-icon">✦</div>
-                  <div>
-                    <h3>QR Position and Color</h3>
-                    <p>Adjust placement, scale, and the final look.</p>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label>QR core size</label>
-                  <div class="pill-row">
-                    <button class="pill-btn" data-size="xsmall" type="button">XS</button>
-                    <button class="pill-btn" data-size="small" type="button">S</button>
-                    <button class="pill-btn active" data-size="medium" type="button">M</button>
-                    <button class="pill-btn" data-size="large" type="button">L</button>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label>Position nudging</label>
-                  <div class="nudge-wrap">
-                    <button class="nudge-btn up" id="nudgeUp" type="button" aria-label="Move up">↑</button>
-                    <button class="nudge-btn left" id="nudgeLeft" type="button" aria-label="Move left">←</button>
-                    <button class="nudge-btn center" id="resetPositionBtn" type="button">Center</button>
-                    <button class="nudge-btn right" id="nudgeRight" type="button" aria-label="Move right">→</button>
-                    <button class="nudge-btn down" id="nudgeDown" type="button" aria-label="Move down">↓</button>
-                  </div>
-                </div>
-
-                <div class="field compact-values">
-                  <div class="value-chip">X: <span id="qrOffsetXLabel">0</span></div>
-                  <div class="value-chip">Y: <span id="qrOffsetYLabel">0</span></div>
-                </div>
-
-                <div class="color-duo">
-                  <label class="color-card" for="foregroundColor">
-                    <span class="color-card-label">Foreground</span>
-                    <div class="color-card-ui">
-                      <div id="foregroundSwatch" class="color-swatch"></div>
-                      <span class="color-meta">QR pixels</span>
-                    </div>
-                    <input type="color" id="foregroundColor" value="#000000" />
-                  </label>
-
-                  <label class="color-card" for="backgroundColor">
-                    <span class="color-card-label">Background</span>
-                    <div class="color-card-ui">
-                      <div id="backgroundSwatch" class="color-swatch"></div>
-                      <span class="color-meta">Fill / light area</span>
-                    </div>
-                    <input type="color" id="backgroundColor" value="#ffffff" />
-                  </label>
-                </div>
-
-                <label class="toggle-row" for="transparentBackground">
-                  <div>
-                    <span class="toggle-title">Transparent background</span>
-                    <span class="toggle-subtitle">Useful for overlays and print assets</span>
-                  </div>
-                  <input type="checkbox" id="transparentBackground" />
-                </label>
-
-                <div id="contrastWarning" class="warning hidden">
-                  Low contrast may reduce scan reliability.
-                </div>
-              </fieldset>
-
-              <!-- SPACING / BLEND -->
-              <fieldset class="editor-card">
-                <div class="card-head">
-                  <div class="card-icon">▦</div>
-                  <div>
-                    <h3>Spacing and Blend</h3>
-                    <p>Refine how tightly the QR disappears into the silhouette.</p>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="quietZone">Quiet zone</label>
-                    <span id="quietZoneLabel" class="value-inline">0 px</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="quietZone"
-                    min="0"
-                    max="12"
-                    value="0"
-                  />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="innerTrim">Inner trim</label>
-                    <span id="innerTrimLabel" class="value-inline">24 px</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="innerTrim"
-                    min="0"
-                    max="48"
-                    value="24"
-                  />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="blendTightness">Blend tightness</label>
-                    <span id="blendTightnessLabel" class="value-inline">50%</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="blendTightness"
-                    min="0"
-                    max="100"
-                    value="50"
-                  />
-                </div>
-              </fieldset>
-
-              <!-- EFFECTS -->
-              <fieldset class="editor-card">
-                <div class="card-head">
-                  <div class="card-icon">✺</div>
-                  <div>
-                    <h3>Effects</h3>
-                    <p>Add just enough finish without overpowering scan quality.</p>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="effectGlow">Glow</label>
-                    <span id="effectGlowLabel" class="value-inline">0%</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="effectGlow"
-                    min="0"
-                    max="100"
-                    value="0"
-                  />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="effectShadow">Shadow</label>
-                    <span id="effectShadowLabel" class="value-inline">24%</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="effectShadow"
-                    min="0"
-                    max="100"
-                    value="24"
-                  />
-                </div>
-
-                <div class="field">
-                  <div class="field-row">
-                    <label for="effectGrain">Grain</label>
-                    <span id="effectGrainLabel" class="value-inline">0%</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="effectGrain"
-                    min="0"
-                    max="100"
-                    value="0"
-                  />
-                </div>
-              </fieldset>
-
-              <!-- ACTIONS -->
-              <section class="action-bar action-bar-stacked">
-                <button id="generateBtn" class="primary glossy-btn hero-action" type="button">
-                  <span>Generate QR-Camo</span>
-                </button>
-                <button id="exportBtn" class="secondary" type="button">
-                  Export PNG
-                </button>
-              </section>
-
-              <!-- hidden compatibility fields -->
-              <input type="hidden" id="qrOffsetX" value="0" />
-              <input type="hidden" id="qrOffsetY" value="0" />
-
-              <select id="qrSizeSelect" class="visually-hidden">
-                <option value="xsmall">Extra Small</option>
-                <option value="small">Small</option>
-                <option value="medium" selected>Medium</option>
-                <option value="large">Large</option>
-              </select>
-            </section>
-
-            <!-- RIGHT: PREVIEW -->
-            <section class="preview-pane">
-              <div class="preview-stage">
-                <div class="preview-stage-head">
-                  <div>
-                    <div class="preview-title">Live Preview</div>
-                    <div id="previewMeta" class="meta">
-                      Waiting for QR upload or generation
-                    </div>
-                  </div>
-
-                  <div class="scan-readiness">
-                    <div class="scan-label-row">
-                      <span>Scan strength</span>
-                      <span id="scanStrengthText">High scannability</span>
-                    </div>
-                    <div class="scan-meter">
-                      <div id="scanStrengthFill" class="scan-meter-fill"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="preview-canvas-wrap">
-                  <div id="canvasPlaceholder" class="canvas-placeholder">
-                    <div class="placeholder-icon">▣</div>
-                    <h3>Your QR-Camo preview will appear here</h3>
-                    <p>
-                      Create or upload a QR, choose a silhouette, then click Generate.
-                    </p>
-                  </div>
-
-                  <div id="loadingOverlay" class="loading-overlay hidden">
-                    <div class="loading-spinner"></div>
-                    <p class="placeholder-copy">Rendering preview...</p>
-                  </div>
-
-                  <canvas id="outputCanvas"></canvas>
-                </div>
-              </div>
-
-              <div class="preview-support-grid">
-                <section class="support-card">
-                  <div class="support-card-head">
-                    <span>Source QR</span>
-                    <span id="sourceMeta" class="meta">Nothing loaded yet</span>
-                  </div>
-                  <div class="support-canvas-wrap small">
-                    <canvas id="sourcePreviewCanvas"></canvas>
-                  </div>
-                </section>
-
-                <section class="support-card ideas-card">
-                  <div class="support-card-head">
-                    <span>Explore ideas</span>
-                    <span class="meta">Ways to use QR-Camo</span>
-                  </div>
-
-                  <div class="ideas-grid">
-                    <article class="idea-pill">
-                      <div class="idea-icon">⌂</div>
-                      <div>
-                        <h4>Builders & homes</h4>
-                        <p>Community signage, spec homes, floor plans</p>
-                      </div>
-                    </article>
-
-                    <article class="idea-pill">
-                      <div class="idea-icon">🍽</div>
-                      <div>
-                        <h4>Menus</h4>
-                        <p>Fish, wine, coffee, dessert silhouettes</p>
-                      </div>
-                    </article>
-
-                    <article class="idea-pill">
-                      <div class="idea-icon">🏷</div>
-                      <div>
-                        <h4>Retail tags</h4>
-                        <p>Discount tags, product labels, shelf talkers</p>
-                      </div>
-                    </article>
-
-                    <article class="idea-pill">
-                      <div class="idea-icon">✉</div>
-                      <div>
-                        <h4>Print pieces</h4>
-                        <p>Letterhead, flyers, direct mail, event handouts</p>
-                      </div>
-                    </article>
-                  </div>
-                </section>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
-
-      <!-- OPTIONAL LAB / TECHNICAL -->
-      <details class="lab-drawer">
-        <summary>Technical details</summary>
-
-        <div class="debug-box" id="debugPanel">Ready.</div>
-
-        <div class="lab-grid">
-          <div class="lab-card">
-            <h3>Original QR</h3>
-            <canvas id="originalCanvas"></canvas>
-          </div>
-
-          <div class="lab-card">
-            <h3>Threshold QR</h3>
-            <canvas id="thresholdCanvas"></canvas>
-          </div>
-
-          <div class="lab-card">
-            <h3>Inner Tile Source</h3>
-            <canvas id="cropCanvas"></canvas>
-          </div>
-
-          <div class="lab-card">
-            <h3>Custom Mask Preview</h3>
-            <canvas id="customMaskCanvas"></canvas>
-          </div>
-        </div>
-      </details>
-    </main>
+<section id="creatorSection" class="section">
+  <div class="section-header section-header-tight">
+    <div>
+      <h3>Create your QR-Camo</h3>
+      <p>
+        Upload a shape, generate or upload a QR, refine placement and color, then export.
+      </p>
+    </div>
   </div>
 
-  <script>
-    (function () {
-      const threshold = document.getElementById("customMaskThreshold");
-      const thresholdValue = document.getElementById("customMaskThresholdValue");
+  <div class="compact-creator">
+    <!-- STEP 1 -->
+    <section class="compact-step glass-card">
+      <div class="compact-step-head">
+        <div class="step-badge">1</div>
+        <div class="compact-step-copy">
+          <h4>Start with your shape + source QR</h4>
+          <p>Upload your custom silhouette first, then create or drop in your QR.</p>
+        </div>
+      </div>
 
-      if (threshold && thresholdValue) {
-        const sync = () => {
-          thresholdValue.textContent = threshold.value;
-        };
-        threshold.addEventListener("input", sync);
-        sync();
-      }
-    })();
-  </script>
+      <div class="step1-grid">
+        <div class="step1-main">
+          <label class="field">
+            <span>Upload custom QR shape here</span>
+            <input type="file" id="customMaskUpload" accept="image/*" />
+          </label>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+          <div class="step1-inline-row">
+            <label class="field field-grow">
+              <span>Paste link or text</span>
+              <input
+                type="text"
+                id="qrTextInput"
+                placeholder="https://example.com"
+              />
+            </label>
+
+            <button id="makeQrBtn" class="primary compact-btn" type="button">
+              Create QR
+            </button>
+          </div>
+
+          <div class="step1-secondary-row">
+            <label class="mini-upload">
+              <input type="file" id="qrUpload" accept="image/*" />
+              <span>Upload existing QR</span>
+            </label>
+
+            <label class="field inline compact-inline">
+              <input type="checkbox" id="customMaskInvert" />
+              <span>Invert shape</span>
+            </label>
+          </div>
+
+          <label class="field compact-range-field">
+            <span>Shape threshold</span>
+            <input type="range" id="customMaskThreshold" min="0" max="255" value="180" />
+          </label>
+        </div>
+
+        <div class="step1-preview-card">
+          <div class="mini-preview-head">
+            <strong>Source QR</strong>
+            <span id="sourceMeta" class="meta">Nothing loaded yet</span>
+          </div>
+
+          <button class="mini-preview-click" type="button" id="sourcePreviewClick">
+            <canvas id="sourcePreviewCanvas"></canvas>
+          </button>
+
+          <div class="mini-preview-actions">
+            <label class="mini-upload subtle-upload">
+              <input type="file" id="qrUploadMirror" accept="image/*" />
+              <span>Replace</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="compact-step glass-card">
+      <div class="compact-step-head">
+        <div class="step-badge">2</div>
+        <div class="compact-step-copy">
+          <h4>Choose or refine the shape</h4>
+          <p>Use a preset or keep your uploaded silhouette and move fast.</p>
+        </div>
+      </div>
+
+      <div class="step2-grid">
+        <label class="field">
+          <span>Preset shape</span>
+          <select id="maskSelect"></select>
+        </label>
+
+        <div class="hint compact-hint">
+          Your uploaded silhouette overrides presets. Presets are just fast starting points.
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="compact-step glass-card">
+      <div class="compact-step-head">
+        <div class="step-badge">3</div>
+        <div class="compact-step-copy">
+          <h4>Refine and generate</h4>
+          <p>Adjust position, colors, then generate and export without a long scroll.</p>
+        </div>
+      </div>
+
+      <div class="step3-grid">
+        <div class="step3-controls">
+          <div class="compact-control-block">
+            <div class="mini-label">QR core size</div>
+            <div class="pill-row pill-row-tight">
+              <button class="pill-btn" data-size="xsmall" type="button">XS</button>
+              <button class="pill-btn" data-size="small" type="button">S</button>
+              <button class="pill-btn active" data-size="medium" type="button">M</button>
+              <button class="pill-btn" data-size="large" type="button">L</button>
+            </div>
+          </div>
+
+          <div class="compact-control-block">
+            <div class="mini-label">Position</div>
+            <div class="micro-nudge-wrap">
+              <button class="micro-nudge-btn up" id="nudgeUp" type="button">↑</button>
+              <button class="micro-nudge-btn left" id="nudgeLeft" type="button">←</button>
+              <button class="micro-nudge-btn center" id="resetPositionBtn" type="button">•</button>
+              <button class="micro-nudge-btn right" id="nudgeRight" type="button">→</button>
+              <button class="micro-nudge-btn down" id="nudgeDown" type="button">↓</button>
+            </div>
+
+            <div class="compact-values compact-values-tight">
+              <div class="value-chip">X: <span id="qrOffsetXLabel">0</span></div>
+              <div class="value-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+            </div>
+          </div>
+
+          <div class="compact-control-block">
+            <div class="mini-label">Colors</div>
+            <div class="micro-color-grid">
+              <label class="field compact-color-field">
+                <span>FG</span>
+                <input type="color" id="foregroundColor" value="#000000" />
+              </label>
+
+              <label class="field compact-color-field">
+                <span>BG</span>
+                <input type="color" id="backgroundColor" value="#ffffff" />
+              </label>
+            </div>
+
+            <label class="field inline compact-inline">
+              <input type="checkbox" id="transparentBackground" />
+              <span>Transparent</span>
+            </label>
+          </div>
+
+          <div id="contrastWarning" class="warning hidden">
+            Low contrast may reduce scan reliability.
+          </div>
+
+          <div class="step3-actions">
+            <button id="generateBtn" class="primary compact-btn" type="button">
+              Generate QR-Camo
+            </button>
+            <button id="exportBtn" class="secondary compact-btn" type="button">
+              Export PNG
+            </button>
+          </div>
+
+          <div class="debug-box compact-debug" id="debugPanel">Ready.</div>
+        </div>
+
+        <div class="step3-preview">
+          <div class="final-preview-card">
+            <div class="mini-preview-head">
+              <strong>Final QR-Camo Preview</strong>
+              <span id="previewMeta" class="meta">Awaiting generation</span>
+            </div>
+
+            <div class="final-preview-body">
+              <canvas id="outputCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- hidden compatibility controls for existing JS -->
+    <input type="hidden" id="qrOffsetX" value="0" />
+    <input type="hidden" id="qrOffsetY" value="0" />
+
+    <select id="qrSizeSelect" class="visually-hidden">
+      <option value="xsmall">Extra Small</option>
+      <option value="small">Small</option>
+      <option value="medium" selected>Medium</option>
+      <option value="large">Large</option>
+    </select>
+  </div>
+</section>
