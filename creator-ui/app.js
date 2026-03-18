@@ -20,8 +20,7 @@ const state = {
   customMaskImage: null,
   customMaskThreshold: 180,
   customMaskInvert: false,
-  lastRenderOk: false,
-  previewMode: "source"
+  lastRenderOk: false
 };
 
 const els = {
@@ -35,7 +34,6 @@ const els = {
 
   qrTextInput: document.getElementById("qrTextInput"),
   qrUpload: document.getElementById("qrUpload"),
-  qrUploadMirror: document.getElementById("qrUploadMirror"),
 
   customMaskUpload: document.getElementById("customMaskUpload"),
   customMaskThreshold: document.getElementById("customMaskThreshold"),
@@ -71,7 +69,8 @@ const els = {
   nudgeDown: document.getElementById("nudgeDown"),
   nudgeLeft: document.getElementById("nudgeLeft"),
 
-  previewStageShared: document.querySelector(".preview-stage-shared")
+  sharedPreviewStage: document.getElementById("sharedPreviewStage"),
+  previewEmptyState: document.getElementById("previewEmptyState")
 };
 
 function setStatus(text) {
@@ -93,7 +92,7 @@ function clamp(value, min, max) {
 }
 
 function getReadableFileName(file) {
-  if (!file) return "Nothing loaded yet";
+  if (!file) return "QR ready";
   return file.name || "Uploaded file";
 }
 
@@ -241,27 +240,36 @@ function tintQrCanvas(sourceCanvas, fgColor, bgColor, transparentBackground) {
   return out;
 }
 
-function setPreviewMode(mode) {
-  state.previewMode = mode;
+function showSourcePreview() {
+  if (!els.sharedPreviewStage) return;
+  els.sharedPreviewStage.classList.add("preview-has-source");
+  els.sharedPreviewStage.classList.remove("preview-has-output");
+  if (els.previewEmptyState) els.previewEmptyState.classList.add("hidden");
+}
 
-  const stage = els.previewStageShared;
-  if (!stage) return;
+function showFinalPreview() {
+  if (!els.sharedPreviewStage) return;
+  els.sharedPreviewStage.classList.add("preview-has-source");
+  els.sharedPreviewStage.classList.add("preview-has-output");
+  if (els.previewEmptyState) els.previewEmptyState.classList.add("hidden");
+}
 
-  stage.classList.remove("preview-has-source", "preview-has-output");
-
-  if (mode === "source") {
-    stage.classList.add("preview-has-source");
-  }
-
-  if (mode === "output") {
-    stage.classList.add("preview-has-output");
-  }
+function showEmptyPreview() {
+  if (!els.sharedPreviewStage) return;
+  els.sharedPreviewStage.classList.remove("preview-has-source");
+  els.sharedPreviewStage.classList.remove("preview-has-output");
+  if (els.previewEmptyState) els.previewEmptyState.classList.remove("hidden");
 }
 
 async function buildQrFromText() {
   const value = (els.qrTextInput?.value || "").trim();
   if (!value) {
     setStatus("Paste a link or text first.");
+    return;
+  }
+
+  if (!window.QRCode || typeof window.QRCode.toCanvas !== "function") {
+    setStatus("QR library did not load.");
     return;
   }
 
@@ -278,12 +286,11 @@ async function buildQrFromText() {
 
     state.sourceQrCanvas = qrCanvas;
     state.sourceQrImage = null;
-
     hydrateSourceOutputs();
-    setPreviewMode("source");
-
     setStatus("QR created from text.");
+    setPreviewMeta("Source QR ready");
     show(els.qrReadyBadge, true);
+    showSourcePreview();
     maybeAutoRender();
   } catch (error) {
     console.error(error);
@@ -305,10 +312,10 @@ async function handleQrUpload(file) {
     state.sourceQrCanvas = qrCanvas;
 
     hydrateSourceOutputs(file);
-    setPreviewMode("source");
-
     setStatus("Existing QR uploaded.");
+    setPreviewMeta("Source QR ready");
     show(els.qrReadyBadge, true);
+    showSourcePreview();
     maybeAutoRender();
   } catch (error) {
     console.error(error);
@@ -317,23 +324,21 @@ async function handleQrUpload(file) {
 }
 
 function hydrateSourceOutputs(file = null) {
-  if (!state.sourceQrCanvas) return;
+  if (!state.sourceQrCanvas || !els.sourcePreviewCanvas) return;
 
-  if (els.sourcePreviewCanvas) {
-    const canvas = els.sourcePreviewCanvas;
-    canvas.width = 220;
-    canvas.height = 220;
-    const ctx = canvas.getContext("2d");
-    drawContain(ctx, state.sourceQrCanvas, canvas.width, canvas.height, 16, "#0a1020");
-  }
+  const canvas = els.sourcePreviewCanvas;
+  canvas.width = 800;
+  canvas.height = 800;
+  const ctx = canvas.getContext("2d");
+  drawContain(ctx, state.sourceQrCanvas, canvas.width, canvas.height, 80, "#0a1020");
 
   if (els.originalCanvas) {
     els.originalCanvas.width = state.sourceQrCanvas.width;
     els.originalCanvas.height = state.sourceQrCanvas.height;
-    const ctx = els.originalCanvas.getContext("2d");
-    ctx.clearRect(0, 0, els.originalCanvas.width, els.originalCanvas.height);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(state.sourceQrCanvas, 0, 0);
+    const ctx2 = els.originalCanvas.getContext("2d");
+    ctx2.clearRect(0, 0, els.originalCanvas.width, els.originalCanvas.height);
+    ctx2.imageSmoothingEnabled = false;
+    ctx2.drawImage(state.sourceQrCanvas, 0, 0);
   }
 
   if (els.sourceMeta) {
@@ -442,8 +447,8 @@ function rebuildTiles() {
 }
 
 function renderOutput() {
-  if (!state.currentMaskImage || !state.sourceQrCanvas) {
-    setPreviewMeta("Awaiting generation");
+  if (!state.currentMaskImage || !state.sourceQrCanvas || !els.outputCanvas) {
+    setPreviewMeta("Need QR and shape");
     return;
   }
 
@@ -466,9 +471,9 @@ function renderOutput() {
     });
 
     state.lastRenderOk = true;
-    setPreviewMode("output");
-    setPreviewMeta("Live preview ready");
+    setPreviewMeta("Final QR-Camo ready");
     setStatus("Render complete");
+    showFinalPreview();
   } catch (error) {
     console.error(error);
     state.lastRenderOk = false;
@@ -477,7 +482,9 @@ function renderOutput() {
 }
 
 function maybeAutoRender() {
-  if (!state.sourceQrCanvas || !state.currentMaskImage) return;
+  if (!state.sourceQrCanvas) return;
+  showSourcePreview();
+  if (!state.currentMaskImage) return;
   renderOutput();
 }
 
@@ -530,14 +537,11 @@ function wireEvents() {
     }
   });
 
-  const onQrFile = async (e) => {
+  els.qrUpload?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     await handleQrUpload(file);
-  };
-
-  els.qrUpload?.addEventListener("change", onQrFile);
-  els.qrUploadMirror?.addEventListener("change", onQrFile);
+  });
 
   els.customMaskUpload?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
@@ -610,11 +614,11 @@ function initialUiSync() {
   syncOffsetLabels();
   updateContrastWarning();
   setQrSize("medium");
-  setPreviewMode("source");
-  setPreviewMeta("Awaiting generation");
+  setPreviewMeta("Awaiting input");
   setStatus("Engine ready");
   show(els.qrReadyBadge, false);
   show(els.maskReadyBadge, false);
+  showEmptyPreview();
 }
 
 async function init() {
