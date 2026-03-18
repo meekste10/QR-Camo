@@ -1,73 +1,194 @@
-import { state } from "./state.js";
-import { maskPresets } from "./presets.js";
-import { loadImage, drawToCanvas } from "./image-utils.js";
-import {
-  threshold,
-  trimWhiteBorder,
-  innerCrop,
-  estimateModuleSize,
-  imageDataToCanvas
-} from "./qr-preprocess.js";
-import { extractTiles } from "./tile-engine.js";
-import { loadMask } from "./mask-engine.js";
-import { buildMaskFromImage } from "./mask-builder.js";
-import { render } from "./render-engine.js";
-import { exportPNG } from "./export.js";
+import { render as renderCamouflage } from "./render-engine.js";
+import { loadPresetMasks } from "./presets.js";
+import { createThresholdMaskCanvas } from "./mask-builder.js";
+import { buildTilesFromQr } from "./qr-preprocess.js";
 
-const debugPanel = document.getElementById("debugPanel");
-const setDebug = (msg) => {
-  if (debugPanel) debugPanel.textContent = `debug: ${msg}`;
-  console.log(msg);
+const state = {
+  sourceQrImage: null,
+  sourceQrCanvas: null,
+  tiles: [],
+  currentMaskImage: null,
+  currentMaskCanvas: null,
+  presetMasks: [],
+  qrSize: "medium",
+  qrOffsetX: 0,
+  qrOffsetY: 0,
+  foregroundColor: "#000000",
+  backgroundColor: "#ffffff",
+  transparentBackground: false,
+  customMaskFile: null,
+  customMaskImage: null,
+  customMaskThreshold: 180,
+  customMaskInvert: false,
+  lastRenderOk: false
 };
 
-const qrUpload = document.getElementById("qrUpload");
-const maskModeSelect = document.getElementById("maskModeSelect");
-const maskSelect = document.getElementById("maskSelect");
-const customMaskUpload = document.getElementById("customMaskUpload");
-const customMaskThreshold = document.getElementById("customMaskThreshold");
-const customMaskInvert = document.getElementById("customMaskInvert");
-const buildMaskBtn = document.getElementById("buildMaskBtn");
-const generateBtn = document.getElementById("generateBtn");
-const exportBtn = document.getElementById("exportBtn");
+const els = {
+  qrReadyBadge: document.getElementById("qrReadyBadge"),
+  maskReadyBadge: document.getElementById("maskReadyBadge"),
+  engineStatus: document.getElementById("engineStatus"),
 
-const qrSizeSelect = document.getElementById("qrSizeSelect");
-const qrOffsetX = document.getElementById("qrOffsetX");
-const qrOffsetY = document.getElementById("qrOffsetY");
-const qrOffsetXLabel = document.getElementById("qrOffsetXLabel");
-const qrOffsetYLabel = document.getElementById("qrOffsetYLabel");
+  makeQrBtn: document.getElementById("makeQrBtn"),
+  generateBtn: document.getElementById("generateBtn"),
+  exportBtn: document.getElementById("exportBtn"),
 
-const foregroundColor = document.getElementById("foregroundColor");
-const backgroundColor = document.getElementById("backgroundColor");
-const transparentBackground = document.getElementById("transparentBackground");
+  qrTextInput: document.getElementById("qrTextInput"),
+  qrUpload: document.getElementById("qrUpload"),
 
-const presetMaskSection = document.getElementById("presetMaskSection");
-const customMaskSection = document.getElementById("customMaskSection");
+  customMaskUpload: document.getElementById("customMaskUpload"),
+  customMaskThreshold: document.getElementById("customMaskThreshold"),
+  customMaskInvert: document.getElementById("customMaskInvert"),
 
-const originalCanvas = document.getElementById("originalCanvas");
-const thresholdCanvas = document.getElementById("thresholdCanvas");
-const cropCanvas = document.getElementById("cropCanvas");
-const customMaskCanvas = document.getElementById("customMaskCanvas");
-const outputCanvas = document.getElementById("outputCanvas");
+  maskSelect: document.getElementById("maskSelect"),
 
-state.customMaskImage = null;
-state.customMaskCanvas = null;
+  sourcePreviewCanvas: document.getElementById("sourcePreviewCanvas"),
+  customMaskCanvas: document.getElementById("customMaskCanvas"),
+  outputCanvas: document.getElementById("outputCanvas"),
+  originalCanvas: document.getElementById("originalCanvas"),
+  thresholdCanvas: document.getElementById("thresholdCanvas"),
+  cropCanvas: document.getElementById("cropCanvas"),
 
-function syncMaskModeUI() {
-  const mode = maskModeSelect.value;
-  presetMaskSection.style.display = mode === "preset" ? "block" : "none";
-  customMaskSection.style.display = mode === "custom" ? "block" : "none";
-  setDebug(`mask mode: ${mode}`);
+  sourceMeta: document.getElementById("sourceMeta"),
+  previewMeta: document.getElementById("previewMeta"),
+  previewEmptyState: document.getElementById("previewEmptyState"),
+  sharedPreviewStage: document.getElementById("sharedPreviewStage"),
+  debugPanel: document.getElementById("debugPanel"),
+
+  qrSizeSelect: document.getElementById("qrSizeSelect"),
+  qrOffsetX: document.getElementById("qrOffsetX"),
+  qrOffsetY: document.getElementById("qrOffsetY"),
+  qrOffsetXLabel: document.getElementById("qrOffsetXLabel"),
+  qrOffsetYLabel: document.getElementById("qrOffsetYLabel"),
+
+  foregroundColor: document.getElementById("foregroundColor"),
+  backgroundColor: document.getElementById("backgroundColor"),
+  transparentBackground: document.getElementById("transparentBackground"),
+  contrastWarning: document.getElementById("contrastWarning"),
+
+  resetPositionBtn: document.getElementById("resetPositionBtn"),
+  nudgeUp: document.getElementById("nudgeUp"),
+  nudgeRight: document.getElementById("nudgeRight"),
+  nudgeDown: document.getElementById("nudgeDown"),
+  nudgeLeft: document.getElementById("nudgeLeft")
+};
+
+function setStatus(text) {
+  if (els.engineStatus) els.engineStatus.textContent = text;
+  if (els.debugPanel) els.debugPanel.textContent = text;
+}
+
+function setPreviewMeta(text) {
+  if (els.previewMeta) els.previewMeta.textContent = text;
+}
+
+function show(el, on) {
+  if (!el) return;
+  el.classList.toggle("hidden", !on);
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getReadableFileName(file) {
+  if (!file) return "Nothing loaded yet";
+  return file.name || "Uploaded file";
+}
+
+function createCanvas(w, h) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  return canvas;
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function drawContain(ctx, source, width, height, padding = 0, background = null) {
+  ctx.clearRect(0, 0, width, height);
+
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  const availW = Math.max(1, width - padding * 2);
+  const availH = Math.max(1, height - padding * 2);
+
+  const sw = source.width || source.videoWidth || 1;
+  const sh = source.height || source.videoHeight || 1;
+  const scale = Math.min(availW / sw, availH / sh);
+
+  const drawW = Math.max(1, Math.round(sw * scale));
+  const drawH = Math.max(1, Math.round(sh * scale));
+  const dx = Math.round((width - drawW) / 2);
+  const dy = Math.round((height - drawH) / 2);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, dx, dy, drawW, drawH);
+
+  return { dx, dy, drawW, drawH };
 }
 
 function syncOffsetLabels() {
-  qrOffsetXLabel.textContent = qrOffsetX.value;
-  qrOffsetYLabel.textContent = qrOffsetY.value;
+  if (els.qrOffsetX) els.qrOffsetX.value = String(state.qrOffsetX);
+  if (els.qrOffsetY) els.qrOffsetY.value = String(state.qrOffsetY);
+  if (els.qrOffsetXLabel) els.qrOffsetXLabel.textContent = String(state.qrOffsetX);
+  if (els.qrOffsetYLabel) els.qrOffsetYLabel.textContent = String(state.qrOffsetY);
+}
+
+function updatePreviewMode(mode) {
+  const stage = els.sharedPreviewStage;
+  if (!stage) return;
+
+  stage.classList.remove("preview-has-source", "preview-has-mask", "preview-has-output");
+
+  if (mode === "source") stage.classList.add("preview-has-source");
+  if (mode === "mask") stage.classList.add("preview-has-mask");
+  if (mode === "output") stage.classList.add("preview-has-output");
+
+  if (els.previewEmptyState) {
+    els.previewEmptyState.classList.toggle("hidden", mode !== "empty");
+  }
+}
+
+function updateContrastWarning() {
+  if (!els.contrastWarning) return;
+
+  if (state.transparentBackground) {
+    els.contrastWarning.classList.add("hidden");
+    return;
+  }
+
+  const fg = hexToRgb(state.foregroundColor);
+  const bg = hexToRgb(state.backgroundColor);
+  if (!fg || !bg) {
+    els.contrastWarning.classList.add("hidden");
+    return;
+  }
+
+  const contrast = contrastRatio(fg, bg);
+  els.contrastWarning.classList.toggle("hidden", contrast >= 2.5);
 }
 
 function hexToRgb(hex) {
-  const clean = hex.replace("#", "");
+  const clean = (hex || "").replace("#", "").trim();
+  if (![3, 6].includes(clean.length)) return null;
+
   const full = clean.length === 3
-    ? clean.split("").map(c => c + c).join("")
+    ? clean.split("").map((c) => c + c).join("")
     : clean;
 
   const int = parseInt(full, 16);
@@ -78,233 +199,445 @@ function hexToRgb(hex) {
   };
 }
 
-function recolorOutputCanvas(canvas, fgHex, bgHex, useTransparentBackground) {
-  const ctx = canvas.getContext("2d");
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = img.data;
+function relativeLuminance({ r, g, b }) {
+  const toLinear = (v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
 
-  const fg = hexToRgb(fgHex);
-  const bg = hexToRgb(bgHex);
+  const R = toLinear(r);
+  const G = toLinear(g);
+  const B = toLinear(b);
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
 
-  for (let i = 0; i < d.length; i += 4) {
-    const alpha = d[i + 3];
+function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
-    if (alpha === 0) {
-      continue;
-    }
+function tintQrCanvas(sourceCanvas, fgColor, bgColor, transparentBackground) {
+  const out = createCanvas(sourceCanvas.width, sourceCanvas.height);
+  const ctx = out.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
 
-    const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
-    const isDark = avg < 128;
+  const srcCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const img = srcCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+  const data = img.data;
 
+  const fg = hexToRgb(fgColor) || { r: 0, g: 0, b: 0 };
+  const bg = hexToRgb(bgColor) || { r: 255, g: 255, b: 255 };
+
+  for (let i = 0; i < data.length; i += 4) {
+    const isDark = data[i] < 128;
     if (isDark) {
-      d[i] = fg.r;
-      d[i + 1] = fg.g;
-      d[i + 2] = fg.b;
-      d[i + 3] = 255;
+      data[i] = fg.r;
+      data[i + 1] = fg.g;
+      data[i + 2] = fg.b;
+      data[i + 3] = 255;
     } else {
-      if (useTransparentBackground) {
-        d[i] = 0;
-        d[i + 1] = 0;
-        d[i + 2] = 0;
-        d[i + 3] = 0;
+      if (transparentBackground) {
+        data[i + 3] = 0;
       } else {
-        d[i] = bg.r;
-        d[i + 1] = bg.g;
-        d[i + 2] = bg.b;
-        d[i + 3] = 255;
+        data[i] = bg.r;
+        data[i + 1] = bg.g;
+        data[i + 2] = bg.b;
+        data[i + 3] = 255;
       }
     }
   }
 
   ctx.putImageData(img, 0, 0);
+  return out;
 }
 
-function applyCurrentColorsToOutput() {
-  if (!outputCanvas.width || !outputCanvas.height) return;
+async function buildQrFromText() {
+  const value = (els.qrTextInput?.value || "").trim();
+  if (!value) {
+    setStatus("Paste a link or text first.");
+    return;
+  }
 
-  recolorOutputCanvas(
-    outputCanvas,
-    foregroundColor.value,
-    backgroundColor.value,
-    transparentBackground.checked
-  );
+  if (!window.QRCode || typeof window.QRCode.toCanvas !== "function") {
+    setStatus("QR library did not load.");
+    return;
+  }
 
-  setDebug("colors applied");
+  try {
+    const qrCanvas = createCanvas(512, 512);
+    await window.QRCode.toCanvas(qrCanvas, value, {
+      width: 512,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    });
+
+    state.sourceQrCanvas = qrCanvas;
+    state.sourceQrImage = null;
+    hydrateSourceOutputs();
+    setStatus("QR created from text.");
+    show(els.qrReadyBadge, true);
+    maybeAutoRender();
+  } catch (error) {
+    console.error(error);
+    setStatus("Could not create QR from text.");
+  }
 }
 
-setDebug("app.js loaded");
+async function handleQrUpload(file) {
+  if (!file) return;
 
-const header = document.querySelector("h1");
-if (header) header.textContent = "QR Camo Lab ✅";
+  try {
+    const img = await loadImageFromFile(file);
 
-if (maskSelect && maskSelect.options.length === 0) {
-  Object.keys(maskPresets).forEach((k) => {
-    const o = document.createElement("option");
-    o.value = k;
-    o.textContent = k;
-    maskSelect.appendChild(o);
+    const qrCanvas = createCanvas(512, 512);
+    const qctx = qrCanvas.getContext("2d");
+    drawContain(qctx, img, 512, 512, 12, "#ffffff");
+
+    state.sourceQrImage = img;
+    state.sourceQrCanvas = qrCanvas;
+
+    hydrateSourceOutputs(file);
+    setStatus("Existing QR uploaded.");
+    show(els.qrReadyBadge, true);
+    maybeAutoRender();
+  } catch (error) {
+    console.error(error);
+    setStatus("Could not load uploaded QR.");
+  }
+}
+
+function hydrateSourceOutputs(file = null) {
+  if (!state.sourceQrCanvas) return;
+
+  if (els.sourcePreviewCanvas) {
+    const canvas = els.sourcePreviewCanvas;
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    drawContain(ctx, state.sourceQrCanvas, canvas.width, canvas.height, 50, "#0a1020");
+  }
+
+  if (els.originalCanvas) {
+    els.originalCanvas.width = state.sourceQrCanvas.width;
+    els.originalCanvas.height = state.sourceQrCanvas.height;
+    const ctx = els.originalCanvas.getContext("2d");
+    ctx.clearRect(0, 0, els.originalCanvas.width, els.originalCanvas.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(state.sourceQrCanvas, 0, 0);
+  }
+
+  if (els.sourceMeta) {
+    els.sourceMeta.textContent = file ? getReadableFileName(file) : "QR ready";
+  }
+
+  setPreviewMeta("Source QR ready");
+  updatePreviewMode("source");
+}
+
+async function handleCustomMaskUpload(file) {
+  if (!file) return;
+
+  try {
+    const img = await loadImageFromFile(file);
+    state.customMaskFile = file;
+    state.customMaskImage = img;
+    buildCurrentMaskFromUploaded();
+    show(els.maskReadyBadge, true);
+    setStatus("Custom shape uploaded.");
+    maybeAutoRender();
+  } catch (error) {
+    console.error(error);
+    setStatus("Could not load custom shape.");
+  }
+}
+
+function buildCurrentMaskFromUploaded() {
+  if (!state.customMaskImage) return;
+
+  const maskCanvas = createThresholdMaskCanvas({
+    image: state.customMaskImage,
+    size: 800,
+    threshold: Number(state.customMaskThreshold),
+    invert: !!state.customMaskInvert
+  });
+
+  state.currentMaskCanvas = maskCanvas;
+
+  const img = new Image();
+  img.src = maskCanvas.toDataURL("image/png");
+  img.onload = () => {
+    state.currentMaskImage = img;
+    paintMaskPreview(maskCanvas);
+    maybeAutoRender();
+  };
+
+  paintMaskPreview(maskCanvas);
+}
+
+function paintMaskPreview(maskCanvas) {
+  if (!els.customMaskCanvas || !maskCanvas) return;
+  const canvas = els.customMaskCanvas;
+  canvas.width = 800;
+  canvas.height = 800;
+  const ctx = canvas.getContext("2d");
+  drawContain(ctx, maskCanvas, canvas.width, canvas.height, 40, "#0a1020");
+
+  if (!state.lastRenderOk) {
+    updatePreviewMode("mask");
+    setPreviewMeta("Shape ready");
+  }
+}
+
+function populatePresetSelect() {
+  if (!els.maskSelect) return;
+
+  els.maskSelect.innerHTML = "";
+  state.presetMasks.forEach((preset, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = preset.label;
+    els.maskSelect.appendChild(option);
   });
 }
 
-syncMaskModeUI();
-syncOffsetLabels();
+function applyPresetMask(index) {
+  const preset = state.presetMasks[index];
+  if (!preset) return;
+  if (state.customMaskImage) return;
 
-maskModeSelect.addEventListener("change", syncMaskModeUI);
-qrOffsetX.addEventListener("input", syncOffsetLabels);
-qrOffsetY.addEventListener("input", syncOffsetLabels);
+  state.currentMaskImage = preset.image;
+  state.currentMaskCanvas = preset.canvas || null;
+  paintMaskPreview(preset.canvas || preset.image);
+  show(els.maskReadyBadge, true);
+  setStatus(`Preset shape selected: ${preset.label}`);
+  maybeAutoRender();
+}
 
-foregroundColor.addEventListener("input", applyCurrentColorsToOutput);
-backgroundColor.addEventListener("input", applyCurrentColorsToOutput);
-transparentBackground.addEventListener("change", applyCurrentColorsToOutput);
+function getTintedSourceQrCanvas() {
+  if (!state.sourceQrCanvas) return null;
+  return tintQrCanvas(
+    state.sourceQrCanvas,
+    state.foregroundColor,
+    state.backgroundColor,
+    state.transparentBackground
+  );
+}
 
-qrUpload.addEventListener("change", async (e) => {
-  try {
-    const file = e.target.files[0];
-    if (!file) {
-      setDebug("no QR file selected");
-      return;
-    }
+function rebuildTiles() {
+  const tinted = getTintedSourceQrCanvas();
+  if (!tinted) return false;
 
-    const img = await loadImage(file);
-    state.qrImage = img;
-    state.qrImageData = drawToCanvas(img, originalCanvas);
+  const built = buildTilesFromQr({
+    sourceQrCanvas: tinted,
+    originalCanvas: els.originalCanvas,
+    thresholdCanvas: els.thresholdCanvas,
+    cropCanvas: els.cropCanvas
+  });
 
-    setDebug(`QR image drawn ${state.qrImageData.width}x${state.qrImageData.height}`);
-  } catch (err) {
-    console.error(err);
-    setDebug(`QR upload error: ${err.message}`);
+  state.tiles = built.tiles || [];
+  state.sourceQrCanvasTinted = built.thresholdCanvasForRender || tinted;
+  return state.tiles.length > 0;
+}
+
+function renderOutput() {
+  if (!state.currentMaskImage || !state.sourceQrCanvas) {
+    setPreviewMeta("Awaiting QR or shape");
+    return;
   }
-});
 
-customMaskUpload.addEventListener("change", async (e) => {
-  try {
-    const file = e.target.files[0];
-    if (!file) {
-      setDebug("no custom mask file selected");
-      return;
-    }
-
-    const img = await loadImage(file);
-    state.customMaskImage = img;
-    setDebug(`custom mask source loaded ${img.width}x${img.height}`);
-  } catch (err) {
-    console.error(err);
-    setDebug(`custom mask upload error: ${err.message}`);
+  const ok = rebuildTiles();
+  if (!ok) {
+    setStatus("Could not prepare QR tiles.");
+    return;
   }
-});
 
-buildMaskBtn.addEventListener("click", () => {
   try {
-    if (!state.customMaskImage) {
-      setDebug("no custom mask image loaded yet");
-      return;
-    }
-
-    const builtMaskCanvas = buildMaskFromImage(state.customMaskImage, {
-      size: 800,
-      threshold: Number(customMaskThreshold.value || 180),
-      invert: customMaskInvert.checked
+    renderCamouflage({
+      tiles: state.tiles,
+      maskImg: state.currentMaskImage,
+      outputCanvas: els.outputCanvas,
+      sourceQrCanvas: state.sourceQrCanvasTinted || getTintedSourceQrCanvas(),
+      modulePixelSize: 4,
+      qrSize: state.qrSize,
+      qrOffsetX: state.qrOffsetX,
+      qrOffsetY: state.qrOffsetY
     });
 
-    state.customMaskCanvas = builtMaskCanvas;
-
-    customMaskCanvas.width = builtMaskCanvas.width;
-    customMaskCanvas.height = builtMaskCanvas.height;
-    const ctx = customMaskCanvas.getContext("2d");
-    ctx.clearRect(0, 0, customMaskCanvas.width, customMaskCanvas.height);
-    ctx.drawImage(builtMaskCanvas, 0, 0);
-
-    setDebug("custom mask built");
-  } catch (err) {
-    console.error(err);
-    setDebug(`build mask error: ${err.message}`);
+    state.lastRenderOk = true;
+    updatePreviewMode("output");
+    setPreviewMeta("Live preview ready");
+    setStatus("Render complete");
+  } catch (error) {
+    console.error(error);
+    state.lastRenderOk = false;
+    setStatus("Render failed.");
   }
-});
+}
 
-generateBtn.addEventListener("click", async () => {
+function maybeAutoRender() {
+  if (!state.sourceQrCanvas && !state.currentMaskImage) {
+    updatePreviewMode("empty");
+    return;
+  }
+
+  if (state.sourceQrCanvas && !state.currentMaskImage) {
+    updatePreviewMode("source");
+    return;
+  }
+
+  if (!state.sourceQrCanvas && state.currentMaskImage) {
+    updatePreviewMode("mask");
+    return;
+  }
+
+  renderOutput();
+}
+
+function setQrSize(size) {
+  state.qrSize = size;
+  if (els.qrSizeSelect) els.qrSizeSelect.value = size;
+
+  document.querySelectorAll(".pill-btn[data-size]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.size === size);
+  });
+
+  maybeAutoRender();
+}
+
+function nudge(dx, dy) {
+  state.qrOffsetX = clamp(state.qrOffsetX + dx, -240, 240);
+  state.qrOffsetY = clamp(state.qrOffsetY + dy, -240, 240);
+  syncOffsetLabels();
+  maybeAutoRender();
+}
+
+function resetPosition() {
+  state.qrOffsetX = 0;
+  state.qrOffsetY = 0;
+  syncOffsetLabels();
+  maybeAutoRender();
+}
+
+function exportPng() {
+  if (!els.outputCanvas || !state.lastRenderOk) {
+    setStatus("Generate a QR-Camo first.");
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.download = "qr-camo.png";
+  link.href = els.outputCanvas.toDataURL("image/png");
+  link.click();
+}
+
+function wireEvents() {
+  els.makeQrBtn?.addEventListener("click", buildQrFromText);
+  els.generateBtn?.addEventListener("click", renderOutput);
+  els.exportBtn?.addEventListener("click", exportPng);
+
+  els.qrTextInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      buildQrFromText();
+    }
+  });
+
+  els.qrUpload?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleQrUpload(file);
+  });
+
+  els.customMaskUpload?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleCustomMaskUpload(file);
+  });
+
+  els.customMaskThreshold?.addEventListener("input", (e) => {
+    state.customMaskThreshold = Number(e.target.value);
+    if (state.customMaskImage) {
+      buildCurrentMaskFromUploaded();
+    }
+  });
+
+  els.customMaskInvert?.addEventListener("change", (e) => {
+    state.customMaskInvert = !!e.target.checked;
+    if (state.customMaskImage) {
+      buildCurrentMaskFromUploaded();
+    }
+  });
+
+  els.maskSelect?.addEventListener("change", (e) => {
+    state.customMaskImage = null;
+    state.customMaskFile = null;
+    applyPresetMask(Number(e.target.value));
+  });
+
+  document.querySelectorAll(".pill-btn[data-size]").forEach((btn) => {
+    btn.addEventListener("click", () => setQrSize(btn.dataset.size));
+  });
+
+  els.nudgeUp?.addEventListener("click", () => nudge(0, -8));
+  els.nudgeRight?.addEventListener("click", () => nudge(8, 0));
+  els.nudgeDown?.addEventListener("click", () => nudge(0, 8));
+  els.nudgeLeft?.addEventListener("click", () => nudge(-8, 0));
+  els.resetPositionBtn?.addEventListener("click", resetPosition);
+
+  els.foregroundColor?.addEventListener("input", (e) => {
+    state.foregroundColor = e.target.value;
+    updateContrastWarning();
+    maybeAutoRender();
+  });
+
+  els.backgroundColor?.addEventListener("input", (e) => {
+    state.backgroundColor = e.target.value;
+    updateContrastWarning();
+    maybeAutoRender();
+  });
+
+  els.transparentBackground?.addEventListener("change", (e) => {
+    state.transparentBackground = !!e.target.checked;
+    updateContrastWarning();
+    maybeAutoRender();
+  });
+}
+
+async function initPresets() {
   try {
-    if (!state.qrImageData) {
-      setDebug("no QR image data loaded yet");
-      return;
+    state.presetMasks = await loadPresetMasks();
+    populatePresetSelect();
+
+    if (state.presetMasks.length) {
+      applyPresetMask(0);
     }
-
-    setDebug("thresholding uploaded QR");
-
-    const thresholded = threshold(
-      new ImageData(
-        new Uint8ClampedArray(state.qrImageData.data),
-        state.qrImageData.width,
-        state.qrImageData.height
-      )
-    );
-
-    thresholdCanvas.width = thresholded.width;
-    thresholdCanvas.height = thresholded.height;
-    thresholdCanvas.getContext("2d").putImageData(thresholded, 0, 0);
-
-    setDebug("trimming outer white border");
-
-    const trimmed = trimWhiteBorder(thresholded, 1);
-
-    setDebug("making inner crop for tile source");
-
-    const inner = innerCrop(trimmed, 24);
-
-    cropCanvas.width = inner.width;
-    cropCanvas.height = inner.height;
-    cropCanvas.getContext("2d").putImageData(inner, 0, 0);
-
-    let modulePixelSize = estimateModuleSize(trimmed);
-    if (!modulePixelSize || modulePixelSize < 1) {
-      modulePixelSize = 4;
-    }
-
-    const tiles = extractTiles(inner, modulePixelSize);
-    setDebug(`tiles extracted: ${tiles.length}`);
-
-    let maskSource = null;
-
-    if (maskModeSelect.value === "custom") {
-      if (!state.customMaskCanvas) {
-        setDebug("build a custom mask first");
-        return;
-      }
-      maskSource = state.customMaskCanvas;
-      setDebug("using custom mask");
-    } else {
-      const selectedMask = maskSelect.value;
-      maskSource = await loadMask(maskPresets[selectedMask]);
-      setDebug(`using preset mask: ${selectedMask}`);
-    }
-
-    const sourceQrCanvas = imageDataToCanvas(trimmed);
-
-    render({
-      tiles,
-      maskImg: maskSource,
-      outputCanvas,
-      sourceQrCanvas,
-      modulePixelSize,
-      qrSize: qrSizeSelect.value,
-      qrOffsetX: Number(qrOffsetX.value || 0),
-      qrOffsetY: Number(qrOffsetY.value || 0)
-    });
-
-    applyCurrentColorsToOutput();
-
-    setDebug("render complete");
-  } catch (err) {
-    console.error(err);
-    setDebug(`generate error: ${err.message}`);
+  } catch (error) {
+    console.error(error);
+    setStatus("Preset masks could not load.");
   }
-});
+}
 
-exportBtn.addEventListener("click", () => {
-  try {
-    exportPNG(outputCanvas);
-    setDebug("export triggered");
-  } catch (err) {
-    console.error(err);
-    setDebug(`export error: ${err.message}`);
-  }
-});
+function initialUiSync() {
+  syncOffsetLabels();
+  updateContrastWarning();
+  setQrSize("medium");
+  setPreviewMeta("Awaiting QR or shape");
+  setStatus("Engine ready");
+  updatePreviewMode("empty");
+  show(els.qrReadyBadge, false);
+  show(els.maskReadyBadge, false);
+}
+
+async function init() {
+  initialUiSync();
+  wireEvents();
+  await initPresets();
+}
+
+init();
