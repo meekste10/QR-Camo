@@ -1,12 +1,12 @@
 export const maskPresets = {
-  heart: "../assets/masks/heart.png",
-  house: "../assets/masks/house.png",
-  tag: "../assets/masks/tag.png",
-  star: "../assets/masks/star.png",
-  pizza: "../assets/masks/pizza.png",
-  mug: "../assets/masks/mug.png",
-  tree: "../assets/masks/tree.png",
-  turtle: "../assets/masks/turtle.png"
+  heart: "./assets/masks/heart.png",
+  house: "./assets/masks/house.png",
+  tag: "./assets/masks/tag.png",
+  star: "./assets/masks/star.png",
+  pizza: "./assets/masks/pizza.png",
+  mug: "./assets/masks/mug.png",
+  tree: "./assets/masks/tree.png",
+  turtle: "./assets/masks/turtle.png"
 };
 
 function loadImage(src) {
@@ -48,7 +48,7 @@ function labelFromKey(key) {
 export async function loadPresetMasks() {
   const entries = Object.entries(maskPresets);
 
-  const loaded = await Promise.all(
+  return Promise.all(
     entries.map(async ([key, src]) => {
       const image = await loadImage(src);
       const canvas = makeCanvasFromImage(image, 800);
@@ -62,6 +62,4 @@ export async function loadPresetMasks() {
       };
     })
   );
-
-  return loaded;
 }
