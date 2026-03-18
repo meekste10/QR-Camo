@@ -783,3 +783,344 @@ input[type="file"]::file-selector-button {
     height: 44px;
   }
 }
+/* =========================
+   MOBILE STABILITY PATCH
+   ========================= */
+
+/* 1) Never allow sideways drift */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  position: relative;
+}
+
+.app-shell,
+.creator-shell,
+.creator-main,
+.wizard-shell,
+.wizard-grid,
+.workflow-grid,
+.workflow-left,
+.workflow-right,
+.step-card,
+.preview-card,
+.panel-card,
+.preview-step-layout,
+.preview-main,
+.preview-controls,
+.source-step-layout,
+.source-preview-panel,
+.main-preview-card,
+.main-preview,
+.preview-body {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 2) Top bar should wrap cleanly on phones */
+.topbar,
+.topbar-inner,
+header.topbar {
+  overflow: hidden;
+}
+
+.brand {
+  min-width: 0;
+}
+
+.brand h1,
+.brand-text,
+.brand p {
+  overflow-wrap: anywhere;
+}
+
+.status-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: flex-start;
+  max-width: 140px;
+}
+
+.ready-badge,
+.status-pill,
+#engineStatus,
+#qrReadyBadge,
+#maskReadyBadge {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: right;
+  font-size: 0.75rem;
+  padding: 6px 8px;
+}
+
+/* 3) Hard clamp every preview zone */
+.source-preview-box,
+.source-preview-panel,
+.source-preview-panel .mini-preview-click,
+.source-preview-panel canvas,
+.preview-stage,
+.preview-body,
+.main-preview,
+.main-preview-card,
+.compact-main-preview,
+.preview-card {
+  overflow: hidden;
+}
+
+.source-preview-box,
+.source-preview-panel .mini-preview-click {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#sourcePreviewCanvas,
+#outputCanvas,
+#originalCanvas,
+#thresholdCanvas,
+#cropCanvas,
+#customMaskCanvas,
+.source-preview-box canvas,
+.preview-stage canvas,
+.preview-body canvas,
+.main-preview canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* 4) Final preview should stay inside the card */
+.main-preview-card {
+  width: 100%;
+}
+
+.compact-main-preview,
+.main-preview,
+.preview-body {
+  min-height: 280px;
+  max-height: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+#outputCanvas {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 18px;
+}
+
+/* 5) Mask/source previews should not explode */
+#sourcePreviewCanvas,
+#customMaskCanvas {
+  max-width: 100%;
+  max-height: 220px;
+  margin: 0 auto;
+}
+
+/* 6) Kill desktop two-column leftovers on phone */
+@media (max-width: 900px) {
+  .workflow-grid,
+  .wizard-grid,
+  .preview-step-layout,
+  .source-step-layout,
+  .step-layout,
+  .tight-row,
+  .source-row,
+  .inline-row {
+    grid-template-columns: 1fr !important;
+    display: grid;
+  }
+
+  .workflow-right,
+  .preview-controls,
+  .source-preview-panel {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .workflow-right {
+    order: 2;
+  }
+
+  .workflow-left {
+    order: 1;
+  }
+}
+
+/* 7) Make cards breathe better on mobile */
+@media (max-width: 720px) {
+  .topbar-inner,
+  .creator-main,
+  .wizard-shell,
+  .app-shell {
+    width: min(100vw - 16px, 1240px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .topbar-inner {
+    min-height: 72px;
+    padding: 10px 0;
+    align-items: flex-start;
+  }
+
+  .brand {
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    font-size: 18px;
+    flex: 0 0 36px;
+  }
+
+  .brand h1,
+  .brand-text {
+    font-size: 1rem;
+    line-height: 1.1;
+    margin: 0;
+  }
+
+  .brand p {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .status-group {
+    max-width: 92px;
+    gap: 4px;
+  }
+
+  .step-card,
+  .preview-card,
+  .panel-card,
+  .hero-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .step-head {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .step-badge {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  .step-title-wrap h2,
+  .step-title-wrap h3,
+  .step-copy h2 {
+    font-size: 1.1rem;
+    line-height: 1.15;
+  }
+
+  .step-title-wrap p,
+  .step-copy p {
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .compact-main-preview,
+  .main-preview,
+  .preview-body {
+    min-height: 240px;
+    max-height: 380px;
+    padding: 10px;
+  }
+
+  #outputCanvas {
+    max-width: 290px;
+  }
+}
+
+/* 8) Tiny phones get an even harder clamp */
+@media (max-width: 480px) {
+  .topbar-inner,
+  .creator-main,
+  .wizard-shell,
+  .app-shell {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+  }
+
+  .step-card,
+  .preview-card,
+  .panel-card {
+    padding: 14px;
+  }
+
+  .compact-main-preview,
+  .main-preview,
+  .preview-body {
+    min-height: 220px;
+    max-height: 340px;
+  }
+
+  #outputCanvas {
+    max-width: 250px;
+  }
+
+  #sourcePreviewCanvas,
+  #customMaskCanvas {
+    max-height: 170px;
+  }
+}
+
+/* 9) Debug / technical panels should never push layout */
+.lab-drawer,
+.lab-grid,
+.lab-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.lab-card canvas {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 10) Prevent giant generated imagery from escaping wrappers */
+.preview-stage img,
+.preview-body img,
+.source-preview-box img,
+.source-preview-panel img,
+.main-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* 11) Optional cleaner status appearance */
+.status-group.compact-status .ready-badge,
+.status-group.compact-status .status-pill {
+  min-height: 0;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  padding: 5px 7px;
+}
