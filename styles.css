@@ -88,6 +88,7 @@ body{
   color:#dbe6ff;
 }
 
+input[type="text"],
 input[type="file"],
 input[type="range"],
 input[type="color"],
@@ -96,6 +97,7 @@ button{
   width:100%;
 }
 
+input[type="text"],
 input[type="file"],
 select{
   background:var(--panel-2);
@@ -125,11 +127,16 @@ button{
   cursor:pointer;
   background:linear-gradient(135deg,var(--accent),#7b79ff);
   color:white;
+  margin-top:10px;
 }
 
 .button-stack{
   display:grid;
   gap:10px;
+}
+
+.button-stack button{
+  margin-top:0;
 }
 
 .checkbox-row{
