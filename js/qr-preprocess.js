@@ -1,5 +1,11 @@
 export function threshold(imageData, thresholdValue = 128) {
-  const d = imageData.data;
+  const copy = new ImageData(
+    new Uint8ClampedArray(imageData.data),
+    imageData.width,
+    imageData.height
+  );
+
+  const d = copy.data;
 
   for (let i = 0; i < d.length; i += 4) {
     const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
@@ -10,7 +16,7 @@ export function threshold(imageData, thresholdValue = 128) {
     d[i + 3] = 255;
   }
 
-  return imageData;
+  return copy;
 }
 
 function isWhitePixel(data, index) {
@@ -119,11 +125,11 @@ export function imageDataToCanvas(imageData) {
   return canvas;
 }
 
-function collectRunLengths(imageData, rowsOrCols = "rows") {
+function collectRunLengths(imageData, mode = "rows") {
   const { width, height, data } = imageData;
   const runLengths = [];
 
-  if (rowsOrCols === "rows") {
+  if (mode === "rows") {
     const sampleRows = [
       Math.floor(height * 0.2),
       Math.floor(height * 0.35),
@@ -215,4 +221,62 @@ export function estimateTextureTileSize(imageData, moduleSize) {
   if (!imageData || !moduleSize) return moduleSize || 4;
   const base = Math.max(2, Math.floor(moduleSize));
   return Math.max(2, Math.round(base * 1.4));
+}
+
+export function normalizeQrCanvas(inputCanvas) {
+  const ctx = inputCanvas.getContext("2d");
+  const original = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
+
+  const thresholded = threshold(original, 128);
+  const trimmed = trimWhiteBorder(thresholded, 0);
+
+  let moduleSize = estimateModuleSize(trimmed);
+  if (!moduleSize || moduleSize < 1) moduleSize = 4;
+
+  const moduleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
+
+  const cleanCanvas = document.createElement("canvas");
+  cleanCanvas.width = moduleCount;
+  cleanCanvas.height = moduleCount;
+
+  const cleanCtx = cleanCanvas.getContext("2d");
+  cleanCtx.imageSmoothingEnabled = false;
+  cleanCtx.fillStyle = "#ffffff";
+  cleanCtx.fillRect(0, 0, moduleCount, moduleCount);
+  cleanCtx.fillStyle = "#000000";
+
+  const data = trimmed.data;
+  const srcW = trimmed.width;
+  const srcH = trimmed.height;
+
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      const sx0 = Math.floor((col * srcW) / moduleCount);
+      const sx1 = Math.floor(((col + 1) * srcW) / moduleCount);
+      const sy0 = Math.floor((row * srcH) / moduleCount);
+      const sy1 = Math.floor(((row + 1) * srcH) / moduleCount);
+
+      let black = 0;
+      let total = 0;
+
+      for (let y = sy0; y < sy1; y++) {
+        for (let x = sx0; x < sx1; x++) {
+          const i = (y * srcW + x) * 4;
+          if (data[i] < 128) black++;
+          total++;
+        }
+      }
+
+      const isBlack = total > 0 ? black / total >= 0.5 : false;
+      if (isBlack) {
+        cleanCtx.fillRect(col, row, 1, 1);
+      }
+    }
+  }
+
+  return {
+    canvas: cleanCanvas,
+    moduleCount,
+    modulePixelSize: 1
+  };
 }
