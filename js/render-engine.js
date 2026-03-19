@@ -1,9 +1,5 @@
 import { pointInsideMask } from "./mask-engine.js";
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
@@ -22,45 +18,6 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   const y = Math.floor((outputSize - qrDisplaySize) / 2);
 
   return { x, y, qrDisplaySize, moduleDisplaySize };
-}
-
-function cellIntersectsRect(x, y, size, rect) {
-  return !(
-    x + size <= rect.x ||
-    x >= rect.x + rect.size ||
-    y + size <= rect.y ||
-    y >= rect.y + rect.size
-  );
-}
-
-function hash2D(x, y, seed = 0) {
-  let h = x * 374761393 + y * 668265263 + seed * 1442695041;
-  h = (h ^ (h >>> 13)) * 1274126177;
-  h = h ^ (h >>> 16);
-  return Math.abs(h);
-}
-
-function cellMaskCoverage(mctx, x, y, size) {
-  const inset = Math.max(1, Math.floor(size * 0.18));
-
-  const samples = [
-    [x + Math.floor(size / 2), y + Math.floor(size / 2)],
-    [x + inset, y + inset],
-    [x + size - inset, y + inset],
-    [x + inset, y + size - inset],
-    [x + size - inset, y + size - inset],
-    [x + Math.floor(size / 2), y + inset],
-    [x + Math.floor(size / 2), y + size - inset],
-    [x + inset, y + Math.floor(size / 2)],
-    [x + size - inset, y + Math.floor(size / 2)]
-  ];
-
-  let inside = 0;
-  for (const [sx, sy] of samples) {
-    if (pointInsideMask(mctx, sx, sy)) inside++;
-  }
-
-  return inside / samples.length;
 }
 
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
@@ -85,49 +42,61 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
 }
 
-function normalizeTile(tile) {
-  if (!tile) return null;
-  if (tile.canvas) return tile.canvas;
-  return tile;
+function drawTextureContained(ctx, textureCanvas, boxX, boxY, boxW, boxH) {
+  ctx.imageSmoothingEnabled = false;
+
+  const sw = textureCanvas.width;
+  const sh = textureCanvas.height;
+
+  const scale = Math.max(boxW / sw, boxH / sh);
+  const drawW = Math.round(sw * scale);
+  const drawH = Math.round(sh * scale);
+
+  const dx = Math.round(boxX + (boxW - drawW) / 2);
+  const dy = Math.round(boxY + (boxH - drawH) / 2);
+
+  ctx.drawImage(textureCanvas, dx, dy, drawW, drawH);
 }
 
-function drawTileVariant(ctx, tileCanvas, dx, dy, drawSize, variantIndex) {
-  ctx.save();
-  ctx.translate(dx + drawSize / 2, dy + drawSize / 2);
+function getMaskBounds(maskCtx, width, height) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
 
-  const rotation = (variantIndex % 4) * (Math.PI / 2);
-  ctx.rotate(rotation);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pointInsideMask(maskCtx, x, y)) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
 
-  const flipX = variantIndex % 2 === 1 ? -1 : 1;
-  const flipY = variantIndex % 3 === 2 ? -1 : 1;
-  ctx.scale(flipX, flipY);
+  if (maxX < minX || maxY < minY) {
+    return { x: 0, y: 0, width, height };
+  }
 
-  ctx.drawImage(
-    tileCanvas,
-    0,
-    0,
-    tileCanvas.width,
-    tileCanvas.height,
-    -drawSize / 2,
-    -drawSize / 2,
-    drawSize,
-    drawSize
-  );
-
-  ctx.restore();
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
 }
 
 export function render(options) {
   const {
-    tiles,
     maskImg,
     outputCanvas,
     sourceQrCanvas,
+    innerTextureCanvas,
     modulePixelSize,
     qrSize = "medium",
     qrOffsetX = 0,
     qrOffsetY = 0,
-    blendTightness = 50,
     maskScale = 100
   } = options;
 
@@ -139,15 +108,9 @@ export function render(options) {
   ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   ctx.imageSmoothingEnabled = false;
 
-  if (!tiles || !tiles.length) {
-    throw new Error("Render failed: no tiles available");
-  }
-  if (!maskImg) {
-    throw new Error("Render failed: no mask image available");
-  }
-  if (!sourceQrCanvas) {
-    throw new Error("Render failed: no source QR canvas available");
-  }
+  if (!maskImg) throw new Error("Render failed: no mask image available");
+  if (!sourceQrCanvas) throw new Error("Render failed: no source QR canvas available");
+  if (!innerTextureCanvas) throw new Error("Render failed: no inner texture canvas available");
 
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
@@ -155,14 +118,7 @@ export function render(options) {
   drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale);
 
   const mctx = maskCanvas.getContext("2d");
-
-  const camoCanvas = document.createElement("canvas");
-  camoCanvas.width = OUTPUT_SIZE;
-  camoCanvas.height = OUTPUT_SIZE;
-
-  const cctx = camoCanvas.getContext("2d");
-  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  cctx.imageSmoothingEnabled = false;
+  const bounds = getMaskBounds(mctx, OUTPUT_SIZE, OUTPUT_SIZE);
 
   let safeModulePixelSize = modulePixelSize;
   if (!safeModulePixelSize || safeModulePixelSize < 1) {
@@ -179,48 +135,33 @@ export function render(options) {
   const centerX = centerFit.x + qrOffsetX;
   const centerY = centerFit.y + qrOffsetY;
 
-  const centerRect = {
-    x: centerX,
-    y: centerY,
-    size: centerFit.qrDisplaySize
-  };
+  const camoCanvas = document.createElement("canvas");
+  camoCanvas.width = OUTPUT_SIZE;
+  camoCanvas.height = OUTPUT_SIZE;
 
-  // Key fix:
-  // Fill should be slightly chunkier than the core module cadence,
-  // not finer. That helps the camouflage feel blended instead of noisy.
-  const fillDrawSize = Math.max(
-    centerFit.moduleDisplaySize,
-    Math.round(centerFit.moduleDisplaySize * 1.22)
+  const cctx = camoCanvas.getContext("2d");
+  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  cctx.imageSmoothingEnabled = false;
+
+  // Draw one enlarged QR-inner texture across the mask bounds
+  drawTextureContained(
+    cctx,
+    innerTextureCanvas,
+    bounds.x,
+    bounds.y,
+    bounds.width,
+    bounds.height
   );
 
-  const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.20 + tightness * 0.40;
-
-  for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
-    for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
-      if (cellIntersectsRect(x, y, fillDrawSize, centerRect)) continue;
-
-      const coverage = cellMaskCoverage(mctx, x, y, fillDrawSize);
-      if (coverage < minCoverage) continue;
-
-      const gridX = Math.floor(x / fillDrawSize);
-      const gridY = Math.floor(y / fillDrawSize);
-
-      const tileIndex = hash2D(gridX, gridY, 17) % tiles.length;
-      const tileCanvas = normalizeTile(tiles[tileIndex]);
-      if (!tileCanvas) continue;
-
-      const variantIndex = hash2D(gridX, gridY, 53) % 8;
-      drawTileVariant(cctx, tileCanvas, x, y, fillDrawSize, variantIndex);
-    }
-  }
-
+  // Clip that texture to the silhouette
   cctx.globalCompositeOperation = "destination-in";
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
+  // Draw texture-filled silhouette
   ctx.drawImage(camoCanvas, 0, 0);
 
+  // Draw center QR last so it stays crisp/scannable
   ctx.drawImage(
     sourceQrCanvas,
     0,
