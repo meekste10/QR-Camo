@@ -195,23 +195,23 @@ export function render(options) {
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
-  const bleed = Math.max(1, Math.floor(drawSize * 0.04));
+  const bleed = Math.max(1, Math.floor(fillDrawSize * 0.08));
 
-  for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
-    for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
-      if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
+  for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
+    for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
+      if (cellIntersectsRect(x, y, filldrawSize, centerRect)) continue;
 
-      const coverage = cellMaskCoverage(mctx, x, y, drawSize);
+      const coverage = cellMaskCoverage(mctx, x, y, filldrawSize);
       if (coverage < minCoverage) continue;
 
-      const gridX = Math.floor(x / drawSize);
-      const gridY = Math.floor(y / drawSize);
+      const gridX = Math.floor(x / filldrawSize);
+      const gridY = Math.floor(y / filldrawSize);
 
       const tileIndex = pickTileIndex(gridX, gridY, tiles.length, 17);
       const tileCanvas = normalizeTile(tiles[tileIndex]);
       if (!tileCanvas) continue;
 
-      drawTileWithBleed(cctx, tileCanvas, x, y, drawSize, bleed);
+      drawTileWithBleed(cctx, tileCanvas, x, y, filldrawSize, bleed);
     }
   }
 
