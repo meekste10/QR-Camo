@@ -85,28 +85,25 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
 }
 
-function drawSourceModule(
-  ctx,
-  sourceQrCanvas,
-  sourceModuleSize,
-  moduleCount,
-  srcCol,
-  srcRow,
-  dx,
-  dy,
-  destSize
-) {
-  const sx = srcCol * sourceModuleSize;
-  const sy = srcRow * sourceModuleSize;
+function normalizeTile(tile) {
+  if (!tile) return null;
+  if (tile.canvas) return tile.canvas;
+  return tile;
+}
+
+function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
+  const destX = dx - bleed;
+  const destY = dy - bleed;
+  const destSize = drawSize + bleed * 2;
 
   ctx.drawImage(
-    sourceQrCanvas,
-    sx,
-    sy,
-    sourceModuleSize,
-    sourceModuleSize,
-    dx,
-    dy,
+    tileCanvas,
+    0,
+    0,
+    tileCanvas.width,
+    tileCanvas.height,
+    destX,
+    destY,
     destSize,
     destSize
   );
@@ -114,6 +111,7 @@ function drawSourceModule(
 
 export function render(options) {
   const {
+    tiles,
     maskImg,
     outputCanvas,
     sourceQrCanvas,
@@ -133,6 +131,9 @@ export function render(options) {
   ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   ctx.imageSmoothingEnabled = false;
 
+  if (!tiles || !tiles.length) {
+    throw new Error("Render failed: no tiles available");
+  }
   if (!maskImg) {
     throw new Error("Render failed: no mask image available");
   }
@@ -176,10 +177,16 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
+  /**
+   * This is the crucial philosophy:
+   * the fill is made from chopped-up QR innards,
+   * displayed at the same visible cadence as the core QR modules.
+   */
   const fillDrawSize = centerFit.moduleDisplaySize;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
+  const bleed = Math.max(1, Math.floor(fillDrawSize * 0.05));
 
   for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
@@ -191,20 +198,11 @@ export function render(options) {
       const gridX = Math.floor(x / fillDrawSize);
       const gridY = Math.floor(y / fillDrawSize);
 
-      const srcCol = hash2D(gridX, gridY, 17) % moduleCount;
-      const srcRow = hash2D(gridX, gridY, 53) % moduleCount;
+      const tileIndex = hash2D(gridX, gridY, 17) % tiles.length;
+      const tileCanvas = normalizeTile(tiles[tileIndex]);
+      if (!tileCanvas) continue;
 
-      drawSourceModule(
-        cctx,
-        sourceQrCanvas,
-        safeModulePixelSize,
-        moduleCount,
-        srcCol,
-        srcRow,
-        x,
-        y,
-        fillDrawSize
-      );
+      drawTileWithBleed(cctx, tileCanvas, x, y, fillDrawSize, bleed);
     }
   }
 
