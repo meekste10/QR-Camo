@@ -184,7 +184,14 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  const drawSize = centerFit.moduleDisplaySize;
+  // CORE QR scale (unchanged)
+  const coreDrawSize = centerFit.moduleDisplaySize;
+
+  // NEW: fill texture scale (independent)
+  const fillDrawSize = Math.max(
+    2,
+    Math.round(coreDrawSize * 0.65)
+  )
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
