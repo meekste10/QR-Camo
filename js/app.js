@@ -1,8 +1,7 @@
-const APP_VERSION = "v0.4.1";
+const APP_VERSION = "v0.4.2";
 
 import { state } from "./state.js";
 import { maskPresets } from "./presets.js";
-import { loadImage } from "./image-utils.js";
 import {
   threshold,
   trimWhiteBorder,
@@ -84,6 +83,8 @@ function show(el, on) {
 }
 
 function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
+  if (!previewStage) return;
+
   previewStage.classList.toggle("has-source", !!hasSource);
   previewStage.classList.toggle("has-output", !!hasOutput);
 
@@ -93,8 +94,8 @@ function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
 }
 
 function syncOffsetLabels() {
-  qrOffsetXLabel.textContent = String(qrOffsetX.value);
-  qrOffsetYLabel.textContent = String(qrOffsetY.value);
+  if (qrOffsetXLabel) qrOffsetXLabel.textContent = String(qrOffsetX.value);
+  if (qrOffsetYLabel) qrOffsetYLabel.textContent = String(qrOffsetY.value);
 }
 
 function clamp(value, min, max) {
@@ -136,6 +137,8 @@ function contrastRatio(a, b) {
 }
 
 function updateContrastWarning() {
+  if (!contrastWarning) return;
+
   if (transparentBackground.checked) {
     contrastWarning.classList.add("hidden");
     return;
@@ -229,7 +232,7 @@ function drawContain(ctx, source, width, height, padding = 0, background = null)
 }
 
 function paintSourcePreview(sourceCanvas) {
-  if (!sourceCanvas) return;
+  if (!sourceCanvas || !sourcePreviewCanvas) return;
 
   sourcePreviewCanvas.width = 800;
   sourcePreviewCanvas.height = 800;
@@ -296,7 +299,7 @@ async function buildQrFromText(text) {
 
   paintSourcePreview(tempCanvas);
   setSourceMeta("Generated from link/text");
-  setPreviewMeta("QR ready");
+  setPreviewMeta(`QR ready · ${APP_VERSION}`);
   show(qrReadyBadge, true);
 }
 
@@ -312,7 +315,7 @@ async function handleQrUpload(file) {
 
   paintSourcePreview(qrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
-  setPreviewMeta("QR ready");
+  setPreviewMeta(`QR ready · ${APP_VERSION}`);
   show(qrReadyBadge, true);
 }
 
@@ -329,6 +332,8 @@ function buildCurrentMaskFromUploaded() {
 }
 
 function populatePresetSelect() {
+  if (!maskSelect) return;
+
   maskSelect.innerHTML = "";
 
   Object.keys(maskPresets).forEach((key) => {
@@ -402,7 +407,7 @@ async function renderOutput() {
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · core ${modulePixelSize}px · texture ${textureTileSize}px`);
-    setDebug("Render complete");
+    setDebug(`Render complete · ${APP_VERSION}`);
   } catch (err) {
     console.error(err);
     setDebug(`Render failed: ${err.message}`);
