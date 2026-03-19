@@ -84,7 +84,6 @@ function fitQrToShapeCore(maskCtx, maskInfo, outputSize, moduleCount, qrSize = "
   const hSpan = measureHorizontalSpan(maskCtx, cx, cy, outputSize);
   const vSpan = measureVerticalSpan(maskCtx, cx, cy, outputSize);
 
-  // Use the local body thickness, not the full silhouette bounds.
   const localBase = Math.max(20, Math.min(hSpan.span, vSpan.span));
 
   let targetFraction = 0.52;
@@ -100,11 +99,9 @@ function fitQrToShapeCore(maskCtx, maskInfo, outputSize, moduleCount, qrSize = "
   let x = Math.round(cx - qrDisplaySize / 2);
   let y = Math.round(cy - qrDisplaySize / 2);
 
-  // Clamp to local body span first
   x = Math.max(hSpan.left, Math.min(x, hSpan.right - qrDisplaySize + 1));
   y = Math.max(vSpan.top, Math.min(y, vSpan.bottom - qrDisplaySize + 1));
 
-  // Safety clamp to overall bounds
   const minX = maskInfo.bounds.x;
   const minY = maskInfo.bounds.y;
   const maxX = maskInfo.bounds.x + maskInfo.bounds.width - qrDisplaySize;
