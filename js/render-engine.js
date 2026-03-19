@@ -47,25 +47,64 @@ function analyzeMask(maskCtx, width, height) {
   };
 }
 
-function fitQrToMask(maskInfo, moduleCount, qrSize = "medium") {
+function measureHorizontalSpan(maskCtx, startX, y, width) {
+  let left = startX;
+  let right = startX;
+
+  while (left > 0 && pointInsideMask(maskCtx, left - 1, y)) left--;
+  while (right < width - 1 && pointInsideMask(maskCtx, right + 1, y)) right++;
+
+  return {
+    left,
+    right,
+    span: right - left + 1
+  };
+}
+
+function measureVerticalSpan(maskCtx, x, startY, height) {
+  let top = startY;
+  let bottom = startY;
+
+  while (top > 0 && pointInsideMask(maskCtx, x, top - 1)) top--;
+  while (bottom < height - 1 && pointInsideMask(maskCtx, x, bottom + 1)) bottom++;
+
+  return {
+    top,
+    bottom,
+    span: bottom - top + 1
+  };
+}
+
+function fitQrToShapeCore(maskCtx, maskInfo, outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
-  let targetFraction = 0.34;
-  if (qrSize === "xsmall") targetFraction = 0.20;
-  if (qrSize === "small") targetFraction = 0.26;
-  if (qrSize === "medium") targetFraction = 0.34;
-  if (qrSize === "large") targetFraction = 0.42;
+  const cx = Math.max(0, Math.min(outputSize - 1, Math.round(maskInfo.centroid.x)));
+  const cy = Math.max(0, Math.min(outputSize - 1, Math.round(maskInfo.centroid.y)));
 
-  const usableBase = Math.min(maskInfo.bounds.width, maskInfo.bounds.height);
+  const hSpan = measureHorizontalSpan(maskCtx, cx, cy, outputSize);
+  const vSpan = measureVerticalSpan(maskCtx, cx, cy, outputSize);
 
-  let qrDisplaySize = Math.floor(usableBase * targetFraction);
+  // Use the local body thickness, not the full silhouette bounds.
+  const localBase = Math.max(20, Math.min(hSpan.span, vSpan.span));
+
+  let targetFraction = 0.52;
+  if (qrSize === "xsmall") targetFraction = 0.30;
+  if (qrSize === "small") targetFraction = 0.40;
+  if (qrSize === "medium") targetFraction = 0.52;
+  if (qrSize === "large") targetFraction = 0.64;
+
+  let qrDisplaySize = Math.floor(localBase * targetFraction);
   const moduleDisplaySize = Math.max(2, Math.floor(qrDisplaySize / moduleCount));
   qrDisplaySize = moduleDisplaySize * moduleCount;
 
-  let x = Math.round(maskInfo.centroid.x - qrDisplaySize / 2);
-  let y = Math.round(maskInfo.centroid.y - qrDisplaySize / 2);
+  let x = Math.round(cx - qrDisplaySize / 2);
+  let y = Math.round(cy - qrDisplaySize / 2);
 
-  // Keep the QR reasonably inside the mask bounding area.
+  // Clamp to local body span first
+  x = Math.max(hSpan.left, Math.min(x, hSpan.right - qrDisplaySize + 1));
+  y = Math.max(vSpan.top, Math.min(y, vSpan.bottom - qrDisplaySize + 1));
+
+  // Safety clamp to overall bounds
   const minX = maskInfo.bounds.x;
   const minY = maskInfo.bounds.y;
   const maxX = maskInfo.bounds.x + maskInfo.bounds.width - qrDisplaySize;
@@ -74,7 +113,12 @@ function fitQrToMask(maskInfo, moduleCount, qrSize = "medium") {
   x = Math.max(minX, Math.min(x, maxX));
   y = Math.max(minY, Math.min(y, maxY));
 
-  return { x, y, qrDisplaySize, moduleDisplaySize };
+  return {
+    x,
+    y,
+    qrDisplaySize,
+    moduleDisplaySize
+  };
 }
 
 function cellIntersectsRect(x, y, size, rect) {
@@ -157,7 +201,7 @@ export function render(options) {
   );
 
   const maskInfo = analyzeMask(mctx, OUTPUT_SIZE, OUTPUT_SIZE);
-  const fit = fitQrToMask(maskInfo, moduleCount, qrSize);
+  const fit = fitQrToShapeCore(mctx, maskInfo, OUTPUT_SIZE, moduleCount, qrSize);
 
   const centerX = fit.x + qrOffsetX;
   const centerY = fit.y + qrOffsetY;
@@ -187,10 +231,10 @@ export function render(options) {
 
   for (let y = 0; y < OUTPUT_SIZE; y += drawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += drawSize) {
-      const cx = Math.floor(x + drawSize / 2);
-      const cy = Math.floor(y + drawSize / 2);
+      const px = Math.floor(x + drawSize / 2);
+      const py = Math.floor(y + drawSize / 2);
 
-      if (!pointInsideMask(mctx, cx, cy)) continue;
+      if (!pointInsideMask(mctx, px, py)) continue;
       if (cellIntersectsRect(x, y, drawSize, centerRect)) continue;
 
       let picked = null;
