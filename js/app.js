@@ -1,3 +1,5 @@
+const APP_VERSION = "v0.4.1";
+
 import { state } from "./state.js";
 import { maskPresets } from "./presets.js";
 import { loadImage } from "./image-utils.js";
@@ -15,10 +17,13 @@ import { buildMaskFromImage } from "./mask-builder.js";
 import { render } from "./render-engine.js";
 import { exportPNG } from "./export.js";
 
+console.log("QR CAMO BUILD:", APP_VERSION);
+
 const debugPanel = document.getElementById("debugPanel");
 const qrReadyBadge = document.getElementById("qrReadyBadge");
 const shapeReadyBadge = document.getElementById("shapeReadyBadge");
 const engineStatus = document.getElementById("engineStatus");
+const appVersionBadge = document.getElementById("appVersionBadge");
 
 const qrTextInput = document.getElementById("qrTextInput");
 const makeQrBtn = document.getElementById("makeQrBtn");
@@ -396,7 +401,7 @@ async function renderOutput() {
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
-    setPreviewMeta(`QR-Camo ready · core ${modulePixelSize}px · texture ${textureTileSize}px`);
+    setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · core ${modulePixelSize}px · texture ${textureTileSize}px`);
     setDebug("Render complete");
   } catch (err) {
     console.error(err);
@@ -417,13 +422,17 @@ function resetPosition() {
 }
 
 function init() {
+  if (appVersionBadge) {
+    appVersionBadge.textContent = APP_VERSION;
+  }
+
   populatePresetSelect();
   syncOffsetLabels();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
-  setPreviewMeta("Waiting for QR or shape");
+  setPreviewMeta(`Waiting for QR or shape · ${APP_VERSION}`);
   setSourceMeta("Nothing loaded yet");
-  setDebug("Ready");
+  setDebug(`Ready · ${APP_VERSION}`);
 
   makeQrBtn.addEventListener("click", async () => {
     try {
@@ -434,7 +443,7 @@ function init() {
       }
 
       await buildQrFromText(text);
-      setDebug("QR created from text.");
+      setDebug(`QR created from text · ${APP_VERSION}`);
     } catch (err) {
       console.error(err);
       setDebug(`QR generation failed: ${err.message}`);
@@ -452,7 +461,7 @@ function init() {
       const file = e.target.files?.[0];
       if (!file) return;
       await handleQrUpload(file);
-      setDebug("QR uploaded.");
+      setDebug(`QR uploaded · ${APP_VERSION}`);
     } catch (err) {
       console.error(err);
       setDebug(`QR upload failed: ${err.message}`);
@@ -467,7 +476,7 @@ function init() {
       state.customMaskImage = await loadImageFromFile(file);
       state.customMaskCanvas = null;
       show(shapeReadyBadge, true);
-      setDebug("Custom shape uploaded.");
+      setDebug(`Custom shape uploaded · ${APP_VERSION}`);
     } catch (err) {
       console.error(err);
       setDebug(`Shape upload failed: ${err.message}`);
@@ -483,7 +492,7 @@ function init() {
         return;
       }
       exportPNG(outputCanvas);
-      setDebug("Exported PNG.");
+      setDebug(`Exported PNG · ${APP_VERSION}`);
     } catch (err) {
       console.error(err);
       setDebug(`Export failed: ${err.message}`);
@@ -491,7 +500,7 @@ function init() {
   });
 
   qrSizeSelect.addEventListener("change", () => {
-    setDebug(`QR size: ${qrSizeSelect.value}`);
+    setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
   });
 
   nudgeUp.addEventListener("click", () => nudge(0, -NUDGE_STEP));
