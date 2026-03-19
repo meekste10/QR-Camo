@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.4.2";
+const APP_VERSION = "v0.4.3";
 
 import { state } from "./state.js";
 import { maskPresets } from "./presets.js";
@@ -62,6 +62,8 @@ state.customMaskImage = null;
 state.customMaskCanvas = null;
 
 const NUDGE_STEP = 8;
+const DEFAULT_BLEND_TIGHTNESS = 50;
+const DEFAULT_MASK_SCALE = 100;
 
 function setDebug(msg) {
   if (debugPanel) debugPanel.textContent = msg;
@@ -401,12 +403,16 @@ async function renderOutput() {
       modulePixelSize,
       qrSize: qrSizeSelect.value,
       qrOffsetX: Number(qrOffsetX.value || 0),
-      qrOffsetY: Number(qrOffsetY.value || 0)
+      qrOffsetY: Number(qrOffsetY.value || 0),
+      blendTightness: DEFAULT_BLEND_TIGHTNESS,
+      maskScale: DEFAULT_MASK_SCALE
     });
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
-    setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · core ${modulePixelSize}px · texture ${textureTileSize}px`);
+    setPreviewMeta(
+      `QR-Camo ready · ${APP_VERSION} · core ${modulePixelSize}px · texture ${textureTileSize}px`
+    );
     setDebug(`Render complete · ${APP_VERSION}`);
   } catch (err) {
     console.error(err);
