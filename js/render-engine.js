@@ -56,12 +56,10 @@ function cellMaskCoverage(mctx, x, y, size) {
 
   const samples = [
     [x + Math.floor(size / 2), y + Math.floor(size / 2)],
-
     [x + inset, y + inset],
     [x + size - inset, y + inset],
     [x + inset, y + size - inset],
     [x + size - inset, y + size - inset],
-
     [x + Math.floor(size / 2), y + inset],
     [x + Math.floor(size / 2), y + size - inset],
     [x + inset, y + Math.floor(size / 2)],
@@ -184,14 +182,8 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  // CORE QR scale (unchanged)
   const coreDrawSize = centerFit.moduleDisplaySize;
-
-  // NEW: fill texture scale (independent)
-  const fillDrawSize = Math.max(
-    2,
-    Math.round(coreDrawSize * 0.65)
-  )
+  const fillDrawSize = Math.max(2, Math.round(coreDrawSize * 0.65));
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
@@ -199,19 +191,19 @@ export function render(options) {
 
   for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
-      if (cellIntersectsRect(x, y, filldrawSize, centerRect)) continue;
+      if (cellIntersectsRect(x, y, fillDrawSize, centerRect)) continue;
 
-      const coverage = cellMaskCoverage(mctx, x, y, filldrawSize);
+      const coverage = cellMaskCoverage(mctx, x, y, fillDrawSize);
       if (coverage < minCoverage) continue;
 
-      const gridX = Math.floor(x / filldrawSize);
-      const gridY = Math.floor(y / filldrawSize);
+      const gridX = Math.floor(x / fillDrawSize);
+      const gridY = Math.floor(y / fillDrawSize);
 
       const tileIndex = pickTileIndex(gridX, gridY, tiles.length, 17);
       const tileCanvas = normalizeTile(tiles[tileIndex]);
       if (!tileCanvas) continue;
 
-      drawTileWithBleed(cctx, tileCanvas, x, y, filldrawSize, bleed);
+      drawTileWithBleed(cctx, tileCanvas, x, y, fillDrawSize, bleed);
     }
   }
 
