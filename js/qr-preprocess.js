@@ -244,3 +244,14 @@ export function estimateTextureTileSize(imageData, modulePixelSize) {
 
   return Math.max(2, modulePixelSize);
 }
+export function estimateTextureTileSize(imageData, moduleSize) {
+  if (!imageData || !moduleSize) return moduleSize || 4;
+
+  // We want tiles slightly larger than a single module
+  // but NOT tied to display scaling
+
+  const base = Math.max(2, Math.floor(moduleSize));
+
+  // heuristic: texture tiles ~1.2–1.6x module size
+  return Math.max(2, Math.round(base * 1.4));
+}
