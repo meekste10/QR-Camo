@@ -27,7 +27,7 @@ function getTileStats(tileCanvas) {
 export function extractTiles(imageData, tileSize, options = {}) {
   const {
     stride = tileSize,
-    rejectMostlySolid = false
+    rejectMostlySolid = true
   } = options;
 
   const tiles = [];
@@ -69,49 +69,4 @@ export function extractTiles(imageData, tileSize, options = {}) {
   }
 
   return tiles;
-}
-
-export function buildWeightedTilePool(tiles) {
-  if (!tiles || !tiles.length) return [];
-
-  const strong = [];
-  const medium = [];
-  const weak = [];
-
-  for (const tile of tiles) {
-    const score = tile.stats.contrastScore;
-    const blackRatio = tile.stats.blackRatio;
-
-    if (blackRatio < 0.05 || blackRatio > 0.95) {
-      weak.push(tile);
-    } else if (score >= 0.55) {
-      strong.push(tile);
-    } else if (score >= 0.25) {
-      medium.push(tile);
-    } else {
-      weak.push(tile);
-    }
-  }
-
-  const pool = [];
-
-  strong.forEach((tile) => {
-    pool.push(tile, tile, tile, tile, tile);
-  });
-
-  medium.forEach((tile) => {
-    pool.push(tile, tile, tile);
-  });
-
-  weak.forEach((tile) => {
-    pool.push(tile);
-  });
-
-  return pool.length ? pool : tiles;
-}
-
-export function randomTileFromPool(pool) {
-  if (!pool || !pool.length) return null;
-  const index = Math.floor(Math.random() * pool.length);
-  return pool[index];
 }
