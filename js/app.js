@@ -1,18 +1,18 @@
-const APP_VERSION = "v0.5.1";
+const APP_VERSION = "v0.5.1b";
 
-import { state } from "./state.js";
+import { state } from "./state.js?v=0.5.1b";
 import {
   threshold,
   trimWhiteBorder,
   innerCrop,
   estimateModuleSize,
   imageDataToCanvas
-} from "./qr-preprocess.js";
-import { maskPresets } from "./presets.js";
-import { loadMask } from "./mask-engine.js";
-import { buildMaskFromImage } from "./mask-builder.js";
-import { render } from "./render-engine.js";
-import { exportPNG } from "./export.js";
+} from "./qr-preprocess.js?v=0.5.1b";
+import { maskPresets } from "./presets.js?v=0.5.1b";
+import { loadMask } from "./mask-engine.js?v=0.5.1b";
+import { buildMaskFromImage } from "./mask-builder.js?v=0.5.1b";
+import { render } from "./render-engine.js?v=0.5.1b";
+import { exportPNG } from "./export.js?v=0.5.1b";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
 
