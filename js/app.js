@@ -1,11 +1,16 @@
-const APP_VERSION = "v0.4.6";
+const APP_VERSION = "v0.4.7";
 
 import { state } from "./state.js";
-import { maskPresets } from "./presets.js";
 import {
-  normalizeQrCanvas,
+  threshold,
+  trimWhiteBorder,
+  innerCrop,
+  estimateModuleSize,
+  estimateTextureTileSize,
   imageDataToCanvas
 } from "./qr-preprocess.js";
+import { extractTiles } from "./tile-engine.js";
+import { maskPresets } from "./presets.js";
 import { loadMask } from "./mask-engine.js";
 import { buildMaskFromImage } from "./mask-builder.js";
 import { render } from "./render-engine.js";
@@ -55,8 +60,10 @@ const outputCanvas = document.getElementById("outputCanvas");
 
 state.customMaskImage = null;
 state.customMaskCanvas = null;
+state.qrImageData = null;
 state.sourceQrCanvas = null;
 state.modulePixelSize = 1;
+state.textureTiles = [];
 
 const NUDGE_STEP = 8;
 const DEFAULT_BLEND_TIGHTNESS = 50;
@@ -258,56 +265,106 @@ function loadImageFromFile(file) {
   });
 }
 
-async function buildQrFromText(text) {
-  if (!window.QRCode) {
-    throw new Error("QRCode library not loaded");
-  }
-
+function buildGeneratedQrImageData(text) {
   const qrModel = window.QRCode.create(text, {
     errorCorrectionLevel: "H"
   });
 
   const moduleCount = qrModel.modules.size;
+  const pixelsPerModule = 12;
+  const qrPixelSize = moduleCount * pixelsPerModule;
 
-  const cleanCanvas = createCanvas(moduleCount, moduleCount);
-  const ctx = cleanCanvas.getContext("2d");
+  const tempCanvas = createCanvas(qrPixelSize, qrPixelSize);
+  const ctx = tempCanvas.getContext("2d");
+
+  ctx.clearRect(0, 0, qrPixelSize, qrPixelSize);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, moduleCount, moduleCount);
-  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, qrPixelSize, qrPixelSize);
 
+  ctx.fillStyle = "#000000";
   for (let row = 0; row < moduleCount; row++) {
     for (let col = 0; col < moduleCount; col++) {
       if (qrModel.modules.get(row, col)) {
-        ctx.fillRect(col, row, 1, 1);
+        ctx.fillRect(
+          col * pixelsPerModule,
+          row * pixelsPerModule,
+          pixelsPerModule,
+          pixelsPerModule
+        );
       }
     }
   }
 
-  state.sourceQrCanvas = cleanCanvas;
-  state.modulePixelSize = 1;
+  return ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+}
 
-  paintSourcePreview(cleanCanvas);
+function buildQrAssetsFromImageData(imageData) {
+  const thresholded = threshold(imageData, 128);
+  const trimmed = trimWhiteBorder(thresholded, 0);
+  const inner = innerCrop(trimmed, 24);
+
+  let modulePixelSize = estimateModuleSize(trimmed);
+  if (!modulePixelSize || modulePixelSize < 1) {
+    modulePixelSize = 4;
+  }
+
+  const textureTileSize = estimateTextureTileSize(inner, modulePixelSize);
+
+  const tiles = extractTiles(inner, textureTileSize, {
+    stride: Math.max(1, Math.floor(textureTileSize * 0.5)),
+    rejectMostlySolid: true
+  });
+
+  if (!tiles || !tiles.length) {
+    throw new Error("No tiles could be extracted from this QR");
+  }
+
+  state.qrImageData = trimmed;
+  state.sourceQrCanvas = imageDataToCanvas(trimmed);
+  state.modulePixelSize = modulePixelSize;
+  state.textureTiles = tiles;
+
+  return {
+    trimmed,
+    inner,
+    modulePixelSize,
+    textureTileSize,
+    tiles
+  };
+}
+
+async function buildQrFromText(text) {
+  if (!window.QRCode) {
+    throw new Error("QRCode library not loaded");
+  }
+
+  const generatedImageData = buildGeneratedQrImageData(text);
+  const built = buildQrAssetsFromImageData(generatedImageData);
+
+  paintSourcePreview(state.sourceQrCanvas);
   setSourceMeta("Generated from link/text");
-  setPreviewMeta(`QR ready · ${APP_VERSION}`);
+  setPreviewMeta(
+    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · texture ${built.textureTileSize}px`
+  );
   show(qrReadyBadge, true);
 }
 
 async function handleQrUpload(file) {
   const img = await loadImageFromFile(file);
 
-  const inputCanvas = createCanvas(1024, 1024);
-  const ctx = inputCanvas.getContext("2d");
-  drawContain(ctx, img, 1024, 1024, 20, "#ffffff");
+  const qrCanvas = createCanvas(900, 900);
+  const ctx = qrCanvas.getContext("2d");
+  drawContain(ctx, img, 900, 900, 10, "#ffffff");
 
-  const normalized = normalizeQrCanvas(inputCanvas);
+  const uploadedImageData = ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+  const built = buildQrAssetsFromImageData(uploadedImageData);
 
-  state.sourceQrCanvas = normalized.canvas;
-  state.modulePixelSize = normalized.modulePixelSize;
-
-  paintSourcePreview(normalized.canvas);
+  paintSourcePreview(state.sourceQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
-  setPreviewMeta(`QR ready · ${APP_VERSION}`);
+  setPreviewMeta(
+    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · texture ${built.textureTileSize}px`
+  );
   show(qrReadyBadge, true);
 }
 
@@ -338,7 +395,7 @@ function populatePresetSelect() {
 
 async function renderOutput() {
   try {
-    if (!state.sourceQrCanvas) {
+    if (!state.sourceQrCanvas || !state.textureTiles?.length) {
       setDebug("Create or upload a QR first.");
       return;
     }
@@ -357,6 +414,7 @@ async function renderOutput() {
     }
 
     render({
+      tiles: state.textureTiles,
       maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas: state.sourceQrCanvas,
@@ -372,7 +430,7 @@ async function renderOutput() {
     updatePreviewFlags({ hasSource: true, hasOutput: true });
 
     setPreviewMeta(
-      `QR-Camo ready · ${APP_VERSION} · modules ${state.sourceQrCanvas.width}`
+      `QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`
     );
     setDebug(`Render complete · ${APP_VERSION}`);
   } catch (err) {
