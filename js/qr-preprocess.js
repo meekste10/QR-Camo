@@ -211,47 +211,8 @@ export function estimateModuleSize(imageData) {
   return Math.max(1, Math.round(avg));
 }
 
-export function estimateTextureTileSize(imageData, modulePixelSize) {
-  const rowRuns = collectRunLengths(imageData, "rows");
-  const colRuns = collectRunLengths(imageData, "cols");
-  const allRuns = [...rowRuns, ...colRuns].filter(
-    (v) => v >= 1 && v <= Math.max(imageData.width, imageData.height) / 5
-  );
-
-  if (!allRuns.length) {
-    return Math.max(2, modulePixelSize);
-  }
-
-  allRuns.sort((a, b) => a - b);
-
-  const tinyRuns = allRuns.filter((v) => v <= Math.max(1, modulePixelSize * 0.45));
-  const tinyRunRatio = tinyRuns.length / allRuns.length;
-
-  const p15 = allRuns[Math.floor((allRuns.length - 1) * 0.15)];
-  const p25 = allRuns[Math.floor((allRuns.length - 1) * 0.25)];
-
-  if (tinyRunRatio > 0.28) {
-    const stylizedSize = Math.max(
-      2,
-      Math.min(
-        Math.round(modulePixelSize * 0.5),
-        Math.max(p15, p25)
-      )
-    );
-
-    return stylizedSize;
-  }
-
-  return Math.max(2, modulePixelSize);
-}
 export function estimateTextureTileSize(imageData, moduleSize) {
   if (!imageData || !moduleSize) return moduleSize || 4;
-
-  // We want tiles slightly larger than a single module
-  // but NOT tied to display scaling
-
   const base = Math.max(2, Math.floor(moduleSize));
-
-  // heuristic: texture tiles ~1.2–1.6x module size
   return Math.max(2, Math.round(base * 1.4));
 }
