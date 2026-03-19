@@ -91,10 +91,16 @@ function normalizeTile(tile) {
   return tile;
 }
 
-function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
-  const destX = dx - bleed;
-  const destY = dy - bleed;
-  const destSize = drawSize + bleed * 2;
+function drawTileVariant(ctx, tileCanvas, dx, dy, drawSize, variantIndex) {
+  ctx.save();
+  ctx.translate(dx + drawSize / 2, dy + drawSize / 2);
+
+  const rotation = (variantIndex % 4) * (Math.PI / 2);
+  ctx.rotate(rotation);
+
+  const flipX = variantIndex % 2 === 1 ? -1 : 1;
+  const flipY = variantIndex % 3 === 2 ? -1 : 1;
+  ctx.scale(flipX, flipY);
 
   ctx.drawImage(
     tileCanvas,
@@ -102,11 +108,13 @@ function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
     0,
     tileCanvas.width,
     tileCanvas.height,
-    destX,
-    destY,
-    destSize,
-    destSize
+    -drawSize / 2,
+    -drawSize / 2,
+    drawSize,
+    drawSize
   );
+
+  ctx.restore();
 }
 
 export function render(options) {
@@ -177,16 +185,16 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  /**
-   * This is the crucial philosophy:
-   * the fill is made from chopped-up QR innards,
-   * displayed at the same visible cadence as the core QR modules.
-   */
-  const fillDrawSize = centerFit.moduleDisplaySize;
+  // Key fix:
+  // Fill should be slightly chunkier than the core module cadence,
+  // not finer. That helps the camouflage feel blended instead of noisy.
+  const fillDrawSize = Math.max(
+    centerFit.moduleDisplaySize,
+    Math.round(centerFit.moduleDisplaySize * 1.22)
+  );
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
-  const bleed = Math.max(1, Math.floor(fillDrawSize * 0.05));
 
   for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
@@ -202,7 +210,8 @@ export function render(options) {
       const tileCanvas = normalizeTile(tiles[tileIndex]);
       if (!tileCanvas) continue;
 
-      drawTileWithBleed(cctx, tileCanvas, x, y, fillDrawSize, bleed);
+      const variantIndex = hash2D(gridX, gridY, 53) % 8;
+      drawTileVariant(cctx, tileCanvas, x, y, fillDrawSize, variantIndex);
     }
   }
 
