@@ -33,12 +33,6 @@ function cellIntersectsRect(x, y, size, rect) {
   );
 }
 
-function normalizeTile(tile) {
-  if (!tile) return null;
-  if (tile.canvas) return tile.canvas;
-  return tile;
-}
-
 function hash2D(x, y, seed = 0) {
   let h = x * 374761393 + y * 668265263 + seed * 1442695041;
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -46,20 +40,17 @@ function hash2D(x, y, seed = 0) {
   return Math.abs(h);
 }
 
-function pickTileIndex(gridX, gridY, tileCount, seed = 0) {
-  if (!tileCount) return 0;
-  return hash2D(gridX, gridY, seed) % tileCount;
-}
-
 function cellMaskCoverage(mctx, x, y, size) {
   const inset = Math.max(1, Math.floor(size * 0.18));
 
   const samples = [
     [x + Math.floor(size / 2), y + Math.floor(size / 2)],
+
     [x + inset, y + inset],
     [x + size - inset, y + inset],
     [x + inset, y + size - inset],
     [x + size - inset, y + size - inset],
+
     [x + Math.floor(size / 2), y + inset],
     [x + Math.floor(size / 2), y + size - inset],
     [x + inset, y + Math.floor(size / 2)],
@@ -72,24 +63,6 @@ function cellMaskCoverage(mctx, x, y, size) {
   }
 
   return inside / samples.length;
-}
-
-function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
-  const destX = dx - bleed;
-  const destY = dy - bleed;
-  const destSize = drawSize + bleed * 2;
-
-  ctx.drawImage(
-    tileCanvas,
-    0,
-    0,
-    tileCanvas.width,
-    tileCanvas.height,
-    destX,
-    destY,
-    destSize,
-    destSize
-  );
 }
 
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
@@ -114,9 +87,35 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
 }
 
+function drawSourceModule(
+  ctx,
+  sourceQrCanvas,
+  sourceModuleSize,
+  moduleCount,
+  srcCol,
+  srcRow,
+  dx,
+  dy,
+  destSize
+) {
+  const sx = srcCol * sourceModuleSize;
+  const sy = srcRow * sourceModuleSize;
+
+  ctx.drawImage(
+    sourceQrCanvas,
+    sx,
+    sy,
+    sourceModuleSize,
+    sourceModuleSize,
+    dx,
+    dy,
+    destSize,
+    destSize
+  );
+}
+
 export function render(options) {
   const {
-    tiles,
     maskImg,
     outputCanvas,
     sourceQrCanvas,
@@ -136,9 +135,6 @@ export function render(options) {
   ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   ctx.imageSmoothingEnabled = false;
 
-  if (!tiles || !tiles.length) {
-    throw new Error("Render failed: no tiles available");
-  }
   if (!maskImg) {
     throw new Error("Render failed: no mask image available");
   }
@@ -182,12 +178,12 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  const coreDrawSize = centerFit.moduleDisplaySize;
-  const fillDrawSize = Math.max(2, Math.round(coreDrawSize * 0.65));
+  // THIS is the crucial part:
+  // fill uses the SAME visible module size as the core QR
+  const fillDrawSize = centerFit.moduleDisplaySize;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
-  const bleed = Math.max(1, Math.floor(fillDrawSize * 0.08));
 
   for (let y = 0; y < OUTPUT_SIZE; y += fillDrawSize) {
     for (let x = 0; x < OUTPUT_SIZE; x += fillDrawSize) {
@@ -199,20 +195,33 @@ export function render(options) {
       const gridX = Math.floor(x / fillDrawSize);
       const gridY = Math.floor(y / fillDrawSize);
 
-      const tileIndex = pickTileIndex(gridX, gridY, tiles.length, 17);
-      const tileCanvas = normalizeTile(tiles[tileIndex]);
-      if (!tileCanvas) continue;
+      // Stable but varied module sampling from the actual source QR
+      const srcCol = hash2D(gridX, gridY, 17) % moduleCount;
+      const srcRow = hash2D(gridX, gridY, 53) % moduleCount;
 
-      drawTileWithBleed(cctx, tileCanvas, x, y, fillDrawSize, bleed);
+      drawSourceModule(
+        cctx,
+        sourceQrCanvas,
+        safeModulePixelSize,
+        moduleCount,
+        srcCol,
+        srcRow,
+        x,
+        y,
+        fillDrawSize
+      );
     }
   }
 
+  // Hard mask the whole camo field into the silhouette
   cctx.globalCompositeOperation = "destination-in";
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
+  // Draw silhouette fill first
   ctx.drawImage(camoCanvas, 0, 0);
 
+  // Draw scan-critical QR core last
   ctx.drawImage(
     sourceQrCanvas,
     0,
