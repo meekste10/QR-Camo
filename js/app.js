@@ -1,18 +1,20 @@
-const APP_VERSION = "v0.5.1b";
+const APP_VERSION = "v0.5.2";
 
-import { state } from "./state.js?v=0.5.1b";
+import { state } from "./state.js?v=0.5.2";
 import {
   threshold,
   trimWhiteBorder,
   innerCrop,
   estimateModuleSize,
+  estimateTextureTileSize,
   imageDataToCanvas
-} from "./qr-preprocess.js?v=0.5.1b";
-import { maskPresets } from "./presets.js?v=0.5.1b";
-import { loadMask } from "./mask-engine.js?v=0.5.1b";
-import { buildMaskFromImage } from "./mask-builder.js?v=0.5.1b";
-import { render } from "./render-engine.js?v=0.5.1b";
-import { exportPNG } from "./export.js?v=0.5.1b";
+} from "./qr-preprocess.js?v=0.5.2";
+import { extractTiles } from "./tile-engine.js?v=0.5.2";
+import { maskPresets } from "./presets.js?v=0.5.2";
+import { loadMask } from "./mask-engine.js?v=0.5.2";
+import { buildMaskFromImage } from "./mask-builder.js?v=0.5.2";
+import { render } from "./render-engine.js?v=0.5.2";
+import { exportPNG } from "./export.js?v=0.5.2";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
 
@@ -60,10 +62,11 @@ state.customMaskImage = null;
 state.customMaskCanvas = null;
 state.qrImageData = null;
 state.sourceQrCanvas = null;
-state.innerTextureCanvas = null;
 state.modulePixelSize = 1;
+state.textureTiles = [];
 
 const NUDGE_STEP = 8;
+const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 
 function setDebug(msg) {
@@ -299,22 +302,36 @@ function buildGeneratedQrImageData(text) {
 function buildQrAssetsFromImageData(imageData, thresholdValue = 128) {
   const thresholded = threshold(imageData, thresholdValue);
   const trimmed = trimWhiteBorder(thresholded, 0);
-  const inner = innerCrop(trimmed, 24);
+  const inner = innerCrop(trimmed, 18);
 
   let modulePixelSize = estimateModuleSize(trimmed);
   if (!modulePixelSize || modulePixelSize < 1) {
     modulePixelSize = 4;
   }
 
+  const textureTileSize = Math.max(
+    modulePixelSize * 2,
+    estimateTextureTileSize(inner, modulePixelSize)
+  );
+
+  const tiles = extractTiles(inner, textureTileSize, {
+    stride: textureTileSize,
+    rejectMostlySolid: true
+  });
+
+  if (!tiles || !tiles.length) {
+    throw new Error("No tiles could be extracted from this QR");
+  }
+
   state.qrImageData = trimmed;
   state.sourceQrCanvas = imageDataToCanvas(trimmed);
-  state.innerTextureCanvas = imageDataToCanvas(inner);
   state.modulePixelSize = modulePixelSize;
+  state.textureTiles = tiles;
 
   return {
     modulePixelSize,
-    innerWidth: inner.width,
-    innerHeight: inner.height
+    textureTileSize,
+    tileCount: tiles.length
   };
 }
 
@@ -329,7 +346,7 @@ async function buildQrFromText(text) {
   paintSourcePreview(state.sourceQrCanvas);
   setSourceMeta("Generated from link/text");
   setPreviewMeta(
-    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · inner ${built.innerWidth}×${built.innerHeight}`
+    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · texture ${built.textureTileSize}px`
   );
   show(qrReadyBadge, true);
 }
@@ -347,7 +364,7 @@ async function handleQrUpload(file) {
   paintSourcePreview(state.sourceQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
   setPreviewMeta(
-    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · inner ${built.innerWidth}×${built.innerHeight}`
+    `QR ready · ${APP_VERSION} · core ${built.modulePixelSize}px · texture ${built.textureTileSize}px`
   );
   show(qrReadyBadge, true);
 }
@@ -379,7 +396,7 @@ function populatePresetSelect() {
 
 async function renderOutput() {
   try {
-    if (!state.sourceQrCanvas || !state.innerTextureCanvas) {
+    if (!state.sourceQrCanvas || !state.textureTiles?.length) {
       setDebug("Create or upload a QR first.");
       return;
     }
@@ -398,21 +415,22 @@ async function renderOutput() {
     }
 
     render({
+      tiles: state.textureTiles,
       maskImg: maskSource,
       outputCanvas,
       sourceQrCanvas: state.sourceQrCanvas,
-      innerTextureCanvas: state.innerTextureCanvas,
       modulePixelSize: state.modulePixelSize,
       qrSize: qrSizeSelect.value,
       qrOffsetX: Number(qrOffsetX.value || 0),
       qrOffsetY: Number(qrOffsetY.value || 0),
+      blendTightness: DEFAULT_BLEND_TIGHTNESS,
       maskScale: DEFAULT_MASK_SCALE
     });
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
 
-    setPreviewMeta(`QR-Camo ready · ${APP_VERSION}`);
+    setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     setDebug(`Render complete · ${APP_VERSION}`);
   } catch (err) {
     console.error(err);
