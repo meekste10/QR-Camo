@@ -24,40 +24,47 @@ function getTileStats(tileCanvas) {
   };
 }
 
-export function extractTiles(imageData, tileSize) {
-  const { width, height, data } = imageData;
+export function extractTiles(imageData, tileSize, options = {}) {
+  const {
+    stride = tileSize,
+    rejectMostlySolid = false
+  } = options;
 
   const tiles = [];
 
-  const cols = Math.floor(width / tileSize);
-  const rows = Math.floor(height / tileSize);
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = imageData.width;
+  sourceCanvas.height = imageData.height;
+  const sctx = sourceCanvas.getContext("2d");
+  sctx.putImageData(imageData, 0, 0);
 
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
-      const canvas = document.createElement("canvas");
-      canvas.width = tileSize;
-      canvas.height = tileSize;
+  for (let y = 0; y + tileSize <= imageData.height; y += stride) {
+    for (let x = 0; x + tileSize <= imageData.width; x += stride) {
+      const tileCanvas = document.createElement("canvas");
+      tileCanvas.width = tileSize;
+      tileCanvas.height = tileSize;
 
-      const ctx = canvas.getContext("2d");
-      const tileImage = ctx.createImageData(tileSize, tileSize);
+      const tctx = tileCanvas.getContext("2d");
+      tctx.imageSmoothingEnabled = false;
 
-      for (let y = 0; y < tileSize; y++) {
-        for (let x = 0; x < tileSize; x++) {
-          const srcX = tx * tileSize + x;
-          const srcY = ty * tileSize + y;
+      tctx.drawImage(
+        sourceCanvas,
+        x, y, tileSize, tileSize,
+        0, 0, tileSize, tileSize
+      );
 
-          const srcIndex = (srcY * width + srcX) * 4;
-          const dstIndex = (y * tileSize + x) * 4;
+      const stats = getTileStats(tileCanvas);
 
-          tileImage.data[dstIndex] = data[srcIndex];
-          tileImage.data[dstIndex + 1] = data[srcIndex + 1];
-          tileImage.data[dstIndex + 2] = data[srcIndex + 2];
-          tileImage.data[dstIndex + 3] = data[srcIndex + 3];
+      if (rejectMostlySolid) {
+        if (stats.blackRatio < 0.03 || stats.blackRatio > 0.97) {
+          continue;
         }
       }
 
-      ctx.putImageData(tileImage, 0, 0);
-      tiles.push(canvas);
+      tiles.push({
+        canvas: tileCanvas,
+        stats
+      });
     }
   }
 
