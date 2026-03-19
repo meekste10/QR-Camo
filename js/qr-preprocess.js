@@ -231,14 +231,22 @@ export function estimateTextureTileSize(imageData, moduleSize) {
   );
 
   if (!allRuns.length) {
-    return Math.max(2, moduleSize);
+    return Math.max(2, Math.round(moduleSize * 1.6));
   }
 
   allRuns.sort((a, b) => a - b);
 
-  const p20 = allRuns[Math.floor((allRuns.length - 1) * 0.20)];
   const p35 = allRuns[Math.floor((allRuns.length - 1) * 0.35)];
+  const p50 = allRuns[Math.floor((allRuns.length - 1) * 0.50)];
 
-  const candidate = Math.round((p20 + p35 + moduleSize) / 3);
-  return Math.max(2, candidate);
+  // Intentionally bigger than before.
+  // We want fewer, chunkier inner tiles so the fill doesn't become static-y.
+  const candidate = Math.round((moduleSize * 2 + p35 + p50) / 2);
+
+  return Math.max(
+    Math.round(moduleSize * 1.35),
+    candidate
+  );
 }
+
+  
