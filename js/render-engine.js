@@ -45,12 +45,10 @@ function cellMaskCoverage(mctx, x, y, size) {
 
   const samples = [
     [x + Math.floor(size / 2), y + Math.floor(size / 2)],
-
     [x + inset, y + inset],
     [x + size - inset, y + inset],
     [x + inset, y + size - inset],
     [x + size - inset, y + size - inset],
-
     [x + Math.floor(size / 2), y + inset],
     [x + Math.floor(size / 2), y + size - inset],
     [x + inset, y + Math.floor(size / 2)],
@@ -159,7 +157,7 @@ export function render(options) {
 
   let safeModulePixelSize = modulePixelSize;
   if (!safeModulePixelSize || safeModulePixelSize < 1) {
-    safeModulePixelSize = 4;
+    safeModulePixelSize = 1;
   }
 
   const moduleCount = Math.max(
@@ -178,8 +176,6 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  // THIS is the crucial part:
-  // fill uses the SAME visible module size as the core QR
   const fillDrawSize = centerFit.moduleDisplaySize;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
@@ -195,7 +191,6 @@ export function render(options) {
       const gridX = Math.floor(x / fillDrawSize);
       const gridY = Math.floor(y / fillDrawSize);
 
-      // Stable but varied module sampling from the actual source QR
       const srcCol = hash2D(gridX, gridY, 17) % moduleCount;
       const srcRow = hash2D(gridX, gridY, 53) % moduleCount;
 
@@ -213,15 +208,12 @@ export function render(options) {
     }
   }
 
-  // Hard mask the whole camo field into the silhouette
   cctx.globalCompositeOperation = "destination-in";
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
-  // Draw silhouette fill first
   ctx.drawImage(camoCanvas, 0, 0);
 
-  // Draw scan-critical QR core last
   ctx.drawImage(
     sourceQrCanvas,
     0,
