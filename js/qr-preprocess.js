@@ -223,17 +223,42 @@ export function estimateTextureTileSize(imageData, moduleSize) {
   return Math.max(2, Math.round(base * 1.4));
 }
 
-export function normalizeQrCanvas(inputCanvas) {
-  const ctx = inputCanvas.getContext("2d");
-  const original = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
+function canvasFromImageData(imageData) {
+  const canvas = document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  const ctx = canvas.getContext("2d");
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
 
-  const thresholded = threshold(original, 128);
-  const trimmed = trimWhiteBorder(thresholded, 0);
+function squareCanvasFromImageData(imageData, size = 1024) {
+  const srcCanvas = canvasFromImageData(imageData);
 
-  let moduleSize = estimateModuleSize(trimmed);
-  if (!moduleSize || moduleSize < 1) moduleSize = 4;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
 
-  const moduleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+
+  const scale = Math.min(size / srcCanvas.width, size / srcCanvas.height);
+  const drawW = Math.round(srcCanvas.width * scale);
+  const drawH = Math.round(srcCanvas.height * scale);
+  const dx = Math.floor((size - drawW) / 2);
+  const dy = Math.floor((size - drawH) / 2);
+
+  ctx.drawImage(srcCanvas, dx, dy, drawW, drawH);
+  return canvas;
+}
+
+function rebuildGridFromCanvas(squareCanvas, moduleCount) {
+  const size = squareCanvas.width;
+  const ctx = squareCanvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, size, size);
+  const data = img.data;
 
   const cleanCanvas = document.createElement("canvas");
   cleanCanvas.width = moduleCount;
@@ -245,23 +270,19 @@ export function normalizeQrCanvas(inputCanvas) {
   cleanCtx.fillRect(0, 0, moduleCount, moduleCount);
   cleanCtx.fillStyle = "#000000";
 
-  const data = trimmed.data;
-  const srcW = trimmed.width;
-  const srcH = trimmed.height;
-
   for (let row = 0; row < moduleCount; row++) {
     for (let col = 0; col < moduleCount; col++) {
-      const sx0 = Math.floor((col * srcW) / moduleCount);
-      const sx1 = Math.floor(((col + 1) * srcW) / moduleCount);
-      const sy0 = Math.floor((row * srcH) / moduleCount);
-      const sy1 = Math.floor(((row + 1) * srcH) / moduleCount);
+      const sx0 = Math.floor((col * size) / moduleCount);
+      const sx1 = Math.floor(((col + 1) * size) / moduleCount);
+      const sy0 = Math.floor((row * size) / moduleCount);
+      const sy1 = Math.floor(((row + 1) * size) / moduleCount);
 
       let black = 0;
       let total = 0;
 
       for (let y = sy0; y < sy1; y++) {
         for (let x = sx0; x < sx1; x++) {
-          const i = (y * srcW + x) * 4;
+          const i = (y * size + x) * 4;
           if (data[i] < 128) black++;
           total++;
         }
@@ -274,9 +295,73 @@ export function normalizeQrCanvas(inputCanvas) {
     }
   }
 
+  return cleanCanvas;
+}
+
+function scoreQrCandidate(canvas) {
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = img.data;
+
+  let black = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < 128) black++;
+  }
+
+  const total = canvas.width * canvas.height;
+  const blackRatio = black / total;
+
+  // good QR candidates tend to avoid extremely sparse or extremely dense fills
+  const densityScore = 1 - Math.abs(0.42 - blackRatio);
+
+  return densityScore;
+}
+
+export function normalizeQrCanvas(inputCanvas) {
+  const ctx = inputCanvas.getContext("2d");
+  const original = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
+
+  // stronger cleanup path for uploaded styled QRs
+  const thresholded = threshold(original, 160);
+  const trimmed = trimWhiteBorder(thresholded, 0);
+  const squared = squareCanvasFromImageData(trimmed, 1024);
+
+  const estimatedModule = Math.max(1, estimateModuleSize(trimmed));
+  const roughCount = Math.max(21, Math.round(trimmed.width / estimatedModule));
+
+  // Test nearby standard-ish counts
+  const candidates = Array.from(new Set([
+    roughCount - 2,
+    roughCount - 1,
+    roughCount,
+    roughCount + 1,
+    roughCount + 2,
+    21,
+    25,
+    29,
+    33,
+    37,
+    41
+  ])).filter((n) => n >= 21);
+
+  let bestCanvas = null;
+  let bestScore = -Infinity;
+  let bestCount = roughCount;
+
+  for (const count of candidates) {
+    const rebuilt = rebuildGridFromCanvas(squared, count);
+    const score = scoreQrCandidate(rebuilt);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestCanvas = rebuilt;
+      bestCount = count;
+    }
+  }
+
   return {
-    canvas: cleanCanvas,
-    moduleCount,
+    canvas: bestCanvas,
+    moduleCount: bestCount,
     modulePixelSize: 1
   };
 }
