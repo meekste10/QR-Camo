@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.4.6";
+const APP_VERSION = "v0.4.5";
 
 import { state } from "./state.js";
 import { maskPresets } from "./presets.js";
