@@ -310,16 +310,12 @@ async function buildQrFromText(text) {
 
   const generated = buildGeneratedQrCanvas(text);
 
-  const tiles = extractTiles(
-    cropQrInterior(generated.normalizedCanvas, 8),
-    DEFAULT_BLOCK_MODULES,
-    {
-      stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
-      rejectMostlySolid: true,
-      minBlackRatio: 0.02,
-      maxBlackRatio: 0.98
-    }
-  );
+  const tiles = extractTiles(interiorCanvas, DEFAULT_BLOCK_MODULES, {
+  stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
+  rejectMostlySolid: true,
+  minBlackRatio: 0.02,
+  maxBlackRatio: 0.98
+});
 
   if (!tiles.length) {
     throw new Error("No tiles could be extracted from generated QR");
