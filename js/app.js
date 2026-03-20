@@ -4,7 +4,6 @@ import { state } from "./state.js?v=0.6.2";
 import {
   threshold,
   trimWhiteBorder,
-  imageDataToCanvas,
   normalizeQrImageData,
   cropQrInterior,
   cropQrInteriorFromTrimmed,
@@ -297,25 +296,20 @@ function buildGeneratedQrCanvas(text) {
   };
 }
 
-function buildOverlayCanvasFromUpload(imageData, thresholdValue = DEFAULT_UPLOAD_THRESHOLD) {
-  const thresholded = threshold(imageData, thresholdValue);
-  const trimmed = trimWhiteBorder(thresholded, 0);
-  return imageDataToCanvas(trimmed);
-}
-
 async function buildQrFromText(text) {
   if (!window.QRCode) {
     throw new Error("QRCode library not loaded");
   }
 
   const generated = buildGeneratedQrCanvas(text);
+  const interiorCanvas = cropQrInterior(generated.normalizedCanvas, 8);
 
   const tiles = extractTiles(interiorCanvas, DEFAULT_BLOCK_MODULES, {
-  stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
-  rejectMostlySolid: true,
-  minBlackRatio: 0.02,
-  maxBlackRatio: 0.98
-});
+    stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
+    rejectMostlySolid: true,
+    minBlackRatio: 0.02,
+    maxBlackRatio: 0.98
+  });
 
   if (!tiles.length) {
     throw new Error("No tiles could be extracted from generated QR");
