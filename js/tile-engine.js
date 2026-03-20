@@ -25,29 +25,36 @@ function getTileStats(tileCanvas) {
 }
 
 export function extractTiles(sourceCanvas, tileSize = 2, options = {}) {
+  if (!sourceCanvas || !sourceCanvas.width || !sourceCanvas.height) {
+    return [];
+  }
+
+  const safeTileSize = Math.max(1, Math.floor(tileSize));
+
   const {
-    stride = tileSize,
+    stride = safeTileSize,
     rejectMostlySolid = true,
     minBlackRatio = 0.02,
     maxBlackRatio = 0.98
   } = options;
 
+  const safeStride = Math.max(1, Math.floor(stride));
   const tiles = [];
   const rejected = [];
 
-  for (let y = 0; y + tileSize <= sourceCanvas.height; y += stride) {
-    for (let x = 0; x + tileSize <= sourceCanvas.width; x += stride) {
+  for (let y = 0; y + safeTileSize <= sourceCanvas.height; y += safeStride) {
+    for (let x = 0; x + safeTileSize <= sourceCanvas.width; x += safeStride) {
       const tileCanvas = document.createElement("canvas");
-      tileCanvas.width = tileSize;
-      tileCanvas.height = tileSize;
+      tileCanvas.width = safeTileSize;
+      tileCanvas.height = safeTileSize;
 
       const tctx = tileCanvas.getContext("2d");
       tctx.imageSmoothingEnabled = false;
 
       tctx.drawImage(
         sourceCanvas,
-        x, y, tileSize, tileSize,
-        0, 0, tileSize, tileSize
+        x, y, safeTileSize, safeTileSize,
+        0, 0, safeTileSize, safeTileSize
       );
 
       const stats = getTileStats(tileCanvas);
