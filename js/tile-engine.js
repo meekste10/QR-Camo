@@ -68,7 +68,6 @@ export function extractTiles(sourceCanvas, tileSize = 2, options = {}) {
     }
   }
 
-  // Fallback so the engine never starves
   if (!tiles.length && rejected.length) {
     return rejected;
   }
