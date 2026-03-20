@@ -24,42 +24,53 @@ function getTileStats(tileCanvas) {
   };
 }
 
-export function extractTiles(sourceCanvas, tileModules = 2, options = {}) {
+export function extractTiles(sourceCanvas, tileSize = 2, options = {}) {
   const {
-    stride = tileModules,
-    rejectMostlySolid = true
+    stride = tileSize,
+    rejectMostlySolid = true,
+    minBlackRatio = 0.02,
+    maxBlackRatio = 0.98
   } = options;
 
   const tiles = [];
+  const rejected = [];
 
-  for (let y = 0; y + tileModules <= sourceCanvas.height; y += stride) {
-    for (let x = 0; x + tileModules <= sourceCanvas.width; x += stride) {
+  for (let y = 0; y + tileSize <= sourceCanvas.height; y += stride) {
+    for (let x = 0; x + tileSize <= sourceCanvas.width; x += stride) {
       const tileCanvas = document.createElement("canvas");
-      tileCanvas.width = tileModules;
-      tileCanvas.height = tileModules;
+      tileCanvas.width = tileSize;
+      tileCanvas.height = tileSize;
 
       const tctx = tileCanvas.getContext("2d");
       tctx.imageSmoothingEnabled = false;
 
       tctx.drawImage(
         sourceCanvas,
-        x, y, tileModules, tileModules,
-        0, 0, tileModules, tileModules
+        x, y, tileSize, tileSize,
+        0, 0, tileSize, tileSize
       );
 
       const stats = getTileStats(tileCanvas);
 
+      const tile = {
+        canvas: tileCanvas,
+        stats
+      };
+
       if (rejectMostlySolid) {
-        if (stats.blackRatio < 0.03 || stats.blackRatio > 0.97) {
+        if (stats.blackRatio < minBlackRatio || stats.blackRatio > maxBlackRatio) {
+          rejected.push(tile);
           continue;
         }
       }
 
-      tiles.push({
-        canvas: tileCanvas,
-        stats
-      });
+      tiles.push(tile);
     }
+  }
+
+  // Fallback so the engine never starves
+  if (!tiles.length && rejected.length) {
+    return rejected;
   }
 
   return tiles;
