@@ -1,4 +1,4 @@
-import { pointInsideMask } from "./mask-engine.js?v=0.6.2";
+import { pointInsideMask } from "./mask-engine.js?v=0.6.3";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -22,15 +22,6 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   const y = Math.floor((outputSize - qrDisplaySize) / 2);
 
   return { x, y, qrDisplaySize, moduleDisplaySize };
-}
-
-function rectsIntersect(a, b) {
-  return !(
-    a.x + a.size <= b.x ||
-    a.x >= b.x + b.size ||
-    a.y + a.size <= b.y ||
-    a.y >= b.y + b.size
-  );
 }
 
 function normalizeTile(tile) {
@@ -74,21 +65,17 @@ function cellMaskCoverage(mctx, x, y, size) {
   return inside / samples.length;
 }
 
-function drawTileWithBleed(ctx, tileCanvas, dx, dy, drawSize, bleed = 0) {
-  const destX = dx - bleed;
-  const destY = dy - bleed;
-  const destSize = drawSize + bleed * 2;
-
+function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
   ctx.drawImage(
     tileCanvas,
     0,
     0,
     tileCanvas.width,
     tileCanvas.height,
-    destX,
-    destY,
-    destSize,
-    destSize
+    dx,
+    dy,
+    drawSize,
+    drawSize
   );
 }
 
@@ -165,35 +152,20 @@ export function render(options) {
   cctx.imageSmoothingEnabled = false;
 
   const centerFit = fitQrCenter(OUTPUT_SIZE, safeModuleCount, qrSize);
-
   const centerX = centerFit.x + qrOffsetX;
   const centerY = centerFit.y + qrOffsetY;
-
-  const centerRect = {
-    x: centerX,
-    y: centerY,
-    size: centerFit.qrDisplaySize
-  };
 
   const moduleDisplaySize = centerFit.moduleDisplaySize;
   const tileDisplaySize = moduleDisplaySize * safeBlockModules;
 
-  const qrGapPx = Math.max(2, Math.round(moduleDisplaySize * 0.85));
-  const protectedCenterRect = {
-    x: centerRect.x - qrGapPx,
-    y: centerRect.y - qrGapPx,
-    size: centerRect.size + qrGapPx * 2
-  };
-
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
-  const bleed = 0;
 
+  // Important:
+  // Do NOT carve out a square hole around the center QR.
+  // Let the camo render continuously, then place the QR on top.
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
-      const tileRect = { x, y, size: tileDisplaySize };
-      if (rectsIntersect(tileRect, protectedCenterRect)) continue;
-
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
       if (coverage < minCoverage) continue;
 
@@ -205,7 +177,7 @@ export function render(options) {
       );
       if (!tileCanvas) continue;
 
-      drawTileWithBleed(cctx, tileCanvas, x, y, tileDisplaySize, bleed);
+      drawTile(cctx, tileCanvas, x, y, tileDisplaySize);
     }
   }
 
