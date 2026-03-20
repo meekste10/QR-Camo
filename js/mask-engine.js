@@ -8,6 +8,15 @@ export async function loadMask(src) {
 }
 
 export function pointInsideMask(maskCtx, x, y) {
-  const pixel = maskCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-  return pixel[3] > 0 && pixel[0] > 10;
+  const canvas = maskCtx.canvas;
+
+  const px = Math.floor(x);
+  const py = Math.floor(y);
+
+  if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) {
+    return false;
+  }
+
+  const pixel = maskCtx.getImageData(px, py, 1, 1).data;
+  return pixel[3] > 0;
 }
