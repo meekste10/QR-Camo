@@ -72,6 +72,7 @@ const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
+const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 
 function setDebug(msg) {
   if (debugPanel) debugPanel.textContent = msg;
@@ -321,6 +322,7 @@ async function buildQrFromText(text) {
   state.textureTiles = tiles;
   state.moduleCount = generated.moduleCount;
   state.modulePixelSize = 1;
+  state.blockModules = DEFAULT_BLOCK_MODULES;
 
   paintSourcePreview(generated.overlayCanvas);
   setSourceMeta("Generated from link/text");
@@ -349,12 +351,16 @@ async function handleQrUpload(file) {
     8
   );
 
-  const tilePx = Math.max(2, Math.round(modulePixelSize * DEFAULT_BLOCK_MODULES));
-  const tiles = extractTiles(interiorCanvas, tilePx, {
-    stride: Math.max(1, Math.floor(tilePx / 2)),
+  const uploadTilePx = Math.max(
+    3,
+    Math.round(modulePixelSize * DEFAULT_UPLOAD_BLOCK_MODULES)
+  );
+
+  const tiles = extractTiles(interiorCanvas, uploadTilePx, {
+    stride: Math.max(1, Math.floor(uploadTilePx / 2)),
     rejectMostlySolid: true,
-    minBlackRatio: 0.02,
-    maxBlackRatio: 0.98
+    minBlackRatio: 0.01,
+    maxBlackRatio: 0.99
   });
 
   if (!tiles.length) {
@@ -368,6 +374,7 @@ async function handleQrUpload(file) {
   state.textureTiles = tiles;
   state.moduleCount = normalized.moduleCount;
   state.modulePixelSize = modulePixelSize;
+  state.blockModules = DEFAULT_UPLOAD_BLOCK_MODULES;
 
   paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
@@ -432,7 +439,7 @@ async function renderOutput() {
       qrOffsetY: Number(qrOffsetY.value || 0),
       blendTightness: DEFAULT_BLEND_TIGHTNESS,
       maskScale: DEFAULT_MASK_SCALE,
-      blockModules: DEFAULT_BLOCK_MODULES
+      blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
     });
 
     applyCurrentColorsToOutput();
