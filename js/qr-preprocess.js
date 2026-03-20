@@ -91,9 +91,11 @@ export function estimateModuleSize(imageData) {
   const { width, height, data } = imageData;
 
   const sampleRows = [
-    Math.floor(height * 0.25),
-    Math.floor(height * 0.5),
-    Math.floor(height * 0.75)
+    Math.floor(height * 0.15),
+    Math.floor(height * 0.30),
+    Math.floor(height * 0.50),
+    Math.floor(height * 0.70),
+    Math.floor(height * 0.85)
   ];
 
   const runLengths = [];
@@ -128,9 +130,13 @@ export function estimateModuleSize(imageData) {
   if (!filtered.length) return 4;
 
   filtered.sort((a, b) => a - b);
-  const lowerHalf = filtered.slice(0, Math.max(1, Math.floor(filtered.length * 0.35)));
-  const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
 
+  const lowerHalf = filtered.slice(
+    0,
+    Math.max(1, Math.floor(filtered.length * 0.35))
+  );
+
+  const avg = lowerHalf.reduce((a, b) => a + b, 0) / lowerHalf.length;
   return Math.max(1, Math.round(avg));
 }
 
@@ -150,7 +156,7 @@ function sampleRegionIsBlack(imageData, x0, y0, w, h) {
     }
   }
 
-  return total > 0 ? dark / total >= 0.5 : false;
+  return total > 0 ? dark / total >= 0.45 : false;
 }
 
 function nearestValidQrModuleCount(estimated) {
@@ -180,8 +186,8 @@ export function normalizeQrImageData(imageData, thresholdValue = 128) {
   let moduleSize = estimateModuleSize(trimmed);
   if (!moduleSize || moduleSize < 1) moduleSize = 1;
 
-  let estimatedModuleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
-  let moduleCount = nearestValidQrModuleCount(estimatedModuleCount);
+  const estimatedModuleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
+  const moduleCount = nearestValidQrModuleCount(estimatedModuleCount);
   moduleSize = trimmed.width / moduleCount;
 
   const normalizedCanvas = document.createElement("canvas");
@@ -245,7 +251,7 @@ export function cropQrInterior(normalizedCanvas, insetModules = 8) {
   return canvas;
 }
 
-export function cropQrInteriorFromTrimmed(trimmedImageData, modulePixelSize, moduleCount, insetModules = 8) {
+export function cropQrInteriorFromTrimmed(trimmedImageData, modulePixelSize, insetModules = 8) {
   const pxInset = Math.max(1, Math.round(insetModules * modulePixelSize));
   const canvas = imageDataToCanvas(trimmedImageData);
 
