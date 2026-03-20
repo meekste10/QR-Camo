@@ -1,4 +1,4 @@
-import { pointInsideMask } from "./mask-engine.js?v=0.6.1";
+import { pointInsideMask } from "./mask-engine.js?v=0.6.2";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -114,19 +114,19 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
 
 export function render(options) {
   const {
-  tiles,
-  maskImg,
-  outputCanvas,
-  sourceQrCanvas,
-  overlayQrCanvas,
-  moduleCount,
-  qrSize = "medium",
-  qrOffsetX = 0,
-  qrOffsetY = 0,
-  blendTightness = 50,
-  maskScale = 100,
-  blockModules = 2
-} = options;
+    tiles,
+    maskImg,
+    outputCanvas,
+    sourceQrCanvas,
+    overlayQrCanvas,
+    moduleCount,
+    qrSize = "medium",
+    qrOffsetX = 0,
+    qrOffsetY = 0,
+    blendTightness = 50,
+    maskScale = 100,
+    blockModules = 2
+  } = options;
 
   const OUTPUT_SIZE = 800;
   const ctx = outputCanvas.getContext("2d");
@@ -209,14 +209,24 @@ export function render(options) {
 
   const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
 
-ctx.drawImage(
-  topQrCanvas,
-  0,
-  0,
-  topQrCanvas.width,
-  topQrCanvas.height,
-  centerX,
-  centerY,
-  centerFit.qrDisplaySize,
-  centerFit.qrDisplaySize
-);
+  ctx.imageSmoothingEnabled = false;
+  if ("mozImageSmoothingEnabled" in ctx) ctx.mozImageSmoothingEnabled = false;
+  if ("webkitImageSmoothingEnabled" in ctx) ctx.webkitImageSmoothingEnabled = false;
+  if ("msImageSmoothingEnabled" in ctx) ctx.msImageSmoothingEnabled = false;
+
+  const qrDrawX = Math.round(centerX);
+  const qrDrawY = Math.round(centerY);
+  const qrDrawSize = Math.round(centerFit.qrDisplaySize);
+
+  ctx.drawImage(
+    topQrCanvas,
+    0,
+    0,
+    topQrCanvas.width,
+    topQrCanvas.height,
+    qrDrawX,
+    qrDrawY,
+    qrDrawSize,
+    qrDrawSize
+  );
+}
