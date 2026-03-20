@@ -1,21 +1,20 @@
-const APP_VERSION = "v0.6.2";
+const APP_VERSION = "v0.6.3";
 
-import { state } from "./state.js?v=0.6.2";
+import { state } from "./state.js?v=0.6.3";
 import {
   threshold,
   trimWhiteBorder,
   imageDataToCanvas,
   normalizeQrImageData,
   cropQrInterior,
-  cropQrInteriorFromTrimmed,
-  estimateModuleSize
-} from "./qr-preprocess.js?v=0.6.2";
-import { extractTiles } from "./tile-engine.js?v=0.6.2";
-import { maskPresets } from "./presets.js?v=0.6.2";
-import { loadMask } from "./mask-engine.js?v=0.6.2";
-import { buildMaskFromImage } from "./mask-builder.js?v=0.6.2";
-import { render } from "./render-engine.js?v=0.6.2";
-import { exportPNG } from "./export.js?v=0.6.2";
+  cropQrInteriorFromTrimmed
+} from "./qr-preprocess.js?v=0.6.3";
+import { extractTiles } from "./tile-engine.js?v=0.6.3";
+import { maskPresets } from "./presets.js?v=0.6.3";
+import { loadMask } from "./mask-engine.js?v=0.6.3";
+import { buildMaskFromImage } from "./mask-builder.js?v=0.6.3";
+import { render } from "./render-engine.js?v=0.6.3";
+import { exportPNG } from "./export.js?v=0.6.3";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
 
@@ -66,13 +65,14 @@ state.overlayQrCanvas = null;
 state.textureTiles = [];
 state.moduleCount = 21;
 state.modulePixelSize = 1;
+state.blockModules = 2;
 
 const NUDGE_STEP = 8;
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_BLOCK_MODULES = 2;
-const DEFAULT_UPLOAD_THRESHOLD = 145;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
+const DEFAULT_UPLOAD_THRESHOLD = 145;
 
 function setDebug(msg) {
   if (debugPanel) debugPanel.textContent = msg;
@@ -341,9 +341,8 @@ async function handleQrUpload(file) {
 
   const normalized = normalizeQrImageData(inputImageData, DEFAULT_UPLOAD_THRESHOLD);
 
-  const trimmedThresholded = threshold(inputImageData, DEFAULT_UPLOAD_THRESHOLD);
-  const trimmedOnly = trimWhiteBorder(trimmedThresholded, 0);
-  const modulePixelSize = Math.max(1, estimateModuleSize(trimmedOnly));
+  const trimmedOnly = normalized.trimmedImageData;
+  const modulePixelSize = Math.max(1, trimmedOnly.width / normalized.moduleCount);
 
   const interiorCanvas = cropQrInteriorFromTrimmed(
     trimmedOnly,
@@ -378,7 +377,9 @@ async function handleQrUpload(file) {
 
   paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
-  setPreviewMeta(`QR ready · ${APP_VERSION} · modules ${normalized.moduleCount}`);
+  setPreviewMeta(
+    `QR ready · ${APP_VERSION} · modules ${normalized.moduleCount} · tilePx ${uploadTilePx}`
+  );
   show(qrReadyBadge, true);
 }
 
