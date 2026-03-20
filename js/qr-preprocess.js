@@ -153,6 +153,26 @@ function sampleRegionIsBlack(imageData, x0, y0, w, h) {
   return total > 0 ? dark / total >= 0.5 : false;
 }
 
+function nearestValidQrModuleCount(estimated) {
+  const valid = [];
+  for (let v = 1; v <= 40; v++) {
+    valid.push(21 + (v - 1) * 4);
+  }
+
+  let best = valid[0];
+  let bestDiff = Math.abs(estimated - best);
+
+  for (const count of valid) {
+    const diff = Math.abs(estimated - count);
+    if (diff < bestDiff) {
+      best = count;
+      bestDiff = diff;
+    }
+  }
+
+  return best;
+}
+
 export function normalizeQrImageData(imageData, thresholdValue = 128) {
   const thresholded = threshold(imageData, thresholdValue);
   const trimmed = trimWhiteBorder(thresholded, 0);
@@ -160,7 +180,8 @@ export function normalizeQrImageData(imageData, thresholdValue = 128) {
   let moduleSize = estimateModuleSize(trimmed);
   if (!moduleSize || moduleSize < 1) moduleSize = 1;
 
-  let moduleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
+  let estimatedModuleCount = Math.max(21, Math.round(trimmed.width / moduleSize));
+  let moduleCount = nearestValidQrModuleCount(estimatedModuleCount);
   moduleSize = trimmed.width / moduleCount;
 
   const normalizedCanvas = document.createElement("canvas");
@@ -189,7 +210,8 @@ export function normalizeQrImageData(imageData, thresholdValue = 128) {
   return {
     canvas: normalizedCanvas,
     moduleCount,
-    modulePixelSize: 1
+    modulePixelSize: 1,
+    trimmedImageData: trimmed
   };
 }
 
@@ -221,4 +243,24 @@ export function cropQrInterior(normalizedCanvas, insetModules = 8) {
   );
 
   return canvas;
+}
+
+export function cropQrInteriorFromTrimmed(trimmedImageData, modulePixelSize, moduleCount, insetModules = 8) {
+  const pxInset = Math.max(1, Math.round(insetModules * modulePixelSize));
+  const canvas = imageDataToCanvas(trimmedImageData);
+
+  const cropX = pxInset;
+  const cropY = pxInset;
+  const cropW = Math.max(1, canvas.width - pxInset * 2);
+  const cropH = Math.max(1, canvas.height - pxInset * 2);
+
+  const out = document.createElement("canvas");
+  out.width = cropW;
+  out.height = cropH;
+
+  const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+  return out;
 }
