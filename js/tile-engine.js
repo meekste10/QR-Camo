@@ -50,7 +50,7 @@ export function extractTiles(sourceCanvas, tileModules = 2, options = {}) {
       const stats = getTileStats(tileCanvas);
 
       if (rejectMostlySolid) {
-        if (stats.blackRatio < 0.05 || stats.blackRatio > 0.95) {
+        if (stats.blackRatio < 0.03 || stats.blackRatio > 0.97) {
           continue;
         }
       }
