@@ -97,7 +97,7 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   const { width, height } = maskCanvas;
 
   ctx.clearRect(0, 0, width, height);
-  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = false;
 
   const scale = Math.max(0.1, Number(scalePercent || 100) / 100);
   const baseW = maskImg.width || width;
@@ -147,7 +147,10 @@ export function render(options) {
   }
 
   const safeModuleCount = Math.max(21, moduleCount || sourceQrCanvas.width);
-  const safeBlockModules = Math.max(1, blockModules);
+
+  const firstTile = normalizeTile(tiles[0]);
+  const inferredTileUnits = firstTile ? firstTile.width : blockModules;
+  const tileUnits = Math.max(1, inferredTileUnits);
 
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
@@ -176,11 +179,11 @@ export function render(options) {
   };
 
   const moduleDisplaySize = centerFit.moduleDisplaySize;
-  const tileDisplaySize = moduleDisplaySize * safeBlockModules;
+  const tileDisplaySize = moduleDisplaySize * tileUnits;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.20 + tightness * 0.40;
-  const bleed = Math.max(1, Math.floor(tileDisplaySize * 0.04));
+  const minCoverage = 0.16 + tightness * 0.34;
+  const bleed = Math.max(0, Math.floor(tileDisplaySize * 0.025));
 
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
