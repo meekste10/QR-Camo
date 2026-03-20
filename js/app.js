@@ -1,7 +1,15 @@
 const APP_VERSION = "v0.6.2";
 
 import { state } from "./state.js?v=0.6.2";
-import { normalizeQrImageData, cropQrInterior } from "./qr-preprocess.js?v=0.6.2";
+import {
+  threshold,
+  trimWhiteBorder,
+  imageDataToCanvas,
+  normalizeQrImageData,
+  cropQrInterior,
+  cropQrInteriorFromTrimmed,
+  estimateModuleSize
+} from "./qr-preprocess.js?v=0.6.2";
 import { extractTiles } from "./tile-engine.js?v=0.6.2";
 import { maskPresets } from "./presets.js?v=0.6.2";
 import { loadMask } from "./mask-engine.js?v=0.6.2";
@@ -57,11 +65,13 @@ state.sourceQrCanvas = null;
 state.overlayQrCanvas = null;
 state.textureTiles = [];
 state.moduleCount = 21;
+state.modulePixelSize = 1;
 
 const NUDGE_STEP = 8;
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_BLOCK_MODULES = 2;
+const DEFAULT_UPLOAD_THRESHOLD = 145;
 
 function setDebug(msg) {
   if (debugPanel) debugPanel.textContent = msg;
@@ -265,7 +275,6 @@ function buildGeneratedQrCanvas(text) {
   });
 
   const moduleCount = qrModel.modules.size;
-
   const canvas = createCanvas(moduleCount, moduleCount);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
@@ -288,37 +297,46 @@ function buildGeneratedQrCanvas(text) {
   };
 }
 
+function buildOverlayCanvasFromUpload(imageData, thresholdValue = DEFAULT_UPLOAD_THRESHOLD) {
+  const thresholded = threshold(imageData, thresholdValue);
+  const trimmed = trimWhiteBorder(thresholded, 0);
+  return imageDataToCanvas(trimmed);
+}
+
 async function buildQrFromText(text) {
   if (!window.QRCode) {
     throw new Error("QRCode library not loaded");
   }
 
   const generated = buildGeneratedQrCanvas(text);
-  const interior = cropQrInterior(generated.normalizedCanvas, 8);
-  const tiles = extractTiles(interior, DEFAULT_BLOCK_MODULES, {
-    stride: DEFAULT_BLOCK_MODULES,
-    rejectMostlySolid: true
-  });
+
+  const tiles = extractTiles(
+    cropQrInterior(generated.normalizedCanvas, 8),
+    DEFAULT_BLOCK_MODULES,
+    {
+      stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
+      rejectMostlySolid: true,
+      minBlackRatio: 0.02,
+      maxBlackRatio: 0.98
+    }
+  );
 
   if (!tiles.length) {
     throw new Error("No tiles could be extracted from generated QR");
   }
 
-  state.sourceQrCanvas = generated.normalizedCanvas;   // tile/grid source
-  state.overlayQrCanvas = generated.overlayCanvas;     // top QR
+  state.sourceQrCanvas = generated.normalizedCanvas;
+  state.overlayQrCanvas = generated.overlayCanvas;
   state.textureTiles = tiles;
   state.moduleCount = generated.moduleCount;
+  state.modulePixelSize = 1;
 
   paintSourcePreview(generated.overlayCanvas);
   setSourceMeta("Generated from link/text");
   setPreviewMeta(`QR ready · ${APP_VERSION} · modules ${generated.moduleCount}`);
   show(qrReadyBadge, true);
 }
-function buildOverlayCanvasFromUpload(imageData, thresholdValue = 160) {
-  const thresholded = threshold(imageData, thresholdValue);
-  const trimmed = trimWhiteBorder(thresholded, 0);
-  return imageDataToCanvas(trimmed);
-}
+
 async function handleQrUpload(file) {
   const img = await loadImageFromFile(file);
 
@@ -328,29 +346,37 @@ async function handleQrUpload(file) {
 
   const inputImageData = ictx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
 
-  // 1. Build normalized QR for tile extraction
-  const normalized = normalizeQrImageData(inputImageData, 160);
+  const normalized = normalizeQrImageData(inputImageData, DEFAULT_UPLOAD_THRESHOLD);
 
-  // 2. Build trimmed original-style QR for the overlay on top
-  const overlayCanvas = buildOverlayCanvasFromUpload(inputImageData, 160);
+  const trimmedThresholded = threshold(inputImageData, DEFAULT_UPLOAD_THRESHOLD);
+  const trimmedOnly = trimWhiteBorder(trimmedThresholded, 0);
+  const modulePixelSize = Math.max(1, estimateModuleSize(trimmedOnly));
 
-  // 3. Extract interior tiles from normalized QR
-  const interior = cropQrInterior(normalized.canvas, 8);
-  const tiles = extractTiles(interior, DEFAULT_BLOCK_MODULES, {
-    stride: DEFAULT_BLOCK_MODULES,
-    rejectMostlySolid: true
+  const interiorCanvas = cropQrInteriorFromTrimmed(
+    trimmedOnly,
+    modulePixelSize,
+    8
+  );
+
+  const tilePx = Math.max(2, Math.round(modulePixelSize * DEFAULT_BLOCK_MODULES));
+  const tiles = extractTiles(interiorCanvas, tilePx, {
+    stride: Math.max(1, Math.floor(tilePx / 2)),
+    rejectMostlySolid: true,
+    minBlackRatio: 0.02,
+    maxBlackRatio: 0.98
   });
 
   if (!tiles.length) {
     throw new Error("No tiles could be extracted from uploaded QR");
   }
 
-  state.sourceQrCanvas = normalized.canvas;   // used for tile math only
-  state.overlayQrCanvas = overlayCanvas;      // used for final QR on top
+  state.sourceQrCanvas = normalized.canvas;
+  state.overlayQrCanvas = normalized.canvas;
   state.textureTiles = tiles;
   state.moduleCount = normalized.moduleCount;
+  state.modulePixelSize = modulePixelSize;
 
-  paintSourcePreview(overlayCanvas);
+  paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
   setPreviewMeta(`QR ready · ${APP_VERSION} · modules ${normalized.moduleCount}`);
   show(qrReadyBadge, true);
@@ -402,19 +428,19 @@ async function renderOutput() {
     }
 
     render({
-  tiles: state.textureTiles,
-  maskImg: maskSource,
-  outputCanvas,
-  sourceQrCanvas: state.sourceQrCanvas,       // normalized grid for sizing math
-  overlayQrCanvas: state.overlayQrCanvas || state.sourceQrCanvas, // final top QR
-  moduleCount: state.moduleCount,
-  qrSize: qrSizeSelect.value,
-  qrOffsetX: Number(qrOffsetX.value || 0),
-  qrOffsetY: Number(qrOffsetY.value || 0),
-  blendTightness: DEFAULT_BLEND_TIGHTNESS,
-  maskScale: DEFAULT_MASK_SCALE,
-  blockModules: DEFAULT_BLOCK_MODULES
-});
+      tiles: state.textureTiles,
+      maskImg: maskSource,
+      outputCanvas,
+      sourceQrCanvas: state.sourceQrCanvas,
+      overlayQrCanvas: state.overlayQrCanvas || state.sourceQrCanvas,
+      moduleCount: state.moduleCount,
+      qrSize: qrSizeSelect.value,
+      qrOffsetX: Number(qrOffsetX.value || 0),
+      qrOffsetY: Number(qrOffsetY.value || 0),
+      blendTightness: DEFAULT_BLEND_TIGHTNESS,
+      maskScale: DEFAULT_MASK_SCALE,
+      blockModules: DEFAULT_BLOCK_MODULES
+    });
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
