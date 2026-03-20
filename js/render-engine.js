@@ -51,6 +51,19 @@ function pickTileIndex(gridX, gridY, tileCount, seed = 0) {
   return hash2D(gridX, gridY, seed) % tileCount;
 }
 
+function pointInsideMaskFast(maskCtx, x, y) {
+  const px = Math.floor(x);
+  const py = Math.floor(y);
+  const canvas = maskCtx.canvas;
+
+  if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) {
+    return false;
+  }
+
+  const pixel = maskCtx.getImageData(px, py, 1, 1).data;
+  return pixel[3] > 0;
+}
+
 function cellMaskCoverage(mctx, x, y, size) {
   const inset = Math.max(1, Math.floor(size * 0.18));
 
@@ -68,7 +81,7 @@ function cellMaskCoverage(mctx, x, y, size) {
 
   let inside = 0;
   for (const [sx, sy] of samples) {
-    if (pointInsideMask(mctx, sx, sy)) inside++;
+    if (pointInsideMaskFast(mctx, sx, sy)) inside++;
   }
 
   return inside / samples.length;
@@ -147,10 +160,7 @@ export function render(options) {
   }
 
   const safeModuleCount = Math.max(21, moduleCount || sourceQrCanvas.width);
-
-  const firstTile = normalizeTile(tiles[0]);
-  const inferredTileUnits = firstTile ? firstTile.width : blockModules;
-  const tileUnits = Math.max(1, inferredTileUnits);
+  const safeBlockModules = Math.max(1, blockModules);
 
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
@@ -179,7 +189,7 @@ export function render(options) {
   };
 
   const moduleDisplaySize = centerFit.moduleDisplaySize;
-  const tileDisplaySize = moduleDisplaySize * tileUnits;
+  const tileDisplaySize = moduleDisplaySize * safeBlockModules;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.16 + tightness * 0.34;
