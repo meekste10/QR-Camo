@@ -126,7 +126,8 @@ export function render(options) {
     qrOffsetX = 0,
     qrOffsetY = 0,
     blendTightness = 50,
-    maskScale = 100
+    maskScale = 100,
+    blockModules = null
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -163,7 +164,10 @@ export function render(options) {
   cctx.imageSmoothingEnabled = false;
 
   const safeModulePixelSize = Math.max(1, modulePixelSize || 1);
-  const safeModuleCount = Math.max(21, moduleCount || Math.round(sourceQrCanvas.width / safeModulePixelSize));
+  const safeModuleCount = Math.max(
+    21,
+    moduleCount || Math.round(sourceQrCanvas.width / safeModulePixelSize)
+  );
 
   const centerFit = fitQrCenter(OUTPUT_SIZE, safeModuleCount, qrSize);
 
@@ -176,7 +180,14 @@ export function render(options) {
     size: centerFit.qrDisplaySize
   };
 
-  const drawSize = centerFit.moduleDisplaySize;
+  const firstTile = normalizeTile(tiles[0]);
+  const inferredTileModules = firstTile ? firstTile.width : 1;
+  const tileModules = Math.max(1, blockModules || inferredTileModules);
+
+  // THE FIX:
+  // draw each tile at its true module-based display size
+  const drawSize = centerFit.moduleDisplaySize * tileModules;
+
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.20 + tightness * 0.40;
   const bleed = Math.max(1, Math.floor(drawSize * 0.04));
