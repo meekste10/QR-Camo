@@ -24,12 +24,12 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   return { x, y, qrDisplaySize, moduleDisplaySize };
 }
 
-function cellIntersectsRect(x, y, size, rect) {
+function rectsIntersect(a, b) {
   return !(
-    x + size <= rect.x ||
-    x >= rect.x + rect.size ||
-    y + size <= rect.y ||
-    y >= rect.y + rect.size
+    a.x + a.size <= b.x ||
+    a.x >= b.x + b.size ||
+    a.y + a.size <= b.y ||
+    a.y >= b.y + b.size
   );
 }
 
@@ -51,19 +51,6 @@ function pickTileIndex(gridX, gridY, tileCount, seed = 0) {
   return hash2D(gridX, gridY, seed) % tileCount;
 }
 
-function pointInsideMaskFast(maskCtx, x, y) {
-  const px = Math.floor(x);
-  const py = Math.floor(y);
-  const canvas = maskCtx.canvas;
-
-  if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) {
-    return false;
-  }
-
-  const pixel = maskCtx.getImageData(px, py, 1, 1).data;
-  return pixel[3] > 0;
-}
-
 function cellMaskCoverage(mctx, x, y, size) {
   const inset = Math.max(1, Math.floor(size * 0.18));
 
@@ -81,7 +68,7 @@ function cellMaskCoverage(mctx, x, y, size) {
 
   let inside = 0;
   for (const [sx, sy] of samples) {
-    if (pointInsideMaskFast(mctx, sx, sy)) inside++;
+    if (pointInsideMask(mctx, sx, sy)) inside++;
   }
 
   return inside / samples.length;
@@ -191,13 +178,21 @@ export function render(options) {
   const moduleDisplaySize = centerFit.moduleDisplaySize;
   const tileDisplaySize = moduleDisplaySize * safeBlockModules;
 
+  const qrGapPx = Math.max(2, Math.round(moduleDisplaySize * 0.85));
+  const protectedCenterRect = {
+    x: centerRect.x - qrGapPx,
+    y: centerRect.y - qrGapPx,
+    size: centerRect.size + qrGapPx * 2
+  };
+
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.16 + tightness * 0.34;
-  const bleed = Math.max(0, Math.floor(tileDisplaySize * 0.025));
+  const minCoverage = 0.14 + tightness * 0.30;
+  const bleed = 0;
 
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
-      if (cellIntersectsRect(x, y, tileDisplaySize, centerRect)) continue;
+      const tileRect = { x, y, size: tileDisplaySize };
+      if (rectsIntersect(tileRect, protectedCenterRect)) continue;
 
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
       if (coverage < minCoverage) continue;
