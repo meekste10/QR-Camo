@@ -421,20 +421,20 @@ async function renderOutput() {
       maskSource = await loadMask(maskPresets[selectedMask]);
       show(shapeReadyBadge, true);
     }
-
     render({
-      tiles: state.textureTiles,
-      maskImg: maskSource,
-      outputCanvas,
-      sourceQrCanvas: state.sourceQrCanvas,
-      modulePixelSize: state.modulePixelSize,
-      moduleCount: state.moduleCount,
-      qrSize: qrSizeSelect.value,
-      qrOffsetX: Number(qrOffsetX.value || 0),
-      qrOffsetY: Number(qrOffsetY.value || 0),
-      blendTightness: DEFAULT_BLEND_TIGHTNESS,
-      maskScale: DEFAULT_MASK_SCALE
-    });
+  tiles: state.textureTiles,
+  maskImg: maskSource,
+  outputCanvas,
+  sourceQrCanvas: state.sourceQrCanvas,
+  modulePixelSize: state.modulePixelSize,
+  moduleCount: state.moduleCount,
+  qrSize: qrSizeSelect.value,
+  qrOffsetX: Number(qrOffsetX.value || 0),
+  qrOffsetY: Number(qrOffsetY.value || 0),
+  blendTightness: DEFAULT_BLEND_TIGHTNESS,
+  maskScale: DEFAULT_MASK_SCALE,
+  blockModules: 2
+});
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
