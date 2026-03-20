@@ -4,6 +4,7 @@ import { state } from "./state.js?v=0.6.2";
 import {
   threshold,
   trimWhiteBorder,
+  imageDataToCanvas,
   normalizeQrImageData,
   cropQrInterior,
   cropQrInteriorFromTrimmed,
@@ -360,8 +361,10 @@ async function handleQrUpload(file) {
     throw new Error("No tiles could be extracted from uploaded QR");
   }
 
+  const overlayCanvas = imageDataToCanvas(trimmedOnly);
+
   state.sourceQrCanvas = normalized.canvas;
-  state.overlayQrCanvas = normalized.canvas;
+  state.overlayQrCanvas = overlayCanvas;
   state.textureTiles = tiles;
   state.moduleCount = normalized.moduleCount;
   state.modulePixelSize = modulePixelSize;
