@@ -114,18 +114,19 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
 
 export function render(options) {
   const {
-    tiles,
-    maskImg,
-    outputCanvas,
-    sourceQrCanvas,
-    moduleCount,
-    qrSize = "medium",
-    qrOffsetX = 0,
-    qrOffsetY = 0,
-    blendTightness = 50,
-    maskScale = 100,
-    blockModules = 2
-  } = options;
+  tiles,
+  maskImg,
+  outputCanvas,
+  sourceQrCanvas,
+  overlayQrCanvas,
+  moduleCount,
+  qrSize = "medium",
+  qrOffsetX = 0,
+  qrOffsetY = 0,
+  blendTightness = 50,
+  maskScale = 100,
+  blockModules = 2
+} = options;
 
   const OUTPUT_SIZE = 800;
   const ctx = outputCanvas.getContext("2d");
@@ -206,15 +207,16 @@ export function render(options) {
 
   ctx.drawImage(camoCanvas, 0, 0);
 
-  ctx.drawImage(
-    sourceQrCanvas,
-    0,
-    0,
-    sourceQrCanvas.width,
-    sourceQrCanvas.height,
-    centerX,
-    centerY,
-    centerFit.qrDisplaySize,
-    centerFit.qrDisplaySize
-  );
-}
+  const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
+
+ctx.drawImage(
+  topQrCanvas,
+  0,
+  0,
+  topQrCanvas.width,
+  topQrCanvas.height,
+  centerX,
+  centerY,
+  centerFit.qrDisplaySize,
+  centerFit.qrDisplaySize
+);
