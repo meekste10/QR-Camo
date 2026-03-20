@@ -1,10 +1,12 @@
+const BASE = "./assets/masks/";
+
 export const maskPresets = {
-  heart: "assets/masks/heart.png",
-  house: "assets/masks/house.png",
-  tag: "assets/masks/tag.png",
-  star: "assets/masks/star.png",
-  pizza: "assets/masks/pizza.png",
-  mug: "assets/masks/mug.png",
-  tree: "assets/masks/tree.png",
-  turtle: "assets/masks/turtle.png"
+  heart: `${BASE}heart.png`,
+  house: `${BASE}house.png`,
+  tag: `${BASE}tag.png`,
+  star: `${BASE}star.png`,
+  pizza: `${BASE}pizza.png`,
+  mug: `${BASE}mug.png`,
+  tree: `${BASE}tree.png`,
+  turtle: `${BASE}turtle.png`
 };
