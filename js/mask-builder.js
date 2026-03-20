@@ -12,6 +12,7 @@ export function buildMaskFromImage(img, options = {}) {
   const ctx = canvas.getContext("2d");
 
   ctx.clearRect(0, 0, size, size);
+  ctx.imageSmoothingEnabled = false;
 
   const scale = Math.min(
     (size * targetFill) / img.width,
@@ -42,7 +43,7 @@ export function buildMaskFromImage(img, options = {}) {
       continue;
     }
 
-    const gray = Math.round((r + g + b) / 3);
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
     let inside = gray < threshold;
     if (invert) inside = !inside;
