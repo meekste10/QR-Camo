@@ -19,8 +19,7 @@ export function loadImage(fileOrSrc) {
   });
 }
 
-export function drawToCanvas(img, canvas) {
-  const maxSize = 900;
+export function drawToCanvas(img, canvas, maxSize = 900) {
   const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
 
   const width = Math.max(1, Math.round(img.width * scale));
