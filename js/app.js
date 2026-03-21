@@ -549,6 +549,15 @@ function init() {
   qrSizeSelect.addEventListener("change", () => {
     setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
   });
+    qrOffsetX.addEventListener("input", () => {
+    syncOffsetLabels();
+    renderOutput();
+  });
+
+  qrOffsetY.addEventListener("input", () => {
+    syncOffsetLabels();
+    renderOutput();
+  });
 
   nudgeUp.addEventListener("click", () => nudge(0, -NUDGE_STEP));
   nudgeRight.addEventListener("click", () => nudge(NUDGE_STEP, 0));
