@@ -251,7 +251,7 @@ function paintSourcePreview(sourceCanvas) {
   const ctx = sourcePreviewCanvas.getContext("2d");
   drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
 
-  updatePreviewFlags({ hasSource: true, hasOutput: 
+  updatePreviewFlags({ hasSource: true, hasOutput: false});
 }
 
 function loadImageFromFile(file) {
@@ -445,7 +445,6 @@ async function renderOutput() {
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
-    false });
   // 🧊 Cache base render AFTER coloring
 state.baseCanvas = document.createElement("canvas");
 state.baseCanvas.width = outputCanvas.width;
