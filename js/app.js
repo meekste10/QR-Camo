@@ -251,7 +251,7 @@ function paintSourcePreview(sourceCanvas) {
   const ctx = sourcePreviewCanvas.getContext("2d");
   drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
 
-  updatePreviewFlags({ hasSource: true, hasOutput: false});
+  updatePreviewFlags({ hasSource: true, hasOutput: false });
 }
 
 function loadImageFromFile(file) {
@@ -436,8 +436,8 @@ async function renderOutput() {
       overlayQrCanvas: state.overlayQrCanvas || state.sourceQrCanvas,
       moduleCount: state.moduleCount,
       qrSize: qrSizeSelect.value,
-      qrOffsetX: 0,
-      qrOffsetY: 0,
+      qrOffsetX: Number(qrOffsetX.value || 0),
+      qrOffsetY: Number(qrOffsetY.value || 0),
       blendTightness: DEFAULT_BLEND_TIGHTNESS,
       maskScale: DEFAULT_MASK_SCALE,
       blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
@@ -445,21 +445,6 @@ async function renderOutput() {
 
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
-  // 🧊 Cache base render AFTER coloring
-state.baseCanvas = document.createElement("canvas");
-state.baseCanvas.width = outputCanvas.width;
-state.baseCanvas.height = outputCanvas.height;
-
-state.baseCtx = state.baseCanvas.getContext("2d");
-state.baseCtx.drawImage(outputCanvas, 0, 0);
-
-// initialize live transform from current offsets
-state.liveTransform.x = Number(qrOffsetX.value || 0);
-state.liveTransform.y = Number(qrOffsetY.value || 0);
-state.liveTransform.scale = 1;
-
-// draw live layer
-drawLiveComposite();
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     setDebug(`Render complete · ${APP_VERSION}`);
@@ -470,26 +455,15 @@ drawLiveComposite();
 }
 
 function nudge(dx, dy) {
-  state.liveTransform.x += dx;
-  state.liveTransform.y += dy;
-
-  qrOffsetX.value = String(state.liveTransform.x);
-  qrOffsetY.value = String(state.liveTransform.y);
+  qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -240, 240));
+  qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -240, 240));
   syncOffsetLabels();
-
-  drawLiveComposite();
 }
 
 function resetPosition() {
-  state.liveTransform.x = 0;
-  state.liveTransform.y = 0;
-  state.liveTransform.scale = 1;
-
   qrOffsetX.value = "0";
   qrOffsetY.value = "0";
   syncOffsetLabels();
-
-  drawLiveComposite();
 }
 
 function init() {
@@ -595,44 +569,5 @@ function init() {
     if (outputCanvas.width) applyCurrentColorsToOutput();
   });
 }
-outputCanvas.addEventListener("mousedown", () => {
-  state.liveTransform.isDragging = true;
-});
 
-outputCanvas.addEventListener("mouseup", () => {
-  state.liveTransform.isDragging = false;
-});
-
-outputCanvas.addEventListener("mousemove", (e) => {
-  if (!state.liveTransform.isDragging) return;
-
-  const rect = outputCanvas.getBoundingClientRect();
-
-  state.liveTransform.x = e.clientX - rect.left;
-  state.liveTransform.y = e.clientY - rect.top;
-
-  drawLiveComposite();
-});
 init();
-function drawLiveComposite() {
-  if (!state.baseCanvas) return;
-
-  const ctx = outputCanvas.getContext("2d");
-
-  ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-  ctx.drawImage(state.baseCanvas, 0, 0);
-
-  if (!state.overlayQrCanvas) return;
-
-  const { x, y, scale } = state.liveTransform;
-
-  ctx.save();
-
-  ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.imageSmoothingEnabled = false;
-
-  ctx.drawImage(state.overlayQrCanvas, 0, 0);
-
-  ctx.restore();
-}
