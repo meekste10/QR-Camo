@@ -458,12 +458,14 @@ function nudge(dx, dy) {
   qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -240, 240));
   qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -240, 240));
   syncOffsetLabels();
+  renderOutput();
 }
 
 function resetPosition() {
   qrOffsetX.value = "0";
   qrOffsetY.value = "0";
   syncOffsetLabels();
+  renderOutput();
 }
 
 function init() {
