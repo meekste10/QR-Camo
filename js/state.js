@@ -15,3 +15,12 @@ export const state = {
   moduleCount: 21,
   modulePixelSize: 1
 };
+state.baseCanvas = null;
+state.baseCtx = null;
+
+state.liveTransform = {
+  x: 0,
+  y: 0,
+  scale: 1,
+  isDragging: false
+};
