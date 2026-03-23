@@ -482,20 +482,27 @@ function init() {
   setDebug(`Ready · ${APP_VERSION}`);
 
   makeQrBtn.addEventListener("click", async () => {
-    try {
-      const text = (qrTextInput.value || "").trim();
-      if (!text) {
-        setDebug("Paste a link or text first.");
-        return;
-      }
+  try {
+    const text = (qrTextInput.value || "").trim();
 
-      await buildQrFromText(text);
-      setDebug(`QR created from text · ${APP_VERSION}`);
-    } catch (err) {
-      console.error(err);
-      setDebug(`QR generation failed: ${err.message}`);
+    if (!text) {
+      setDebug("Paste a link or text first.");
+      return;
     }
-  });
+
+    await buildQrFromText(text);
+
+    makeQrBtn.textContent = "Created";
+    makeQrBtn.classList.remove("btn-primary");
+    makeQrBtn.classList.add("btn-secondary");
+    makeQrBtn.disabled = true;
+
+    setDebug(`QR created · ${APP_VERSION}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`QR generation failed: ${err.message}`);
+  }
+});
 
   qrTextInput.addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
