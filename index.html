@@ -71,7 +71,19 @@
             <option value="medium" selected>Medium</option>
             <option value="large">Large</option>
           </select>
-
+  <label class="label" for="maskScale">Mask size</label>
+  <input
+    id="maskScale"
+    type="range"
+    min="80"
+    max="140"
+    step="1"
+    value="100"
+    class="range-input"
+  />
+  <div class="offset-row">
+    <div class="offset-chip">Mask: <span id="maskScaleLabel">100</span>%</div>
+  </div>
           <div class="action-row action-row-single">
             <button id="generateBtn" class="btn-primary" type="button">Generate QR-Camo</button>
           </div>
