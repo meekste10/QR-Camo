@@ -8,11 +8,11 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
   let targetFraction = 0.34;
-if (qrSize === "xxsmall") targetFraction = 0.14;
-if (qrSize === "xsmall") targetFraction = 0.20;
-if (qrSize === "small") targetFraction = 0.26;
-if (qrSize === "medium") targetFraction = 0.34;
-if (qrSize === "large") targetFraction = 0.42;
+  if (qrSize === "xxsmall") targetFraction = 0.14;
+  if (qrSize === "xsmall") targetFraction = 0.20;
+  if (qrSize === "small") targetFraction = 0.26;
+  if (qrSize === "medium") targetFraction = 0.34;
+  if (qrSize === "large") targetFraction = 0.42;
 
   let qrDisplaySize = Math.floor(outputSize * targetFraction);
 
@@ -80,7 +80,7 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
   );
 }
 
-function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
+function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0) {
   const ctx = maskCanvas.getContext("2d");
   const { width, height } = maskCanvas;
 
@@ -88,9 +88,15 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   ctx.imageSmoothingEnabled = false;
 
   const scale = Math.max(0.1, Number(scalePercent || 100) / 100);
+  const safePadding = Math.max(0, Number(paddingPx || 0));
+
   const baseW = maskImg.width || width;
   const baseH = maskImg.height || height;
-  const fitScale = Math.min(width / baseW, height / baseH) * scale;
+
+  const fitW = Math.max(1, width - safePadding * 2);
+  const fitH = Math.max(1, height - safePadding * 2);
+
+  const fitScale = Math.min(fitW / baseW, fitH / baseH) * scale;
 
   const drawW = Math.max(1, Math.round(baseW * fitScale));
   const drawH = Math.max(1, Math.round(baseH * fitScale));
@@ -98,6 +104,57 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100) {
   const dy = Math.round((height - drawH) / 2);
 
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
+}
+
+function buildEdgeBand(maskCanvas, insetPx, fillStyle) {
+  const w = maskCanvas.width;
+  const h = maskCanvas.height;
+
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+
+  const ctx = out.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.drawImage(maskCanvas, 0, 0);
+
+  const innerInset = Math.max(1, insetPx);
+
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.drawImage(
+    maskCanvas,
+    innerInset,
+    innerInset,
+    Math.max(1, w - innerInset * 2),
+    Math.max(1, h - innerInset * 2)
+  );
+
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = fillStyle;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.globalCompositeOperation = "source-over";
+  return out;
+}
+
+function applyEdgePostFX(ctx, maskCanvas, depth = 3) {
+  const safeDepth = Math.max(0, Math.round(depth || 0));
+  if (!safeDepth) return;
+
+  const highlightBand = buildEdgeBand(maskCanvas, safeDepth, "rgba(255,255,255,1)");
+  const shadowBand = buildEdgeBand(maskCanvas, safeDepth, "rgba(0,0,0,1)");
+
+  ctx.save();
+
+  ctx.globalAlpha = 0.14;
+  ctx.drawImage(shadowBand, safeDepth, safeDepth);
+
+  ctx.globalAlpha = 0.18;
+  ctx.drawImage(highlightBand, -safeDepth, -safeDepth);
+
+  ctx.restore();
 }
 
 export function render(options) {
@@ -113,6 +170,7 @@ export function render(options) {
     qrOffsetY = 0,
     blendTightness = 50,
     maskScale = 100,
+    maskPadding = 0,
     blockModules = 2
   } = options;
 
@@ -140,7 +198,7 @@ export function render(options) {
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
   maskCanvas.height = OUTPUT_SIZE;
-  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale);
+  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale, maskPadding);
 
   const mctx = maskCanvas.getContext("2d");
 
@@ -162,9 +220,6 @@ export function render(options) {
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
 
-  // Important:
-  // Do NOT carve out a square hole around the center QR.
-  // Let the camo render continuously, then place the QR on top.
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
@@ -187,6 +242,8 @@ export function render(options) {
   cctx.globalCompositeOperation = "source-over";
 
   ctx.drawImage(camoCanvas, 0, 0);
+
+  applyEdgePostFX(ctx, maskCanvas, 3);
 
   const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
 
