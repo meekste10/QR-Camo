@@ -190,6 +190,61 @@ select{
 .select-input:focus{
   border-color:rgba(67,131,255,.78);
   box-shadow:0 0 0 4px rgba(50,118,255,.16);
+.range-input {
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1e293b, #0f172a);
+  outline: none;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* slider track */
+.range-input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+}
+
+.range-input::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+}
+
+/* slider thumb */
+.range-input::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  border: 2px solid rgba(255,255,255,0.85);
+  cursor: pointer;
+  margin-top: -5px;
+  transition: transform 0.08s ease;
+}
+
+.range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.range-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  border: 2px solid rgba(255,255,255,0.85);
+  cursor: pointer;
+}
+
+/* keeps spacing consistent with offset chips */
+.offset-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
 }
 
 .inline-row{
