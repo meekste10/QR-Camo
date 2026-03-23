@@ -32,6 +32,11 @@ const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
 
 const qrSizeSelect = document.getElementById("qrSizeSelect");
+const maskScale = document.getElementById("maskScale");
+const maskScaleLabel = document.getElementById("maskScaleLabel");
+const maskPadding = document.getElementById("maskPadding");
+const maskPaddingLabel = document.getElementById("maskPaddingLabel");
+
 const qrOffsetX = document.getElementById("qrOffsetX");
 const qrOffsetY = document.getElementById("qrOffsetY");
 const qrOffsetXLabel = document.getElementById("qrOffsetXLabel");
@@ -70,6 +75,7 @@ state.blockModules = 2;
 const NUDGE_STEP = 8;
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
+const DEFAULT_MASK_PADDING = 0;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
@@ -107,6 +113,14 @@ function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
 function syncOffsetLabels() {
   if (qrOffsetXLabel) qrOffsetXLabel.textContent = String(qrOffsetX.value);
   if (qrOffsetYLabel) qrOffsetYLabel.textContent = String(qrOffsetY.value);
+}
+
+function syncMaskScaleLabel() {
+  if (maskScaleLabel) maskScaleLabel.textContent = String(maskScale.value);
+}
+
+function syncMaskPaddingLabel() {
+  if (maskPaddingLabel) maskPaddingLabel.textContent = String(maskPadding.value);
 }
 
 function clamp(value, min, max) {
@@ -439,7 +453,8 @@ async function renderOutput() {
       qrOffsetX: Number(qrOffsetX.value || 0),
       qrOffsetY: Number(qrOffsetY.value || 0),
       blendTightness: DEFAULT_BLEND_TIGHTNESS,
-      maskScale: DEFAULT_MASK_SCALE,
+      maskScale: Number(maskScale.value || DEFAULT_MASK_SCALE),
+      maskPadding: Number(maskPadding.value || DEFAULT_MASK_PADDING),
       blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
     });
 
@@ -491,6 +506,8 @@ function init() {
 
   populatePresetSelect();
   syncOffsetLabels();
+  syncMaskScaleLabel();
+  syncMaskPaddingLabel();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
   setPreviewMeta(`Waiting for QR or shape · ${APP_VERSION}`);
@@ -597,6 +614,18 @@ function init() {
 
   qrOffsetY.addEventListener("input", () => {
     syncOffsetLabels();
+    resetGenerateButton();
+    renderOutput();
+  });
+
+  maskScale.addEventListener("input", () => {
+    syncMaskScaleLabel();
+    resetGenerateButton();
+    renderOutput();
+  });
+
+  maskPadding.addEventListener("input", () => {
+    syncMaskPaddingLabel();
     resetGenerateButton();
     renderOutput();
   });
