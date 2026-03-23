@@ -412,7 +412,7 @@ async function renderOutput() {
   try {
     if (!state.sourceQrCanvas || !state.textureTiles?.length) {
       setDebug("Create or upload a QR first.");
-      return;
+      return false;
     }
 
     let maskSource = null;
@@ -448,9 +448,11 @@ async function renderOutput() {
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     setDebug(`Render complete · ${APP_VERSION}`);
+    return true;
   } catch (err) {
     console.error(err);
     setDebug(`Render failed: ${err.message}`);
+    return false;
   }
 }
 
@@ -468,6 +470,20 @@ function resetPosition() {
   renderOutput();
 }
 
+function resetGenerateButton() {
+  generateBtn.textContent = "Generate QR-Camo";
+  generateBtn.classList.remove("btn-secondary");
+  generateBtn.classList.add("btn-primary");
+  generateBtn.disabled = false;
+}
+
+function resetCreateButton() {
+  makeQrBtn.textContent = "Create QR";
+  makeQrBtn.classList.remove("btn-secondary");
+  makeQrBtn.classList.add("btn-primary");
+  makeQrBtn.disabled = false;
+}
+
 function init() {
   if (appVersionBadge) {
     appVersionBadge.textContent = APP_VERSION;
@@ -482,27 +498,27 @@ function init() {
   setDebug(`Ready · ${APP_VERSION}`);
 
   makeQrBtn.addEventListener("click", async () => {
-  try {
-    const text = (qrTextInput.value || "").trim();
+    try {
+      const text = (qrTextInput.value || "").trim();
 
-    if (!text) {
-      setDebug("Paste a link or text first.");
-      return;
+      if (!text) {
+        setDebug("Paste a link or text first.");
+        return;
+      }
+
+      await buildQrFromText(text);
+
+      makeQrBtn.textContent = "Created";
+      makeQrBtn.classList.remove("btn-primary");
+      makeQrBtn.classList.add("btn-secondary");
+      makeQrBtn.disabled = true;
+
+      setDebug(`QR created · ${APP_VERSION}`);
+    } catch (err) {
+      console.error(err);
+      setDebug(`QR generation failed: ${err.message}`);
     }
-
-    await buildQrFromText(text);
-
-    makeQrBtn.textContent = "Created";
-    makeQrBtn.classList.remove("btn-primary");
-    makeQrBtn.classList.add("btn-secondary");
-    makeQrBtn.disabled = true;
-
-    setDebug(`QR created · ${APP_VERSION}`);
-  } catch (err) {
-    console.error(err);
-    setDebug(`QR generation failed: ${err.message}`);
-  }
-});
+  });
 
   qrTextInput.addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
@@ -515,6 +531,13 @@ function init() {
       const file = e.target.files?.[0];
       if (!file) return;
       await handleQrUpload(file);
+
+      resetCreateButton();
+      makeQrBtn.textContent = "Created";
+      makeQrBtn.classList.remove("btn-primary");
+      makeQrBtn.classList.add("btn-secondary");
+      makeQrBtn.disabled = true;
+
       setDebug(`QR uploaded · ${APP_VERSION}`);
     } catch (err) {
       console.error(err);
@@ -537,7 +560,15 @@ function init() {
     }
   });
 
-  generateBtn.addEventListener("click", renderOutput);
+  generateBtn.addEventListener("click", async () => {
+    const ok = await renderOutput();
+    if (!ok) return;
+
+    generateBtn.textContent = "Generated";
+    generateBtn.classList.remove("btn-primary");
+    generateBtn.classList.add("btn-secondary");
+    generateBtn.disabled = true;
+  });
 
   exportBtn.addEventListener("click", () => {
     try {
@@ -555,14 +586,18 @@ function init() {
 
   qrSizeSelect.addEventListener("change", () => {
     setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
+    resetGenerateButton();
   });
-    qrOffsetX.addEventListener("input", () => {
+
+  qrOffsetX.addEventListener("input", () => {
     syncOffsetLabels();
+    resetGenerateButton();
     renderOutput();
   });
 
   qrOffsetY.addEventListener("input", () => {
     syncOffsetLabels();
+    resetGenerateButton();
     renderOutput();
   });
 
@@ -574,18 +609,31 @@ function init() {
 
   foregroundColor.addEventListener("input", () => {
     updateContrastWarning();
+    resetGenerateButton();
     if (outputCanvas.width) applyCurrentColorsToOutput();
   });
 
   backgroundColor.addEventListener("input", () => {
     updateContrastWarning();
+    resetGenerateButton();
     if (outputCanvas.width) applyCurrentColorsToOutput();
   });
 
   transparentBackground.addEventListener("change", () => {
     updateContrastWarning();
+    resetGenerateButton();
     if (outputCanvas.width) applyCurrentColorsToOutput();
   });
+
+  qrTextInput.addEventListener("input", resetCreateButton);
+  qrUpload.addEventListener("change", resetCreateButton);
+
+  maskSelect.addEventListener("change", resetGenerateButton);
+  customMaskUpload.addEventListener("change", resetGenerateButton);
+
+  foregroundColor.addEventListener("input", resetGenerateButton);
+  backgroundColor.addEventListener("input", resetGenerateButton);
+  transparentBackground.addEventListener("change", resetGenerateButton);
 }
 
 init();
