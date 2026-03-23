@@ -71,6 +71,18 @@
             <option value="medium" selected>Medium</option>
             <option value="large">Large</option>
           </select>
+<div class="section">
+  <h2>3. Size + Create</h2>
+
+  <label class="label" for="qrSizeSelect">QR size</label>
+  <select id="qrSizeSelect" class="select-input">
+    <option value="xxsmall">Extra Extra Small</option>
+    <option value="xsmall">Extra Small</option>
+    <option value="small">Small</option>
+    <option value="medium" selected>Medium</option>
+    <option value="large">Large</option>
+  </select>
+
   <label class="label" for="maskScale">Mask size</label>
   <input
     id="maskScale"
@@ -84,10 +96,25 @@
   <div class="offset-row">
     <div class="offset-chip">Mask: <span id="maskScaleLabel">100</span>%</div>
   </div>
-          <div class="action-row action-row-single">
-            <button id="generateBtn" class="btn-primary" type="button">Generate QR-Camo</button>
-          </div>
-        </div>
+
+  <label class="label" for="maskPadding">Mask padding</label>
+  <input
+    id="maskPadding"
+    type="range"
+    min="0"
+    max="120"
+    step="1"
+    value="0"
+    class="range-input"
+  />
+  <div class="offset-row">
+    <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
+  </div>
+
+  <div class="action-row action-row-single">
+    <button id="generateBtn" class="btn-primary" type="button">Generate QR-Camo</button>
+  </div>
+</div>
 
         <div class="section preview-embedded-section">
           <h2>4. Preview</h2>
