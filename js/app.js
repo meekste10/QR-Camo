@@ -73,6 +73,7 @@ state.modulePixelSize = 1;
 state.blockModules = 2;
 
 const NUDGE_STEP = 8;
+const PAN_LIMIT = 360;
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_MASK_PADDING = 0;
@@ -472,8 +473,8 @@ async function renderOutput() {
 }
 
 function nudge(dx, dy) {
-  qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -240, 240));
-  qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -240, 240));
+  qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -PAN_LIMIT, PAN_LIMIT));
+  qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -PAN_LIMIT, PAN_LIMIT));
   syncOffsetLabels();
   renderOutput();
 }
