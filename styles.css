@@ -481,3 +481,36 @@ canvas {
     min-height:320px;
   }
 }
+.single-column-workspace{
+  grid-template-columns:1fr;
+}
+
+.full-width-card{
+  width:100%;
+}
+
+.action-row-single{
+  grid-template-columns:1fr;
+}
+
+.preview-embedded-section{
+  gap:12px;
+}
+
+.embedded-preview-card{
+  border-radius:var(--radius-xl);
+  border:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(12,16,31,.96), rgba(8,12,24,.96));
+  box-shadow:var(--shadow-md);
+  overflow:hidden;
+}
+
+.embedded-preview-stage{
+  min-height:520px;
+}
+
+@media (max-width: 720px){
+  .embedded-preview-stage{
+    min-height:320px;
+  }
+}
