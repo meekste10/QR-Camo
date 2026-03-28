@@ -104,6 +104,36 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
   const dy = Math.round((height - drawH) / 2);
 
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
+
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const d = imageData.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+
+    if (a === 0) continue;
+
+    const r = d[i];
+    const g = d[i + 1];
+    const b = d[i + 2];
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+
+    const inside = gray < 180;
+
+    if (inside) {
+      d[i] = 255;
+      d[i + 1] = 255;
+      d[i + 2] = 255;
+      d[i + 3] = 255;
+    } else {
+      d[i] = 0;
+      d[i + 1] = 0;
+      d[i + 2] = 0;
+      d[i + 3] = 0;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
 }
 
 function buildEdgeBand(maskCanvas, insetPx, fillStyle) {
