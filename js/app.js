@@ -63,6 +63,8 @@ const previewEmptyState = document.getElementById("previewEmptyState");
 const sourcePreviewCanvas = document.getElementById("sourcePreviewCanvas");
 const outputCanvas = document.getElementById("outputCanvas");
 
+const samplesGrid = document.getElementById("samplesGrid");
+
 state.customMaskImage = null;
 state.customMaskCanvas = null;
 state.sourceQrCanvas = null;
@@ -80,6 +82,28 @@ const DEFAULT_MASK_PADDING = 0;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
+
+const SAMPLE_BASE = "./assets/Samples/";
+const samplePreviewMap = {
+  "coffee-mug-qr": `${SAMPLE_BASE}coffee-mug-qr.png`,
+  "calendar-qr": `${SAMPLE_BASE}calendar-qr.png`,
+  "headphones-qr": `${SAMPLE_BASE}headphones-qr.png`,
+  "repair-wrench-qr": `${SAMPLE_BASE}repair-wrench-qr.png`,
+  "profile-icon-qr": `${SAMPLE_BASE}profile-icon-qr.png`,
+  "lock-icon-qr": `${SAMPLE_BASE}lock-icon-qr.png`,
+  "shop-bag-qr": `${SAMPLE_BASE}shop-bag-qr.png`,
+  "gift-qr": `${SAMPLE_BASE}gift-qr.png`,
+  "play-button-qr": `${SAMPLE_BASE}play-button-qr.png`,
+  "map-qr": `${SAMPLE_BASE}map-qr.png`,
+  "trophy-qr": `${SAMPLE_BASE}trophy-qr.png`,
+  "human-head-qr": `${SAMPLE_BASE}human-head-qr.png`,
+  "door-qr": `${SAMPLE_BASE}door-qr.png`,
+  "pharmacy-qr": `${SAMPLE_BASE}pharmacy-qr.png`,
+  "question-icon-qr": `${SAMPLE_BASE}question-icon-qr.png`,
+  "info-icon-qr": `${SAMPLE_BASE}info-icon-qr.png`,
+  "pizza-greek-qr": `${SAMPLE_BASE}pizza-greek-qr.png`,
+  "heart-lt-blue-qr": `${SAMPLE_BASE}heart-lt-blue-qr.png`
+};
 
 function setDebug(msg) {
   if (debugPanel) debugPanel.textContent = msg;
@@ -257,6 +281,12 @@ function drawContain(ctx, source, width, height, padding = 0, background = null)
   ctx.drawImage(source, dx, dy, drawW, drawH);
 }
 
+function clearCanvas(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
 function paintSourcePreview(sourceCanvas) {
   if (!sourceCanvas || !sourcePreviewCanvas) return;
 
@@ -269,7 +299,19 @@ function paintSourcePreview(sourceCanvas) {
   updatePreviewFlags({ hasSource: true, hasOutput: false });
 }
 
-function loadImageFromFile(file) {
+function paintOutputPreview(sourceCanvas) {
+  if (!sourceCanvas || !outputCanvas) return;
+
+  outputCanvas.width = 800;
+  outputCanvas.height = 800;
+
+  const ctx = outputCanvas.getContext("2d");
+  drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
+
+  updatePreviewFlags({ hasSource: false, hasOutput: true });
+}
+
+async function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -283,6 +325,40 @@ function loadImageFromFile(file) {
     reader.onerror = () => reject(new Error("Could not read file"));
     reader.readAsDataURL(file);
   });
+}
+
+async function loadImageFromSrc(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Could not load image source: ${src}`));
+    img.src = src;
+  });
+}
+
+async function showSamplePreview(sampleKey) {
+  const src = samplePreviewMap[sampleKey];
+  if (!src) {
+    setDebug(`Sample not found: ${sampleKey}`);
+    return;
+  }
+
+  try {
+    const img = await loadImageFromSrc(src);
+    clearCanvas(sourcePreviewCanvas);
+    paintOutputPreview(img);
+
+    setPreviewMeta(`Sample preview · ${APP_VERSION}`);
+    setSourceMeta(sampleKey);
+
+    show(qrReadyBadge, false);
+    show(shapeReadyBadge, false);
+
+    setDebug(`Loaded sample preview: ${sampleKey} · ${APP_VERSION}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`Sample load failed: ${err.message}`);
+  }
 }
 
 function buildGeneratedQrCanvas(text) {
@@ -494,6 +570,7 @@ function resetGenerateButton() {
 }
 
 function resetCreateButton() {
+  if (!makeQrBtn) return;
   makeQrBtn.textContent = "Create QR";
   makeQrBtn.classList.remove("btn-secondary");
   makeQrBtn.classList.add("btn-primary");
@@ -515,33 +592,35 @@ function init() {
   setSourceMeta("Nothing loaded yet");
   setDebug(`Ready · ${APP_VERSION}`);
 
-  makeQrBtn.addEventListener("click", async () => {
-    try {
-      const text = (qrTextInput.value || "").trim();
+  if (makeQrBtn) {
+    makeQrBtn.addEventListener("click", async () => {
+      try {
+        const text = (qrTextInput.value || "").trim();
 
-      if (!text) {
-        setDebug("Paste a link or text first.");
-        return;
+        if (!text) {
+          setDebug("Paste a link or text first.");
+          return;
+        }
+
+        await buildQrFromText(text);
+
+        makeQrBtn.textContent = "Created";
+        makeQrBtn.classList.remove("btn-primary");
+        makeQrBtn.classList.add("btn-secondary");
+        makeQrBtn.disabled = true;
+
+        setDebug(`QR created · ${APP_VERSION}`);
+      } catch (err) {
+        console.error(err);
+        setDebug(`QR generation failed: ${err.message}`);
       }
-
-      await buildQrFromText(text);
-
-      makeQrBtn.textContent = "Created";
-      makeQrBtn.classList.remove("btn-primary");
-      makeQrBtn.classList.add("btn-secondary");
-      makeQrBtn.disabled = true;
-
-      setDebug(`QR created · ${APP_VERSION}`);
-    } catch (err) {
-      console.error(err);
-      setDebug(`QR generation failed: ${err.message}`);
-    }
-  });
+    });
+  }
 
   qrTextInput.addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    makeQrBtn.click();
+    if (makeQrBtn) makeQrBtn.click();
   });
 
   qrUpload.addEventListener("change", async (e) => {
@@ -551,10 +630,12 @@ function init() {
       await handleQrUpload(file);
 
       resetCreateButton();
-      makeQrBtn.textContent = "Created";
-      makeQrBtn.classList.remove("btn-primary");
-      makeQrBtn.classList.add("btn-secondary");
-      makeQrBtn.disabled = true;
+      if (makeQrBtn) {
+        makeQrBtn.textContent = "Created";
+        makeQrBtn.classList.remove("btn-primary");
+        makeQrBtn.classList.add("btn-secondary");
+        makeQrBtn.disabled = true;
+      }
 
       setDebug(`QR uploaded · ${APP_VERSION}`);
     } catch (err) {
@@ -664,6 +745,18 @@ function init() {
   foregroundColor.addEventListener("input", resetGenerateButton);
   backgroundColor.addEventListener("input", resetGenerateButton);
   transparentBackground.addEventListener("change", resetGenerateButton);
+
+  if (samplesGrid) {
+    samplesGrid.addEventListener("click", async (e) => {
+      const card = e.target.closest(".sample-card");
+      if (!card) return;
+
+      const sampleKey = card.dataset.sample;
+      if (!sampleKey) return;
+
+      await showSamplePreview(sampleKey);
+    });
+  }
 }
 
 init();
