@@ -1,12 +1,51 @@
 const BASE = "./assets/masks/";
 
 export const maskPresets = {
-  heart: `${BASE}heart.png`,
-  house: `${BASE}house.png`,
-  tag: `${BASE}tag.png`,
-  star: `${BASE}star.png`,
-  pizza: `${BASE}pizza.png`,
+  location: `${BASE}location.png`,
+  "dollar-sign": `${BASE}dollar-sign.png`,
+  microphone: `${BASE}microphone.png`,
+  file: `${BASE}file.png`,
+  keyhole: `${BASE}keyhole.png`,
+  toolkit: `${BASE}toolkit.png`,
+  "shop-2": `${BASE}shop-2.png`,
+  phone: `${BASE}phone.png`,
+  trophy: `${BASE}trophy.png`,
+
+  "house-fence": `${BASE}house-fence.png`,
+  candle: `${BASE}candle.png`,
+  "t-shirts": `${BASE}t-shirts.png`,
+  hammer: `${BASE}hammer.png`,
+  shop: `${BASE}shop.png`,
+  info: `${BASE}info.png`,
+  camera: `${BASE}camera.png`,
+  balloon: `${BASE}balloon.png`,
+  "credit-card-hand": `${BASE}credit-card-hand.png`,
+
+  "martini-glass": `${BASE}martini-glass.png`,
+  "pizza-slice": `${BASE}pizza-slice.png`,
+  door: `${BASE}door.png`,
   mug: `${BASE}mug.png`,
-  tree: `${BASE}tree.png`,
-  turtle: `${BASE}turtle.png`
+  "wine-glass": `${BASE}wine-glass.png`,
+  fish: `${BASE}fish.png`,
+  "house-2": `${BASE}house-2.png`,
+  "food-platter": `${BASE}food-platter.png`,
+  lobster: `${BASE}lobster.png`,
+
+  key: `${BASE}key.png`,
+  "tip-jar": `${BASE}tip-jar.png`,
+  wallet: `${BASE}wallet.png`,
+  ticket: `${BASE}ticket.png`,
+  calendar: `${BASE}calendar.png`,
+  cloud: `${BASE}cloud.png`,
+  lock: `${BASE}lock.png`,
+  gift: `${BASE}gift.png`,
+  profile: `${BASE}profile.png`,
+
+  heart: `${BASE}heart.png`,
+  "play-button": `${BASE}play-button.png`,
+  megaphone: `${BASE}megaphone.png`,
+  "repair-wrench": `${BASE}repair-wrench.png`,
+  pharmacy: `${BASE}pharmacy.png`,
+  "human-head": `${BASE}human-head.png`,
+  "question-mark": `${BASE}question-mark.png`
 };
