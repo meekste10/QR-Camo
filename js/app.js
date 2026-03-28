@@ -2,8 +2,6 @@ const APP_VERSION = "v0.6.3";
 
 import { state } from "./state.js?v=0.6.3";
 import {
-  threshold,
-  trimWhiteBorder,
   imageDataToCanvas,
   normalizeQrImageData,
   cropQrInterior,
@@ -73,6 +71,7 @@ state.textureTiles = [];
 state.moduleCount = 21;
 state.modulePixelSize = 1;
 state.blockModules = 2;
+state.hasRenderedOnce = false;
 
 const NUDGE_STEP = 8;
 const PAN_LIMIT = 360;
@@ -84,25 +83,80 @@ const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
 
 const SAMPLE_BASE = "./assets/Samples/";
-const samplePreviewMap = {
-  "coffee-mug-qr": `${SAMPLE_BASE}coffee-mug-qr.png`,
-  "calendar-qr": `${SAMPLE_BASE}calendar-qr.png`,
-  "headphones-qr": `${SAMPLE_BASE}headphones-qr.png`,
-  "repair-wrench-qr": `${SAMPLE_BASE}repair-wrench-qr.png`,
-  "profile-icon-qr": `${SAMPLE_BASE}profile-icon-qr.png`,
-  "lock-icon-qr": `${SAMPLE_BASE}lock-icon-qr.png`,
-  "shop-bag-qr": `${SAMPLE_BASE}shop-bag-qr.png`,
-  "gift-qr": `${SAMPLE_BASE}gift-qr.png`,
-  "play-button-qr": `${SAMPLE_BASE}play-button-qr.png`,
-  "map-qr": `${SAMPLE_BASE}map-qr.png`,
-  "trophy-qr": `${SAMPLE_BASE}trophy-qr.png`,
-  "human-head-qr": `${SAMPLE_BASE}human-head-qr.png`,
-  "door-qr": `${SAMPLE_BASE}door-qr.png`,
-  "pharmacy-qr": `${SAMPLE_BASE}pharmacy-qr.png`,
-  "question-icon-qr": `${SAMPLE_BASE}question-icon-qr.png`,
-  "info-icon-qr": `${SAMPLE_BASE}info-icon-qr.png`,
-  "pizza-greek-qr": `${SAMPLE_BASE}pizza-greek-qr.png`,
-  "heart-lt-blue-qr": `${SAMPLE_BASE}heart-lt-blue-qr.png`
+
+const samplePreviewCandidates = {
+  "coffee-mug-qr": [
+    `${SAMPLE_BASE}Coffee-mug-qr.png`,
+    `${SAMPLE_BASE}coffee-mug-qr.png`
+  ],
+  "calendar-qr": [
+    `${SAMPLE_BASE}Calendar-qr.png`,
+    `${SAMPLE_BASE}calendar-qr.png`
+  ],
+  "headphones-qr": [
+    `${SAMPLE_BASE}Headphones-qr.png`,
+    `${SAMPLE_BASE}headphones-qr.png`
+  ],
+  "repair-wrench-qr": [
+    `${SAMPLE_BASE}Repair-wrench-qr.png`,
+    `${SAMPLE_BASE}repair-wrench-qr.png`
+  ],
+  "profile-icon-qr": [
+    `${SAMPLE_BASE}Profile-icon-qr.png`,
+    `${SAMPLE_BASE}profile-icon-qr.png`
+  ],
+  "lock-icon-qr": [
+    `${SAMPLE_BASE}Lock-icon-qr.png`,
+    `${SAMPLE_BASE}lock-icon-qr.png`
+  ],
+  "shop-bag-qr": [
+    `${SAMPLE_BASE}shop-bag-qr.png`,
+    `${SAMPLE_BASE}Shop-bag-qr.png`
+  ],
+  "gift-qr": [
+    `${SAMPLE_BASE}Gift-qr.png`,
+    `${SAMPLE_BASE}gift-qr.png`
+  ],
+  "play-button-qr": [
+    `${SAMPLE_BASE}Play-button-qr.png`,
+    `${SAMPLE_BASE}play-button-qr.png`
+  ],
+  "map-qr": [
+    `${SAMPLE_BASE}Map-qr.png`,
+    `${SAMPLE_BASE}map-qr.png`
+  ],
+  "trophy-qr": [
+    `${SAMPLE_BASE}Trophy-qr.png`,
+    `${SAMPLE_BASE}trophy-qr.png`
+  ],
+  "human-head-qr": [
+    `${SAMPLE_BASE}Human-head-qr.png`,
+    `${SAMPLE_BASE}human-head-qr.png`
+  ],
+  "door-qr": [
+    `${SAMPLE_BASE}Door-qr.png`,
+    `${SAMPLE_BASE}door-qr.png`
+  ],
+  "pharmacy-qr": [
+    `${SAMPLE_BASE}Pharmacy-qr.png`,
+    `${SAMPLE_BASE}pharmacy-qr.png`
+  ],
+  "question-icon-qr": [
+    `${SAMPLE_BASE}Question-icon-qr.png`,
+    `${SAMPLE_BASE}question-icon-qr.png`
+  ],
+  "info-icon-qr": [
+    `${SAMPLE_BASE}Info-icon-qr.png`,
+    `${SAMPLE_BASE}info-icon-qr.png`
+  ],
+  "pizza-greek-qr": [
+    `${SAMPLE_BASE}Pizza-greek-qr.png`,
+    `${SAMPLE_BASE}pizza-greek-qr.png`
+  ],
+  "heart-lt-blue-qr": [
+    `${SAMPLE_BASE}heart-lt-blue-qr.png`,
+    `${SAMPLE_BASE}Heart-lt-blue-qr.png`
+  ]
 };
 
 function setDebug(msg) {
@@ -281,12 +335,6 @@ function drawContain(ctx, source, width, height, padding = 0, background = null)
   ctx.drawImage(source, dx, dy, drawW, drawH);
 }
 
-function clearCanvas(canvas) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
 function paintSourcePreview(sourceCanvas) {
   if (!sourceCanvas || !sourcePreviewCanvas) return;
 
@@ -309,6 +357,42 @@ function paintOutputPreview(sourceCanvas) {
   drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
 
   updatePreviewFlags({ hasSource: false, hasOutput: true });
+}
+
+function clearCanvas(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function resetGenerateButton() {
+  generateBtn.textContent = "Create QR-Camo";
+  generateBtn.classList.remove("btn-secondary");
+  generateBtn.classList.add("btn-primary");
+  generateBtn.disabled = false;
+}
+
+function resetCreateButton() {
+  if (!makeQrBtn) return;
+  makeQrBtn.textContent = "Create QR";
+  makeQrBtn.classList.remove("btn-secondary");
+  makeQrBtn.classList.add("btn-primary");
+  makeQrBtn.disabled = false;
+}
+
+function resetQrPreparedState() {
+  state.sourceQrCanvas = null;
+  state.overlayQrCanvas = null;
+  state.textureTiles = [];
+  state.moduleCount = 21;
+  state.modulePixelSize = 1;
+  state.blockModules = 2;
+  state.hasRenderedOnce = false;
+
+  clearCanvas(sourcePreviewCanvas);
+  clearCanvas(outputCanvas);
+  show(qrReadyBadge, false);
+  updatePreviewFlags({ hasSource: false, hasOutput: false });
 }
 
 async function loadImageFromFile(file) {
@@ -336,29 +420,14 @@ async function loadImageFromSrc(src) {
   });
 }
 
-async function showSamplePreview(sampleKey) {
-  const src = samplePreviewMap[sampleKey];
-  if (!src) {
-    setDebug(`Sample not found: ${sampleKey}`);
-    return;
+async function resolveFirstWorkingImage(srcList = []) {
+  for (const src of srcList) {
+    try {
+      const img = await loadImageFromSrc(src);
+      return { img, src };
+    } catch (_) {}
   }
-
-  try {
-    const img = await loadImageFromSrc(src);
-    clearCanvas(sourcePreviewCanvas);
-    paintOutputPreview(img);
-
-    setPreviewMeta(`Sample preview · ${APP_VERSION}`);
-    setSourceMeta(sampleKey);
-
-    show(qrReadyBadge, false);
-    show(shapeReadyBadge, false);
-
-    setDebug(`Loaded sample preview: ${sampleKey} · ${APP_VERSION}`);
-  } catch (err) {
-    console.error(err);
-    setDebug(`Sample load failed: ${err.message}`);
-  }
+  throw new Error("No working sample image source found");
 }
 
 function buildGeneratedQrCanvas(text) {
@@ -491,12 +560,36 @@ function populatePresetSelect() {
 
   maskSelect.innerHTML = "";
 
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose a shape…";
+  maskSelect.appendChild(placeholder);
+
   Object.keys(maskPresets).forEach((key) => {
     const option = document.createElement("option");
     option.value = key;
     option.textContent = key;
     maskSelect.appendChild(option);
   });
+}
+
+async function ensureQrPrepared() {
+  if (state.sourceQrCanvas && state.textureTiles?.length) return true;
+
+  const uploadedFile = qrUpload?.files?.[0];
+  if (uploadedFile) {
+    await handleQrUpload(uploadedFile);
+    return true;
+  }
+
+  const text = (qrTextInput.value || "").trim();
+  if (!text) {
+    setDebug("Paste a link or upload a QR first.");
+    return false;
+  }
+
+  await buildQrFromText(text);
+  return true;
 }
 
 async function renderOutput() {
@@ -513,7 +606,7 @@ async function renderOutput() {
     } else {
       const selectedMask = maskSelect.value;
       if (!selectedMask || !maskPresets[selectedMask]) {
-        throw new Error("No valid preset mask selected");
+        throw new Error("No valid preset shape selected");
       }
       maskSource = await loadMask(maskPresets[selectedMask]);
       show(shapeReadyBadge, true);
@@ -538,6 +631,8 @@ async function renderOutput() {
     applyCurrentColorsToOutput();
     updatePreviewFlags({ hasSource: true, hasOutput: true });
 
+    state.hasRenderedOnce = true;
+
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     setDebug(`Render complete · ${APP_VERSION}`);
     return true;
@@ -546,6 +641,42 @@ async function renderOutput() {
     setDebug(`Render failed: ${err.message}`);
     return false;
   }
+}
+
+async function createQrCamo() {
+  const okQr = await ensureQrPrepared();
+  if (!okQr) return false;
+
+  const okRender = await renderOutput();
+  if (!okRender) return false;
+
+  generateBtn.textContent = "Created";
+  generateBtn.classList.remove("btn-primary");
+  generateBtn.classList.add("btn-secondary");
+  generateBtn.disabled = true;
+
+  if (makeQrBtn) {
+    makeQrBtn.textContent = "Created";
+    makeQrBtn.classList.remove("btn-primary");
+    makeQrBtn.classList.add("btn-secondary");
+    makeQrBtn.disabled = true;
+  }
+
+  return true;
+}
+
+async function autoRenderIfReady() {
+  if (!state.hasRenderedOnce) return;
+  if (!state.sourceQrCanvas || !state.textureTiles?.length) return;
+
+  resetGenerateButton();
+  const ok = await renderOutput();
+  if (!ok) return;
+
+  generateBtn.textContent = "Created";
+  generateBtn.classList.remove("btn-primary");
+  generateBtn.classList.add("btn-secondary");
+  generateBtn.disabled = true;
 }
 
 function nudge(dx, dy) {
@@ -562,19 +693,53 @@ function resetPosition() {
   renderOutput();
 }
 
-function resetGenerateButton() {
-  generateBtn.textContent = "Generate QR-Camo";
-  generateBtn.classList.remove("btn-secondary");
-  generateBtn.classList.add("btn-primary");
-  generateBtn.disabled = false;
+async function showSamplePreview(sampleKey) {
+  const candidates = samplePreviewCandidates[sampleKey];
+  if (!candidates?.length) {
+    setDebug(`Sample not found: ${sampleKey}`);
+    return;
+  }
+
+  try {
+    const { img, src } = await resolveFirstWorkingImage(candidates);
+
+    clearCanvas(sourcePreviewCanvas);
+    paintOutputPreview(img);
+
+    setPreviewMeta(`Sample preview · ${APP_VERSION}`);
+    setSourceMeta(src.split("/").pop());
+
+    show(qrReadyBadge, false);
+    show(shapeReadyBadge, false);
+
+    setDebug(`Loaded sample preview · ${APP_VERSION}`);
+  } catch (err) {
+    console.error(err);
+    setDebug(`Sample load failed: ${err.message}`);
+  }
 }
 
-function resetCreateButton() {
-  if (!makeQrBtn) return;
-  makeQrBtn.textContent = "Create QR";
-  makeQrBtn.classList.remove("btn-secondary");
-  makeQrBtn.classList.add("btn-primary");
-  makeQrBtn.disabled = false;
+function initSampleCardImages() {
+  if (!samplesGrid) return;
+
+  const cards = samplesGrid.querySelectorAll(".sample-card");
+  cards.forEach((card) => {
+    const key = card.dataset.sample;
+    const img = card.querySelector("img");
+    const candidates = samplePreviewCandidates[key];
+
+    if (!img || !candidates?.length) return;
+
+    let idx = 0;
+    img.src = candidates[idx];
+
+    img.onerror = () => {
+      idx += 1;
+      if (idx < candidates.length) {
+        img.src = candidates[idx];
+      }
+    };
+  });
 }
 
 function init() {
@@ -583,6 +748,8 @@ function init() {
   }
 
   populatePresetSelect();
+  initSampleCardImages();
+
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncMaskPaddingLabel();
@@ -594,54 +761,26 @@ function init() {
 
   if (makeQrBtn) {
     makeQrBtn.addEventListener("click", async () => {
-      try {
-        const text = (qrTextInput.value || "").trim();
-
-        if (!text) {
-          setDebug("Paste a link or text first.");
-          return;
-        }
-
-        await buildQrFromText(text);
-
-        makeQrBtn.textContent = "Created";
-        makeQrBtn.classList.remove("btn-primary");
-        makeQrBtn.classList.add("btn-secondary");
-        makeQrBtn.disabled = true;
-
-        setDebug(`QR created · ${APP_VERSION}`);
-      } catch (err) {
-        console.error(err);
-        setDebug(`QR generation failed: ${err.message}`);
-      }
+      await createQrCamo();
     });
   }
 
   qrTextInput.addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    if (makeQrBtn) makeQrBtn.click();
+    await createQrCamo();
   });
 
-  qrUpload.addEventListener("change", async (e) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      await handleQrUpload(file);
+  qrTextInput.addEventListener("input", () => {
+    resetCreateButton();
+    resetGenerateButton();
+    resetQrPreparedState();
+  });
 
-      resetCreateButton();
-      if (makeQrBtn) {
-        makeQrBtn.textContent = "Created";
-        makeQrBtn.classList.remove("btn-primary");
-        makeQrBtn.classList.add("btn-secondary");
-        makeQrBtn.disabled = true;
-      }
-
-      setDebug(`QR uploaded · ${APP_VERSION}`);
-    } catch (err) {
-      console.error(err);
-      setDebug(`QR upload failed: ${err.message}`);
-    }
+  qrUpload.addEventListener("change", async () => {
+    resetCreateButton();
+    resetGenerateButton();
+    resetQrPreparedState();
   });
 
   customMaskUpload.addEventListener("change", async (e) => {
@@ -652,21 +791,22 @@ function init() {
       state.customMaskImage = await loadImageFromFile(file);
       state.customMaskCanvas = null;
       show(shapeReadyBadge, true);
+      resetGenerateButton();
       setDebug(`Custom shape uploaded · ${APP_VERSION}`);
+      await autoRenderIfReady();
     } catch (err) {
       console.error(err);
       setDebug(`Shape upload failed: ${err.message}`);
     }
   });
 
-  generateBtn.addEventListener("click", async () => {
-    const ok = await renderOutput();
-    if (!ok) return;
+  maskSelect.addEventListener("change", async () => {
+    resetGenerateButton();
+    await autoRenderIfReady();
+  });
 
-    generateBtn.textContent = "Generated";
-    generateBtn.classList.remove("btn-primary");
-    generateBtn.classList.add("btn-secondary");
-    generateBtn.disabled = true;
+  generateBtn.addEventListener("click", async () => {
+    await createQrCamo();
   });
 
   exportBtn.addEventListener("click", () => {
@@ -683,33 +823,34 @@ function init() {
     }
   });
 
-  qrSizeSelect.addEventListener("change", () => {
+  qrSizeSelect.addEventListener("change", async () => {
     setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
     resetGenerateButton();
+    await autoRenderIfReady();
   });
 
-  qrOffsetX.addEventListener("input", () => {
+  qrOffsetX.addEventListener("input", async () => {
     syncOffsetLabels();
     resetGenerateButton();
-    renderOutput();
+    await autoRenderIfReady();
   });
 
-  qrOffsetY.addEventListener("input", () => {
+  qrOffsetY.addEventListener("input", async () => {
     syncOffsetLabels();
     resetGenerateButton();
-    renderOutput();
+    await autoRenderIfReady();
   });
 
-  maskScale.addEventListener("input", () => {
+  maskScale.addEventListener("input", async () => {
     syncMaskScaleLabel();
     resetGenerateButton();
-    renderOutput();
+    await autoRenderIfReady();
   });
 
-  maskPadding.addEventListener("input", () => {
+  maskPadding.addEventListener("input", async () => {
     syncMaskPaddingLabel();
     resetGenerateButton();
-    renderOutput();
+    await autoRenderIfReady();
   });
 
   nudgeUp.addEventListener("click", () => nudge(0, -NUDGE_STEP));
@@ -718,33 +859,32 @@ function init() {
   nudgeLeft.addEventListener("click", () => nudge(-NUDGE_STEP, 0));
   resetPositionBtn.addEventListener("click", resetPosition);
 
-  foregroundColor.addEventListener("input", () => {
+  foregroundColor.addEventListener("input", async () => {
     updateContrastWarning();
     resetGenerateButton();
-    if (outputCanvas.width) applyCurrentColorsToOutput();
+    if (state.hasRenderedOnce && outputCanvas.width) {
+      applyCurrentColorsToOutput();
+      await autoRenderIfReady();
+    }
   });
 
-  backgroundColor.addEventListener("input", () => {
+  backgroundColor.addEventListener("input", async () => {
     updateContrastWarning();
     resetGenerateButton();
-    if (outputCanvas.width) applyCurrentColorsToOutput();
+    if (state.hasRenderedOnce && outputCanvas.width) {
+      applyCurrentColorsToOutput();
+      await autoRenderIfReady();
+    }
   });
 
-  transparentBackground.addEventListener("change", () => {
+  transparentBackground.addEventListener("change", async () => {
     updateContrastWarning();
     resetGenerateButton();
-    if (outputCanvas.width) applyCurrentColorsToOutput();
+    if (state.hasRenderedOnce && outputCanvas.width) {
+      applyCurrentColorsToOutput();
+      await autoRenderIfReady();
+    }
   });
-
-  qrTextInput.addEventListener("input", resetCreateButton);
-  qrUpload.addEventListener("change", resetCreateButton);
-
-  maskSelect.addEventListener("change", resetGenerateButton);
-  customMaskUpload.addEventListener("change", resetGenerateButton);
-
-  foregroundColor.addEventListener("input", resetGenerateButton);
-  backgroundColor.addEventListener("input", resetGenerateButton);
-  transparentBackground.addEventListener("change", resetGenerateButton);
 
   if (samplesGrid) {
     samplesGrid.addEventListener("click", async (e) => {
