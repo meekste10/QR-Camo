@@ -1,14 +1,14 @@
 const BASE = "./assets/masks/";
 
 export const maskPresets = {
-  location: `${BASE}Location.PNG`,
+  location: `${BASE}Location.png.PNG`,
   "dollar-sign": `${BASE}Dollar-sign.PNG`,
   microphone: `${BASE}Microphone.PNG`,
   file: `${BASE}File.PNG`,
   keyhole: `${BASE}Keyhole.PNG`,
   toolkit: `${BASE}Toolkit.PNG`,
   "shop-2": `${BASE}Shop-2.PNG`,
-  phone: `${BASE}Phone.PNG`,
+  phone: `${BASE}Phone. PNG`,
   trophy: `${BASE}Trophy.PNG`,
 
   "house-fence": `${BASE}House-fence.PNG`,
@@ -17,7 +17,7 @@ export const maskPresets = {
   hammer: `${BASE}Hammer.PNG`,
   shop: `${BASE}Shop.PNG`,
   info: `${BASE}Info.PNG`,
-  camera: `${BASE}Camera.PNG`,
+  camera: `${BASE}Camera PNG`,
   balloon: `${BASE}Balloon.PNG`,
   "credit-card-hand": `${BASE}Credit-card-hand.PNG`,
 
@@ -26,7 +26,7 @@ export const maskPresets = {
   door: `${BASE}Door.PNG`,
   mug: `${BASE}mug.PNG`,
   "wine-glass": `${BASE}Wine-glass.PNG`,
-  fish: `${BASE}Fish.PNG`,
+  fish: `${BASE}Fish.png.PNG`,
   "house-2": `${BASE}House-2.PNG`,
   "food-platter": `${BASE}Food-platter.PNG`,
   lobster: `${BASE}Lobster.PNG`,
@@ -39,7 +39,7 @@ export const maskPresets = {
   cloud: `${BASE}Cloud.PNG`,
   lock: `${BASE}Lock.PNG`,
   gift: `${BASE}Gift.PNG`,
-  profile: `${BASE}Profile.PNG`,
+  profile: `${BASE}Profile. PNG`,
 
   heart: `${BASE}Heart.PNG`,
   "play-button": `${BASE}Play-button.PNG`,
