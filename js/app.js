@@ -52,6 +52,7 @@ const transparentBackground = document.getElementById("transparentBackground");
 const contrastWarning = document.getElementById("contrastWarning");
 
 const generateBtn = document.getElementById("generateBtn");
+const resetBtn = document.getElementById("resetBtn");
 const exportBtn = document.getElementById("exportBtn");
 
 const previewMeta = document.getElementById("previewMeta");
@@ -392,7 +393,56 @@ function resetQrPreparedState() {
   clearCanvas(sourcePreviewCanvas);
   clearCanvas(outputCanvas);
   show(qrReadyBadge, false);
+  show(shapeReadyBadge, false);
   updatePreviewFlags({ hasSource: false, hasOutput: false });
+}
+
+function resetAll() {
+  if (qrTextInput) qrTextInput.value = "";
+  if (qrUpload) qrUpload.value = "";
+  if (customMaskUpload) customMaskUpload.value = "";
+
+  if (maskSelect) maskSelect.value = "";
+  if (qrSizeSelect) qrSizeSelect.value = "medium";
+  if (maskScale) maskScale.value = String(DEFAULT_MASK_SCALE);
+  if (maskPadding) maskPadding.value = String(DEFAULT_MASK_PADDING);
+
+  if (qrOffsetX) qrOffsetX.value = "0";
+  if (qrOffsetY) qrOffsetY.value = "0";
+
+  if (foregroundColor) foregroundColor.value = "#000000";
+  if (backgroundColor) backgroundColor.value = "#ffffff";
+  if (transparentBackground) transparentBackground.checked = false;
+
+  state.customMaskImage = null;
+  state.customMaskCanvas = null;
+  state.sourceQrCanvas = null;
+  state.overlayQrCanvas = null;
+  state.textureTiles = [];
+  state.moduleCount = 21;
+  state.modulePixelSize = 1;
+  state.blockModules = 2;
+  state.hasRenderedOnce = false;
+
+  syncOffsetLabels();
+  syncMaskScaleLabel();
+  syncMaskPaddingLabel();
+  updateContrastWarning();
+
+  clearCanvas(sourcePreviewCanvas);
+  clearCanvas(outputCanvas);
+
+  show(qrReadyBadge, false);
+  show(shapeReadyBadge, false);
+
+  updatePreviewFlags({ hasSource: false, hasOutput: false });
+  setPreviewMeta(`Waiting for QR or shape · ${APP_VERSION}`);
+  setSourceMeta("Nothing loaded yet");
+
+  resetCreateButton();
+  resetGenerateButton();
+
+  setDebug(`Reset complete · ${APP_VERSION}`);
 }
 
 async function loadImageFromFile(file) {
@@ -808,6 +858,10 @@ function init() {
   generateBtn.addEventListener("click", async () => {
     await createQrCamo();
   });
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", resetAll);
+  }
 
   exportBtn.addEventListener("click", () => {
     try {
