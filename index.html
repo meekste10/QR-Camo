@@ -26,21 +26,22 @@
 
     <main class="workspace single-column-workspace">
       <section class="controls-card full-width-card">
+
         <div class="section">
           <h2>1. Create or upload a QR</h2>
 
           <label class="label" for="qrTextInput">Paste link or text</label>
-          <div class="inline-row">
-            <input
-              id="qrTextInput"
-              type="text"
-              class="text-input"
-              placeholder="https://example.com"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <button id="makeQrBtn" class="btn-primary" type="button">Create QR</button>
-          </div>
+          <input
+            id="qrTextInput"
+            type="text"
+            class="text-input"
+            placeholder="https://example.com"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
+          <!-- kept for JS compatibility / hidden one-button workflow -->
+          <button id="makeQrBtn" class="btn-primary" type="button" hidden>Create QR</button>
 
           <label class="label" for="qrUpload">Or upload an existing QR</label>
           <input id="qrUpload" type="file" accept="image/*" class="file-input" />
@@ -72,88 +73,90 @@
             <option value="large">Large</option>
           </select>
 
-  <label class="label" for="maskScale">Mask size</label>
-  <input
-    id="maskScale"
-    type="range"
-    min="80"
-    max="140"
-    step="1"
-    value="150"
-    class="range-input"
-  />
-  <div class="offset-row">
-    <div class="offset-chip">Mask: <span id="maskScaleLabel">100</span>%</div>
-  </div>
+          <label class="label" for="maskScale">Shape size</label>
+          <input
+            id="maskScale"
+            type="range"
+            min="80"
+            max="140"
+            step="1"
+            value="100"
+            class="range-input"
+          />
+          <div class="offset-row">
+            <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
+          </div>
 
-  <label class="label" for="maskPadding">Mask padding</label>
-  <input
-    id="maskPadding"
-    type="range"
-    min="0"
-    max="120"
-    step="1"
-    value="0"
-    class="range-input"
-  />
-  <div class="offset-row">
-    <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
-  </div>
+          <label class="label" for="maskPadding">Shape padding</label>
+          <input
+            id="maskPadding"
+            type="range"
+            min="0"
+            max="120"
+            step="1"
+            value="0"
+            class="range-input"
+          />
+          <div class="offset-row">
+            <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
+          </div>
 
-  <div class="action-row action-row-single">
-    <button id="generateBtn" class="btn-primary" type="button">Generate QR-Camo</button>
-  </div>
-</div>
+          <div class="action-row action-row-single">
+            <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
+          </div>
+        </div>
 
-        <div class="section preview-embedded-section">
-          <h2>4. Preview</h2>
+        <div class="section preview-adjust-section">
+          <h2>4. Preview + Adjust</h2>
 
-          <div class="preview-card embedded-preview-card">
-            <div class="preview-header">
-              <div>
-                <div class="preview-title">Live Preview</div>
-                <div id="previewMeta" class="preview-meta">Waiting for QR or shape</div>
+          <div class="preview-adjust-layout">
+            <div class="preview-card embedded-preview-card">
+              <div class="preview-header">
+                <div>
+                  <div class="preview-title">Live Preview</div>
+                  <div id="previewMeta" class="preview-meta">Waiting for QR or shape</div>
+                </div>
+                <div id="sourceMeta" class="source-meta">Nothing loaded yet</div>
               </div>
-              <div id="sourceMeta" class="source-meta">Nothing loaded yet</div>
-            </div>
 
-            <div class="preview-stage embedded-preview-stage">
-              <canvas id="sourcePreviewCanvas" class="source-preview-layer"></canvas>
-              <canvas id="outputCanvas" class="output-preview-layer"></canvas>
+              <div class="preview-stage embedded-preview-stage">
+                <canvas id="sourcePreviewCanvas" class="source-preview-layer"></canvas>
+                <canvas id="outputCanvas" class="output-preview-layer"></canvas>
 
-              <div id="previewEmptyState" class="preview-empty-state">
-                <div class="empty-icon">◌</div>
-                <div class="empty-title">Nothing to preview yet</div>
-                <div class="empty-copy">
-                  Create or upload a QR, then choose a shape and generate.
+                <div id="previewEmptyState" class="preview-empty-state">
+                  <div class="empty-icon">◌</div>
+                  <div class="empty-title">Nothing to preview yet</div>
+                  <div class="empty-copy">
+                    Create or upload a QR, then choose a shape and generate.
+                  </div>
                 </div>
               </div>
             </div>
+
+            <div class="adjust-panel-card">
+              <h3 class="adjust-title">Adjust</h3>
+
+              <div class="nudge-wrap">
+                <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+                <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
+                <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
+                <button id="nudgeRight" class="nudge-btn" type="button">→</button>
+                <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
+              </div>
+
+              <div class="offset-row">
+                <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
+                <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+              </div>
+
+              <input type="hidden" id="qrOffsetX" value="0" />
+              <input type="hidden" id="qrOffsetY" value="0" />
+            </div>
           </div>
         </div>
 
         <div class="section">
-          <h2>5. Adjust</h2>
-
-          <div class="nudge-wrap">
-            <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
-            <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
-            <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
-            <button id="nudgeRight" class="nudge-btn" type="button">→</button>
-            <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
-          </div>
-
-          <div class="offset-row">
-            <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
-            <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
-          </div>
-
-          <input type="hidden" id="qrOffsetX" value="0" />
-          <input type="hidden" id="qrOffsetY" value="0" />
-        </div>
-
-        <div class="section">
-          <h2>6. Color</h2>
+          <h2>5. Color</h2>
 
           <div class="color-row">
             <label class="color-field">
@@ -174,6 +177,105 @@
 
           <div id="contrastWarning" class="helper hidden">
             Low contrast may reduce scan reliability.
+          </div>
+        </div>
+
+        <div class="section samples-section">
+          <h2>6. Samples</h2>
+          <p class="helper">Swipe through example QR-Camo designs.</p>
+
+          <div class="samples-marquee-shell">
+            <div class="samples-marquee-track" id="samplesGrid">
+              <button class="sample-card" type="button" data-sample="coffee-mug-qr">
+                <img src="./assets/Samples/coffee-mug-qr.png" alt="Coffee mug QR sample" />
+                <span>Coffee Mug</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="calendar-qr">
+                <img src="./assets/Samples/calendar-qr.png" alt="Calendar QR sample" />
+                <span>Calendar</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="headphones-qr">
+                <img src="./assets/Samples/headphones-qr.png" alt="Headphones QR sample" />
+                <span>Headphones</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="repair-wrench-qr">
+                <img src="./assets/Samples/repair-wrench-qr.png" alt="Repair wrench QR sample" />
+                <span>Repair</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="profile-icon-qr">
+                <img src="./assets/Samples/profile-icon-qr.png" alt="Profile QR sample" />
+                <span>Profile</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="lock-icon-qr">
+                <img src="./assets/Samples/lock-icon-qr.png" alt="Lock QR sample" />
+                <span>Lock</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="shop-bag-qr">
+                <img src="./assets/Samples/shop-bag-qr.png" alt="Shop bag QR sample" />
+                <span>Shop Bag</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="gift-qr">
+                <img src="./assets/Samples/gift-qr.png" alt="Gift QR sample" />
+                <span>Gift</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="play-button-qr">
+                <img src="./assets/Samples/play-button-qr.png" alt="Play button QR sample" />
+                <span>Play</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="map-qr">
+                <img src="./assets/Samples/map-qr.png" alt="Map QR sample" />
+                <span>Map</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="trophy-qr">
+                <img src="./assets/Samples/trophy-qr.png" alt="Trophy QR sample" />
+                <span>Trophy</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="human-head-qr">
+                <img src="./assets/Samples/human-head-qr.png" alt="Human head QR sample" />
+                <span>Human Head</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="door-qr">
+                <img src="./assets/Samples/door-qr.png" alt="Door QR sample" />
+                <span>Door</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="pharmacy-qr">
+                <img src="./assets/Samples/pharmacy-qr.png" alt="Pharmacy QR sample" />
+                <span>Pharmacy</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="question-icon-qr">
+                <img src="./assets/Samples/question-icon-qr.png" alt="Question icon QR sample" />
+                <span>Question</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="info-icon-qr">
+                <img src="./assets/Samples/info-icon-qr.png" alt="Info icon QR sample" />
+                <span>Info</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="pizza-greek-qr">
+                <img src="./assets/Samples/pizza-greek-qr.png" alt="Pizza Greek QR sample" />
+                <span>Pizza Greek</span>
+              </button>
+
+              <button class="sample-card" type="button" data-sample="heart-lt-blue-qr">
+                <img src="./assets/Samples/heart-lt-blue-qr.png" alt="Heart QR sample" />
+                <span>Heart</span>
+              </button>
+            </div>
           </div>
         </div>
 
