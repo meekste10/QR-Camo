@@ -271,7 +271,7 @@ export function render(options) {
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
-  ctx.drawImage(camoCanvas, 0, 0);
+    ctx.drawImage(camoCanvas, 0, 0);
 
   applyEdgePostFX(ctx, maskCanvas, 3);
 
@@ -286,7 +286,15 @@ export function render(options) {
   const qrDrawY = Math.round(centerY);
   const qrDrawSize = Math.round(centerFit.qrDisplaySize);
 
-  ctx.drawImage(
+  const qrLayerCanvas = document.createElement("canvas");
+  qrLayerCanvas.width = OUTPUT_SIZE;
+  qrLayerCanvas.height = OUTPUT_SIZE;
+
+  const qrLayerCtx = qrLayerCanvas.getContext("2d");
+  qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  qrLayerCtx.imageSmoothingEnabled = false;
+
+  qrLayerCtx.drawImage(
     topQrCanvas,
     0,
     0,
@@ -297,4 +305,10 @@ export function render(options) {
     qrDrawSize,
     qrDrawSize
   );
+
+  qrLayerCtx.globalCompositeOperation = "destination-in";
+  qrLayerCtx.drawImage(maskCanvas, 0, 0);
+  qrLayerCtx.globalCompositeOperation = "source-over";
+
+  ctx.drawImage(qrLayerCanvas, 0, 0);
 }
