@@ -63,6 +63,7 @@ const sourcePreviewCanvas = document.getElementById("sourcePreviewCanvas");
 const outputCanvas = document.getElementById("outputCanvas");
 
 const samplesGrid = document.getElementById("samplesGrid");
+const presetShapesGrid = document.getElementById("presetShapesGrid");
 
 state.customMaskImage = null;
 state.customMaskCanvas = null;
@@ -381,6 +382,16 @@ function resetCreateButton() {
   makeQrBtn.disabled = false;
 }
 
+function syncPresetShapeSelectionUI() {
+  if (!presetShapesGrid) return;
+
+  const cards = presetShapesGrid.querySelectorAll(".preset-shape-card");
+  cards.forEach((card) => {
+    const isSelected = card.dataset.mask === maskSelect.value;
+    card.classList.toggle("is-selected", isSelected);
+  });
+}
+
 function resetQrPreparedState() {
   state.sourceQrCanvas = null;
   state.overlayQrCanvas = null;
@@ -406,6 +417,8 @@ function resetAll() {
   if (qrSizeSelect) qrSizeSelect.value = "medium";
   if (maskScale) maskScale.value = String(DEFAULT_MASK_SCALE);
   if (maskPadding) maskPadding.value = String(DEFAULT_MASK_PADDING);
+
+  syncPresetShapeSelectionUI();
 
   if (qrOffsetX) qrOffsetX.value = "0";
   if (qrOffsetY) qrOffsetY.value = "0";
@@ -743,6 +756,31 @@ function resetPosition() {
   renderOutput();
 }
 
+async function handlePresetShapeSelection(maskKey) {
+  if (!maskKey || !maskPresets[maskKey]) return;
+
+  if (maskSelect) {
+    maskSelect.value = maskKey;
+  }
+
+  state.customMaskImage = null;
+  state.customMaskCanvas = null;
+
+  if (customMaskUpload) {
+    customMaskUpload.value = "";
+  }
+
+  show(shapeReadyBadge, true);
+  syncPresetShapeSelectionUI();
+  resetGenerateButton();
+
+  if (state.hasRenderedOnce) {
+    await autoRenderIfReady();
+  } else {
+    setDebug(`Preset shape selected · ${APP_VERSION}`);
+  }
+}
+
 async function showSamplePreview(sampleKey) {
   const candidates = samplePreviewCandidates[sampleKey];
   if (!candidates?.length) {
@@ -803,6 +841,7 @@ function init() {
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncMaskPaddingLabel();
+  syncPresetShapeSelectionUI();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
   setPreviewMeta(`Waiting for QR or shape · ${APP_VERSION}`);
@@ -840,6 +879,9 @@ function init() {
 
       state.customMaskImage = await loadImageFromFile(file);
       state.customMaskCanvas = null;
+      if (maskSelect) maskSelect.value = "";
+      syncPresetShapeSelectionUI();
+
       show(shapeReadyBadge, true);
       resetGenerateButton();
       setDebug(`Custom shape uploaded · ${APP_VERSION}`);
@@ -851,6 +893,7 @@ function init() {
   });
 
   maskSelect.addEventListener("change", async () => {
+    syncPresetShapeSelectionUI();
     resetGenerateButton();
     await autoRenderIfReady();
   });
@@ -951,6 +994,20 @@ function init() {
       await showSamplePreview(sampleKey);
     });
   }
+
+  if (presetShapesGrid) {
+    presetShapesGrid.addEventListener("click", async (e) => {
+      const card = e.target.closest(".preset-shape-card");
+      if (!card) return;
+
+      const maskKey = card.dataset.mask;
+      if (!maskKey) return;
+
+      await handlePresetShapeSelection(maskKey);
+    });
+  }
+
+  syncPresetShapeSelectionUI();
 }
 
 init();
