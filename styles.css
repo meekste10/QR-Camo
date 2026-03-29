@@ -657,6 +657,45 @@ input[type="color"]::-moz-color-swatch{
   line-height:1.2;
 }
 
+.preset-marquee-shell{
+  padding-top:10px;
+  padding-bottom:16px;
+}
+
+.preset-shapes-track{
+  gap:12px;
+}
+
+.preset-shape-card{
+  width:120px;
+  min-height:146px;
+}
+
+.preset-shape-card img{
+  aspect-ratio:1 / 1;
+  object-fit:contain;
+  padding:10px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255,255,255,.08), rgba(255,255,255,.02) 55%, rgba(255,255,255,0) 100%),
+    linear-gradient(180deg, rgba(8,12,24,.92), rgba(6,9,21,.98));
+}
+
+.preset-shape-card span{
+  font-size:.8rem;
+}
+
+.preset-shape-card.is-selected{
+  border-color: rgba(85,214,255,.88);
+  box-shadow:
+    0 0 0 2px rgba(85,214,255,.24),
+    0 14px 30px rgba(0,0,0,.34);
+  transform: translateY(-2px);
+}
+
+.preset-shape-card.is-selected span{
+  color:#ffffff;
+}
+
 .hidden{
   display:none !important;
 }
@@ -713,4 +752,9 @@ input[type="color"]::-moz-color-swatch{
   .sample-card{
     width:122px;
   }
-}”
+
+  .preset-shape-card{
+    width:112px;
+    min-height:138px;
+  }
+}
