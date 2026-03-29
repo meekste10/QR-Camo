@@ -118,7 +118,7 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
     const b = d[i + 2];
     const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
-    const inside = gray > 180;
+    const inside = gray < 180;
 
     if (inside) {
       d[i] = 255;
