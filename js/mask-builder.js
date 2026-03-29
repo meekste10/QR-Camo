@@ -49,9 +49,9 @@ export function buildMaskFromImage(img, options = {}) {
     if (invert) inside = !inside;
 
     if (inside) {
-      d[i] = 255;
-      d[i + 1] = 255;
-      d[i + 2] = 255;
+      d[i] = 0;
+      d[i + 1] = 0;
+      d[i + 2] = 0;
       d[i + 3] = 255;
     } else {
       d[i] = 0;
