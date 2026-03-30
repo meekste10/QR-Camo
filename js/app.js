@@ -107,6 +107,42 @@ const DEFAULT_UPLOAD_THRESHOLD = 145;
 
 const SAMPLE_BASE = "./assets/Samples/";
 
+let nudgeCount = 0;
+let renderCount = 0;
+
+function track(eventName, props = {}) {
+  const payload = {
+    event: eventName,
+    ts: new Date().toISOString(),
+    appVersion: APP_VERSION,
+    ...props
+  };
+
+  console.log("[QR CAMO TRACK]", payload);
+}
+
+function currentTrackingProps() {
+  return {
+    qrSize: qrSizeSelect?.value || null,
+    moduleCount: state.moduleCount || null,
+    tileCount: state.textureTiles?.length || 0,
+    hasCustomMask: !!state.customMaskImage,
+    selectedMask: maskSelect?.value || null,
+    invertMask: !!invertMask?.checked,
+    maskScale: Number(maskScale?.value || 0),
+    maskPadding: Number(maskPadding?.value || 0),
+    offsetX: Number(qrOffsetX?.value || 0),
+    offsetY: Number(qrOffsetY?.value || 0),
+    nudgeCount,
+    renderCount,
+    foregroundColor: foregroundColor?.value || null,
+    backgroundColor: backgroundColor?.value || null,
+    transparentBackground: !!transparentBackground?.checked,
+    hasQrText: !!(qrTextInput?.value || "").trim(),
+    hasQrUpload: !!qrUpload?.files?.[0]
+  };
+}
+
 const samplePreviewCandidates = {
   "Coffee-mug-qr": [
     `${SAMPLE_BASE}Coffee-mug-qr.png`,
@@ -479,6 +515,9 @@ function resetAll() {
   state.blockModules = 2;
   state.hasRenderedOnce = false;
 
+  nudgeCount = 0;
+  renderCount = 0;
+
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncMaskPaddingLabel();
@@ -499,6 +538,7 @@ function resetAll() {
   resetCreateButton();
   resetGenerateButton();
 
+  track("reset_all");
   setDebug(`Reset complete · ${APP_VERSION}`);
 }
 
@@ -595,6 +635,12 @@ async function buildQrFromText(text) {
   setSourceMeta("Generated from link/text");
   setPreviewMeta(`QR ready · ${APP_VERSION} · modules ${generated.moduleCount}`);
   show(qrReadyBadge, true);
+
+  track("qr_generated_from_text", {
+    textLength: text?.length || 0,
+    moduleCount: generated.moduleCount,
+    tileCount: tiles.length
+  });
 }
 
 async function handleQrUpload(file) {
@@ -648,6 +694,13 @@ async function handleQrUpload(file) {
     `QR ready · ${APP_VERSION} · modules ${normalized.moduleCount} · tilePx ${uploadTilePx}`
   );
   show(qrReadyBadge, true);
+
+  track("qr_upload_processed", {
+    fileName: file?.name || null,
+    moduleCount: normalized.moduleCount,
+    tileCount: tiles.length,
+    uploadTilePx
+  });
 }
 
 function buildCurrentMaskFromUploaded() {
@@ -788,18 +841,26 @@ async function renderOutput() {
     updatePreviewFlags({ hasSource: true, hasOutput: true });
 
     state.hasRenderedOnce = true;
+    renderCount += 1;
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
+    track("render_success", currentTrackingProps());
     setDebug(`Render complete · ${APP_VERSION}`);
     return true;
   } catch (err) {
     console.error(err);
+    track("render_failed", {
+      ...currentTrackingProps(),
+      message: err.message
+    });
     setDebug(`Render failed: ${err.message}`);
     return false;
   }
 }
 
 async function createQrCamo() {
+  track("generate_clicked", currentTrackingProps());
+
   const okQr = await ensureQrPrepared();
   if (!okQr) return false;
 
@@ -846,9 +907,20 @@ async function ensurePreviewFlowAfterShapeSelection() {
 }
 
 function nudge(dx, dy) {
+  nudgeCount += 1;
+
   qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -PAN_LIMIT, PAN_LIMIT));
   qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -PAN_LIMIT, PAN_LIMIT));
   syncOffsetLabels();
+
+  track("nudge_applied", {
+    dx,
+    dy,
+    offsetX: Number(qrOffsetX.value || 0),
+    offsetY: Number(qrOffsetY.value || 0),
+    nudgeCount
+  });
+
   renderOutput();
 }
 
@@ -856,6 +928,9 @@ function resetPosition() {
   qrOffsetX.value = "0";
   qrOffsetY.value = "0";
   syncOffsetLabels();
+
+  track("position_reset");
+
   renderOutput();
 }
 
@@ -876,6 +951,7 @@ async function handlePresetShapeSelection(maskKey) {
   show(shapeReadyBadge, true);
   syncPresetShapeSelectionUI();
   resetGenerateButton();
+  track("preset_shape_selected", { shape: maskKey });
   setDebug(`Preset shape selected · ${APP_VERSION}`);
 
   await ensurePreviewFlowAfterShapeSelection();
@@ -900,9 +976,18 @@ async function showSamplePreview(sampleKey) {
     show(qrReadyBadge, false);
     show(shapeReadyBadge, false);
 
+    track("sample_preview_loaded", {
+      sample: sampleKey,
+      src
+    });
+
     setDebug(`Loaded sample preview · ${APP_VERSION}`);
   } catch (err) {
     console.error(err);
+    track("sample_load_failed", {
+      sample: sampleKey,
+      message: err.message
+    });
     setDebug(`Sample load failed: ${err.message}`);
   }
 }
@@ -929,6 +1014,7 @@ function initSampleCardImages() {
     };
   });
 }
+
 function init() {
   if (appVersionBadge) {
     appVersionBadge.textContent = APP_VERSION;
@@ -954,6 +1040,10 @@ function init() {
   setSourceMeta("waiting for shape");
   setDebug(`Ready · ${APP_VERSION}`);
 
+  track("app_loaded", {
+    userAgent: navigator.userAgent
+  });
+
   if (makeQrBtn) {
     makeQrBtn.addEventListener("click", async () => {
       await createQrCamo();
@@ -975,6 +1065,10 @@ function init() {
       resetGenerateButton();
       resetQrPreparedState();
 
+      track("qr_text_enter_pressed", {
+        textLength: (qrTextInput.value || "").trim().length
+      });
+
       if (maskSelect?.value || state.customMaskImage) {
         unlockWorkflowAfterShape();
         await createQrCamo();
@@ -987,6 +1081,9 @@ function init() {
       resetCreateButton();
       resetGenerateButton();
       resetQrPreparedState();
+      track("qr_text_changed", {
+        textLength: (qrTextInput.value || "").trim().length
+      });
       setPreviewMeta(`Link updated · press Enter to regenerate · ${APP_VERSION}`);
     });
 
@@ -1000,6 +1097,12 @@ function init() {
 
   if (qrUpload) {
     qrUpload.addEventListener("change", async () => {
+      const file = qrUpload?.files?.[0] || null;
+
+      track("qr_upload_selected", {
+        fileName: file?.name || null
+      });
+
       resetCreateButton();
       resetGenerateButton();
       resetQrPreparedState();
@@ -1017,6 +1120,10 @@ function init() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        track("custom_shape_upload_started", {
+          fileName: file.name
+        });
+
         state.customMaskImage = await loadImageFromFile(file);
         state.customMaskCanvas = null;
 
@@ -1025,11 +1132,19 @@ function init() {
 
         show(shapeReadyBadge, true);
         resetGenerateButton();
+
+        track("custom_shape_upload_success", {
+          fileName: file.name
+        });
+
         setDebug(`Custom shape uploaded · ${APP_VERSION}`);
 
         await ensurePreviewFlowAfterShapeSelection();
       } catch (err) {
         console.error(err);
+        track("custom_shape_upload_failed", {
+          message: err.message
+        });
         setDebug(`Shape upload failed: ${err.message}`);
       }
     });
@@ -1060,13 +1175,21 @@ function init() {
     exportBtn.addEventListener("click", () => {
       try {
         if (!outputCanvas.width || !outputCanvas.height) {
+          track("export_blocked_no_output");
           setDebug("Generate a QR-Camo first.");
           return;
         }
+
         exportPNG(outputCanvas);
+
+        track("export_success", currentTrackingProps());
         setDebug(`Exported PNG · ${APP_VERSION}`);
       } catch (err) {
         console.error(err);
+        track("export_failed", {
+          ...currentTrackingProps(),
+          message: err.message
+        });
         setDebug(`Export failed: ${err.message}`);
       }
     });
@@ -1074,6 +1197,9 @@ function init() {
 
   if (qrSizeSelect) {
     qrSizeSelect.addEventListener("change", async () => {
+      track("qr_size_changed", {
+        qrSize: qrSizeSelect.value
+      });
       setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
       resetGenerateButton();
       await autoRenderIfReady();
@@ -1099,6 +1225,9 @@ function init() {
   if (maskScale) {
     maskScale.addEventListener("input", async () => {
       syncMaskScaleLabel();
+      track("mask_scale_changed", {
+        value: Number(maskScale.value || 0)
+      });
       resetGenerateButton();
       await autoRenderIfReady();
     });
@@ -1107,6 +1236,9 @@ function init() {
   if (maskPadding) {
     maskPadding.addEventListener("input", async () => {
       syncMaskPaddingLabel();
+      track("mask_padding_changed", {
+        value: Number(maskPadding.value || 0)
+      });
       resetGenerateButton();
       await autoRenderIfReady();
     });
@@ -1114,6 +1246,9 @@ function init() {
 
   if (invertMask) {
     invertMask.addEventListener("change", async () => {
+      track("invert_mask_toggled", {
+        value: !!invertMask.checked
+      });
       resetGenerateButton();
       await autoRenderIfReady();
     });
@@ -1140,6 +1275,9 @@ function init() {
 
   if (foregroundColor) {
     foregroundColor.addEventListener("input", async () => {
+      track("foreground_color_changed", {
+        value: foregroundColor.value
+      });
       updateContrastWarning();
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
@@ -1151,6 +1289,9 @@ function init() {
 
   if (backgroundColor) {
     backgroundColor.addEventListener("input", async () => {
+      track("background_color_changed", {
+        value: backgroundColor.value
+      });
       updateContrastWarning();
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
@@ -1162,6 +1303,9 @@ function init() {
 
   if (transparentBackground) {
     transparentBackground.addEventListener("change", async () => {
+      track("transparent_background_toggled", {
+        value: !!transparentBackground.checked
+      });
       updateContrastWarning();
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
@@ -1178,6 +1322,10 @@ function init() {
 
       const sampleKey = card.dataset.sample;
       if (!sampleKey) return;
+
+      track("sample_clicked", {
+        sample: sampleKey
+      });
 
       await showSamplePreview(sampleKey);
     });
