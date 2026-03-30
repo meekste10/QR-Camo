@@ -28,213 +28,189 @@
       <section class="controls-card full-width-card">
 
         <div class="section section--shape section--hero">
-          <div class="section-badge">Step 1</div>
-          <h2>Choose the shape first</h2>
-          <p class="helper">
-            Start with a preset or upload your own silhouette. Once a shape is chosen,
-            the QR and adjustment tools will open below.
-          </p>
+  <div class="section-badge">Step 1</div>
+  <h2>Choose your shape</h2>
+  <p class="helper">
+    Upload your own silhouette first, or choose a preset below.
+  </p>
 
-          <label class="label">Preset shapes</label>
+  <div class="custom-upload-hero">
+    <div class="custom-upload-copy">
+      <div class="custom-upload-title">Upload your custom silhouette</div>
+      <div class="custom-upload-subtitle">
+        Best for logos, icons, symbols, mascots, product shapes, and your own brand marks.
+      </div>
+    </div>
 
-          <div class="samples-marquee-shell preset-marquee-shell">
-            <div id="presetShapesGrid" class="preset-categories-grid"></div>
-          </div>
+    <label for="customMaskUpload" class="custom-upload-btn">
+      Choose image
+    </label>
+    <input id="customMaskUpload" type="file" accept="image/*" class="file-input custom-upload-input" />
+  </div>
 
-          <select id="maskSelect" class="select-input hidden"></select>
+  <label class="label">Preset shapes</label>
 
-          <div class="custom-upload-hero">
-            <div class="custom-upload-copy">
-              <div class="custom-upload-eyebrow">Main custom path</div>
-              <div class="custom-upload-title">Upload your custom silhouette</div>
-              <div class="custom-upload-subtitle">
-                Best for logos, icons, symbols, mascots, product shapes, and your own brand marks.
-              </div>
-            </div>
+  <div class="samples-marquee-shell preset-marquee-shell">
+    <div id="presetShapesGrid" class="preset-categories-grid"></div>
+  </div>
 
-            <label for="customMaskUpload" class="custom-upload-btn">
-              Choose image
-            </label>
-            <input id="customMaskUpload" type="file" accept="image/*" class="file-input custom-upload-input" />
+  <select id="maskSelect" class="select-input hidden"></select>
+</div>
+
+<div id="previewStepSection" class="section preview-adjust-section progressive-step is-locked hidden section--preview">
+  <div class="section-badge">Step 2</div>
+  <h2>Adjust</h2>
+
+  <div class="preview-adjust-layout">
+    <div class="preview-card embedded-preview-card">
+      <div class="preview-header">
+        <div>
+          <div class="preview-title">QR-Camo preview</div>
+          <div id="previewMeta" class="preview-meta">Choose a shape to begin</div>
+        </div>
+        <div id="sourceMeta" class="source-meta">waiting for shape</div>
+      </div>
+
+      <div class="preview-stage embedded-preview-stage">
+        <canvas id="sourcePreviewCanvas" class="source-preview-layer"></canvas>
+        <canvas id="outputCanvas" class="output-preview-layer"></canvas>
+
+        <div id="previewEmptyState" class="preview-empty-state">
+          <div class="empty-icon">⬒</div>
+          <div class="empty-title">Select a shape above</div>
+          <div class="empty-copy">
+            The QR will automatically generate and appear here.
           </div>
         </div>
+      </div>
+    </div>
 
-        <div id="previewStepSection" class="section preview-adjust-section progressive-step is-locked hidden section--preview">
-          <div class="section-badge">Step 2</div>
-          <h2>Live Preview</h2>
+    <div class="adjust-panel-card">
+      <h3 class="adjust-title">Adjust</h3>
 
-          <div class="preview-adjust-layout">
-            <div class="preview-card embedded-preview-card">
-              <div class="preview-header">
-                <div>
-                  <div class="preview-title">QR-Camo preview</div>
-                  <div id="previewMeta" class="preview-meta">Choose a shape to begin</div>
-                </div>
-
-                <div id="sourceMeta" class="source-meta">waiting for shape</div>
-              </div>
-
-              <div class="preview-stage embedded-preview-stage">
-                <canvas id="sourcePreviewCanvas" class="source-preview-layer"></canvas>
-                <canvas id="outputCanvas" class="output-preview-layer"></canvas>
-
-                <div id="previewEmptyState" class="preview-empty-state">
-                  <div class="empty-icon">⬒</div>
-                  <div class="empty-title">Select a shape above</div>
-                  <div class="empty-copy">
-                    The QR will automatically generate and appear here.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="adjust-panel-card">
-              <h3 class="adjust-title">Position</h3>
-
-              <div class="adjust-step-groups">
-                <div class="adjust-step-row">
-                  <span class="adjust-step-label">Fine</span>
-                  <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
-                  <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
-                  <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
-                  <button id="nudgeRight" class="nudge-btn" type="button">→</button>
-                  <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
-                </div>
-
-                <div class="adjust-step-row">
-                  <span class="adjust-step-label">Medium</span>
-                  <button id="nudgeUpMedium" class="nudge-btn nudge-btn-mid" type="button">↑</button>
-                  <button id="nudgeLeftMedium" class="nudge-btn nudge-btn-mid" type="button">←</button>
-                  <div class="nudge-spacer"></div>
-                  <button id="nudgeRightMedium" class="nudge-btn nudge-btn-mid" type="button">→</button>
-                  <button id="nudgeDownMedium" class="nudge-btn nudge-btn-mid" type="button">↓</button>
-                </div>
-
-                <div class="adjust-step-row">
-                  <span class="adjust-step-label">Large</span>
-                  <button id="nudgeUpLarge" class="nudge-btn nudge-btn-outer" type="button">↑</button>
-                  <button id="nudgeLeftLarge" class="nudge-btn nudge-btn-outer" type="button">←</button>
-                  <div class="nudge-spacer"></div>
-                  <button id="nudgeRightLarge" class="nudge-btn nudge-btn-outer" type="button">→</button>
-                  <button id="nudgeDownLarge" class="nudge-btn nudge-btn-outer" type="button">↓</button>
-                </div>
-              </div>
-
-              <div class="offset-row">
-                <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
-                <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
-              </div>
-
-              <input type="hidden" id="qrOffsetX" value="0" />
-              <input type="hidden" id="qrOffsetY" value="0" />
-            </div>
-          </div>
+      <div class="adjust-step-groups">
+        <div class="adjust-step-row">
+          <span class="adjust-step-label">Fine</span>
+          <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+          <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
+          <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
+          <button id="nudgeRight" class="nudge-btn" type="button">→</button>
+          <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
         </div>
 
-        <div id="qrStepSection" class="section section--qr progressive-step is-locked hidden">
-          <div class="section-badge">Step 3</div>
-          <h2>Create or change the QR</h2>
-
-          <label class="label" for="qrTextInput">Link or text</label>
-          <input
-            id="qrTextInput"
-            type="text"
-            class="text-input"
-            value="https://example.com"
-            placeholder="https://example.com"
-            autocomplete="off"
-            spellcheck="false"
-          />
-
-          <button id="makeQrBtn" class="btn-primary" type="button" hidden>Create QR</button>
-
-          <label class="label" for="qrUpload">Or upload an existing QR</label>
-          <input id="qrUpload" type="file" accept="image/*" class="file-input" />
-
-          <p class="helper">
-            A default QR is ready to go. Replace the link any time and regenerate.
-          </p>
+        <div class="adjust-step-row">
+          <span class="adjust-step-label">Medium</span>
+          <button id="nudgeUpMedium" class="nudge-btn nudge-btn-mid" type="button">↑</button>
+          <button id="nudgeLeftMedium" class="nudge-btn nudge-btn-mid" type="button">←</button>
+          <div class="nudge-spacer"></div>
+          <button id="nudgeRightMedium" class="nudge-btn nudge-btn-mid" type="button">→</button>
+          <button id="nudgeDownMedium" class="nudge-btn nudge-btn-mid" type="button">↓</button>
         </div>
 
-        <div id="sizeStepSection" class="section section--size progressive-step is-locked hidden">
-          <div class="section-badge">Step 4</div>
-          <h2>Size + Create</h2>
-
-          <label class="label" for="qrSizeSelect">QR size</label>
-          <select id="qrSizeSelect" class="select-input">
-            <option value="xxsmall">Extra Extra Small</option>
-            <option value="xsmall" selected>Extra Small</option>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
-          </select>
-
-          <label class="label" for="maskScale">Shape size</label>
-          <input
-            id="maskScale"
-            type="range"
-            min="80"
-            max="140"
-            step="1"
-            value="100"
-            class="range-input"
-          />
-          <div class="offset-row">
-            <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
-          </div>
-
-          <label class="label" for="maskPadding">Shape padding</label>
-          <input
-            id="maskPadding"
-            type="range"
-            min="0"
-            max="120"
-            step="1"
-            value="0"
-            class="range-input"
-          />
-          <div class="offset-row">
-            <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
-          </div>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="invertMask" />
-            <span>Invert shape</span>
-          </label>
-
-          <div class="action-row action-row-single">
-            <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
-          </div>
+        <div class="adjust-step-row">
+          <span class="adjust-step-label">Large</span>
+          <button id="nudgeUpLarge" class="nudge-btn nudge-btn-outer" type="button">↑</button>
+          <button id="nudgeLeftLarge" class="nudge-btn nudge-btn-outer" type="button">←</button>
+          <div class="nudge-spacer"></div>
+          <button id="nudgeRightLarge" class="nudge-btn nudge-btn-outer" type="button">→</button>
+          <button id="nudgeDownLarge" class="nudge-btn nudge-btn-outer" type="button">↓</button>
         </div>
+      </div>
 
-        <div id="colorStepSection" class="section section--color progressive-step is-locked hidden">
-          <div class="section-badge">Step 5</div>
-          <h2>Color</h2>
+      <div class="offset-row">
+        <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
+        <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+      </div>
 
-          <div class="color-row">
-            <label class="color-field">
-              <span>Foreground</span>
-              <input type="color" id="foregroundColor" value="#000000" />
-            </label>
+      <input type="hidden" id="qrOffsetX" value="0" />
+      <input type="hidden" id="qrOffsetY" value="0" />
 
-            <label class="color-field">
-              <span>Background</span>
-              <input type="color" id="backgroundColor" value="#ffffff" />
-            </label>
-          </div>
+      <label class="label" for="qrTextInput">Link or text</label>
+      <input
+        id="qrTextInput"
+        type="text"
+        class="text-input"
+        value="https://example.com"
+        placeholder="https://example.com"
+        autocomplete="off"
+        spellcheck="false"
+      />
 
-          <label class="checkbox-row">
-            <input type="checkbox" id="transparentBackground" />
-            <span>Transparent background</span>
-          </label>
+      <label class="label" for="qrUpload">Or upload an existing QR</label>
+      <input id="qrUpload" type="file" accept="image/*" class="file-input" />
 
-          <div id="contrastWarning" class="helper hidden">
-            Low contrast may reduce scan reliability.
-          </div>
-        </div>
+      <label class="label" for="qrSizeSelect">QR size</label>
+      <select id="qrSizeSelect" class="select-input">
+        <option value="xxsmall">Extra Extra Small</option>
+        <option value="xsmall" selected>Extra Small</option>
+        <option value="small">Small</option>
+        <option value="medium">Medium</option>
+        <option value="large">Large</option>
+      </select>
+
+      <label class="label" for="maskScale">Shape size</label>
+      <input
+        id="maskScale"
+        type="range"
+        min="80"
+        max="140"
+        step="1"
+        value="100"
+        class="range-input"
+      />
+      <div class="offset-row">
+        <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
+      </div>
+
+      <label class="label" for="maskPadding">Shape padding</label>
+      <input
+        id="maskPadding"
+        type="range"
+        min="0"
+        max="120"
+        step="1"
+        value="0"
+        class="range-input"
+      />
+      <div class="offset-row">
+        <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="invertMask" />
+        <span>Invert shape</span>
+      </label>
+
+      <div class="color-row">
+        <label class="color-field">
+          <span>Foreground</span>
+          <input type="color" id="foregroundColor" value="#000000" />
+        </label>
+
+        <label class="color-field">
+          <span>Background</span>
+          <input type="color" id="backgroundColor" value="#ffffff" />
+        </label>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="transparentBackground" />
+        <span>Transparent background</span>
+      </label>
+
+      <div id="contrastWarning" class="helper hidden">
+        Low contrast may reduce scan reliability.
+      </div>
+
+      <div class="action-row action-row-single">
+        <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
+      </div>
+    </div>
+  </div>
+</div>
 
         <div id="samplesStepSection" class="section samples-section section--samples progressive-step is-locked hidden">
-          <div class="section-badge">Step 6</div>
+          <div class="section-badge">Step 3</div>
           <h2>Samples</h2>
           <p class="helper">Swipe through example QR-Camo designs.</p>
 
