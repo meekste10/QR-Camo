@@ -1055,3 +1055,22 @@ input[type="color"]::-moz-color-swatch{
     width:100%;
   }
 }
+.adjust-panel-card{
+  min-width: 360px;
+}
+
+.adjust-panel-card .text-input,
+.adjust-panel-card .file-input,
+.adjust-panel-card .select-input{
+  width: 100%;
+}
+
+.adjust-panel-card .color-row{
+  justify-content:flex-start;
+}
+
+@media (max-width: 980px){
+  .adjust-panel-card{
+    min-width: 0;
+  }
+}
