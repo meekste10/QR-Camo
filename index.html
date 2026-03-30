@@ -337,6 +337,11 @@
             <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
           </div>
 
+          <label class="checkbox-row">
+            <input type="checkbox" id="invertMask" />
+            <span>Invert shape</span>
+          </label>
+
           <div class="action-row action-row-single">
             <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
           </div>
@@ -372,12 +377,33 @@
             <div class="adjust-panel-card">
               <h3 class="adjust-title">Adjust</h3>
 
-              <div class="nudge-wrap">
-                <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
-                <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
-                <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
-                <button id="nudgeRight" class="nudge-btn" type="button">→</button>
-                <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
+              <div class="adjust-step-groups">
+                <div class="adjust-step-row">
+                  <span class="adjust-step-label">Fine</span>
+                  <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+                  <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
+                  <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
+                  <button id="nudgeRight" class="nudge-btn" type="button">→</button>
+                  <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
+                </div>
+
+                <div class="adjust-step-row">
+                  <span class="adjust-step-label">Medium</span>
+                  <button id="nudgeUpMedium" class="nudge-btn nudge-btn-mid" type="button">↑</button>
+                  <button id="nudgeLeftMedium" class="nudge-btn nudge-btn-mid" type="button">←</button>
+                  <div class="nudge-spacer"></div>
+                  <button id="nudgeRightMedium" class="nudge-btn nudge-btn-mid" type="button">→</button>
+                  <button id="nudgeDownMedium" class="nudge-btn nudge-btn-mid" type="button">↓</button>
+                </div>
+
+                <div class="adjust-step-row">
+                  <span class="adjust-step-label">Large</span>
+                  <button id="nudgeUpLarge" class="nudge-btn nudge-btn-outer" type="button">↑</button>
+                  <button id="nudgeLeftLarge" class="nudge-btn nudge-btn-outer" type="button">←</button>
+                  <div class="nudge-spacer"></div>
+                  <button id="nudgeRightLarge" class="nudge-btn nudge-btn-outer" type="button">→</button>
+                  <button id="nudgeDownLarge" class="nudge-btn nudge-btn-outer" type="button">↓</button>
+                </div>
               </div>
 
               <div class="offset-row">
