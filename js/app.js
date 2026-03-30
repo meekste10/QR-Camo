@@ -79,11 +79,7 @@ const outputCanvas = document.getElementById("outputCanvas");
 
 const samplesGrid = document.getElementById("samplesGrid");
 const presetShapesGrid = document.getElementById("presetShapesGrid");
-
-const qrStepSection = document.getElementById("qrStepSection");
-const sizeStepSection = document.getElementById("sizeStepSection");
 const previewStepSection = document.getElementById("previewStepSection");
-const colorStepSection = document.getElementById("colorStepSection");
 const samplesStepSection = document.getElementById("samplesStepSection");
 
 state.customMaskImage = null;
@@ -213,17 +209,11 @@ function setStepVisible(el, visible) {
 
 function unlockWorkflowAfterShape() {
   setStepVisible(previewStepSection, true);
-  setStepVisible(qrStepSection, true);
-  setStepVisible(sizeStepSection, true);
-  setStepVisible(colorStepSection, true);
   setStepVisible(samplesStepSection, true);
 }
 
 function lockWorkflowUntilShape() {
   setStepVisible(previewStepSection, false);
-  setStepVisible(qrStepSection, false);
-  setStepVisible(sizeStepSection, false);
-  setStepVisible(colorStepSection, false);
   setStepVisible(samplesStepSection, false);
 }
 
