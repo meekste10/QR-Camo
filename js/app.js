@@ -8,7 +8,10 @@ import {
   cropQrInteriorFromTrimmed
 } from "./qr-preprocess.js?v=0.6.3";
 import { extractTiles } from "./tile-engine.js?v=0.6.3";
-import { maskPresets } from "./presets.js?v=0.6.3";
+import {
+  maskPresets,
+  presetShapeCategories
+} from "./presets.js?v=0.6.3";
 import { loadMask } from "./mask-engine.js?v=0.6.3";
 import { buildMaskFromImage } from "./mask-builder.js?v=0.6.3";
 import { render } from "./render-engine.js?v=0.6.3";
@@ -644,14 +647,55 @@ function populatePresetSelect() {
   placeholder.textContent = "Choose a shape…";
   maskSelect.appendChild(placeholder);
 
-  Object.keys(maskPresets).forEach((key) => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = key;
-    maskSelect.appendChild(option);
+  presetShapeCategories.forEach((group) => {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = group.category;
+
+    group.shapes.forEach((shape) => {
+      const option = document.createElement("option");
+      option.value = shape.key;
+      option.textContent = shape.label;
+      optgroup.appendChild(option);
+    });
+
+    maskSelect.appendChild(optgroup);
   });
 }
+function populatePresetShapeCards() {
+  if (!presetShapesGrid) return;
 
+  presetShapesGrid.innerHTML = "";
+
+  presetShapeCategories.forEach((group) => {
+    const section = document.createElement("section");
+    section.className = "preset-category-section";
+
+    const heading = document.createElement("div");
+    heading.className = "preset-category-title";
+    heading.textContent = group.category;
+
+    const row = document.createElement("div");
+    row.className = "preset-category-row";
+
+    group.shapes.forEach((shape) => {
+      const button = document.createElement("button");
+      button.className = "sample-card preset-shape-card";
+      button.type = "button";
+      button.dataset.mask = shape.key;
+
+      button.innerHTML = `
+        <img src="${shape.src}" alt="${shape.label} shape" />
+        <span>${shape.label}</span>
+      `;
+
+      row.appendChild(button);
+    });
+
+    section.appendChild(heading);
+    section.appendChild(row);
+    presetShapesGrid.appendChild(section);
+  });
+}
 async function ensureQrPrepared() {
   if (state.sourceQrCanvas && state.textureTiles?.length) return true;
 
@@ -853,8 +897,8 @@ function init() {
   }
 
   populatePresetSelect();
+  populatePresetShapeCards();
   initSampleCardImages();
-
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncMaskPaddingLabel();
