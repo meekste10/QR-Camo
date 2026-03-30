@@ -80,7 +80,7 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
   );
 }
 
-function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0) {
+function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0, invertMask = false) {
   const ctx = maskCanvas.getContext("2d");
   const { width, height } = maskCanvas;
 
@@ -118,7 +118,7 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
     const b = d[i + 2];
     const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
-    const inside = gray < 180;
+    const inside = invertMask ? gray > 180 : gray < 180;
 
     if (inside) {
       d[i] = 255;
@@ -201,6 +201,7 @@ export function render(options) {
     blendTightness = 50,
     maskScale = 100,
     maskPadding = 0,
+    invertMask = false,
     blockModules = 2
   } = options;
 
@@ -228,7 +229,7 @@ export function render(options) {
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = OUTPUT_SIZE;
   maskCanvas.height = OUTPUT_SIZE;
-  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale, maskPadding);
+  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale, maskPadding, invertMask);
 
   const mctx = maskCanvas.getContext("2d");
 
@@ -271,7 +272,7 @@ export function render(options) {
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
-    ctx.drawImage(camoCanvas, 0, 0);
+  ctx.drawImage(camoCanvas, 0, 0);
 
   applyEdgePostFX(ctx, maskCanvas, 3);
 
