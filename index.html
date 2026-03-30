@@ -46,306 +46,74 @@
           <input id="qrUpload" type="file" accept="image/*" class="file-input" />
         </div>
 
-        <div class="section">
-          <h2>2. Choose a shape</h2>
+      <div class="section">
+  <h2>2. Choose a shape</h2>
 
-          <label class="label">Preset shapes</label>
+  <label class="label">Preset shapes</label>
 
-          <div class="samples-marquee-shell preset-marquee-shell">
-            <div class="samples-marquee-track preset-shapes-track" id="presetShapesGrid">
+  <div class="samples-marquee-shell preset-marquee-shell">
+    <div id="presetShapesGrid" class="preset-categories-grid"></div>
+  </div>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="location">
-                <img src="./assets/masks/Location.png.PNG" alt="Location shape" />
-                <span>Location</span>
-              </button>
+  <select id="maskSelect" class="select-input hidden"></select>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="dollar-sign">
-                <img src="./assets/masks/Dollar-sign.PNG" alt="Dollar sign shape" />
-                <span>Dollar</span>
-              </button>
+  <label class="label" for="customMaskUpload">Or upload your custom silhouette</label>
+  <input id="customMaskUpload" type="file" accept="image/*" class="file-input" />
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="microphone">
-                <img src="./assets/masks/Microphone.PNG" alt="Microphone shape" />
-                <span>Microphone</span>
-              </button>
+  <p class="helper">
+    Tap a preset shape above, or upload your own custom silhouette.
+  </p>
+</div>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="file">
-                <img src="./assets/masks/File.PNG" alt="File shape" />
-                <span>File</span>
-              </button>
+<div class="section">
+  <h2>3. Size + Create</h2>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="keyhole">
-                <img src="./assets/masks/Keyhole.PNG" alt="Keyhole shape" />
-                <span>Keyhole</span>
-              </button>
+  <label class="label" for="qrSizeSelect">QR size</label>
+  <select id="qrSizeSelect" class="select-input">
+    <option value="xxsmall">Extra Extra Small</option>
+    <option value="xsmall">Extra Small</option>
+    <option value="small">Small</option>
+    <option value="medium" selected>Medium</option>
+    <option value="large">Large</option>
+  </select>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="toolkit">
-                <img src="./assets/masks/Toolkit.PNG" alt="Toolkit shape" />
-                <span>Toolkit</span>
-              </button>
+  <label class="label" for="maskScale">Shape size</label>
+  <input
+    id="maskScale"
+    type="range"
+    min="80"
+    max="140"
+    step="1"
+    value="100"
+    class="range-input"
+  />
+  <div class="offset-row">
+    <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
+  </div>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="shop-2">
-                <img src="./assets/masks/Shop-2.PNG" alt="Shop 2 shape" />
-                <span>Shop 2</span>
-              </button>
+  <label class="label" for="maskPadding">Shape padding</label>
+  <input
+    id="maskPadding"
+    type="range"
+    min="0"
+    max="120"
+    step="1"
+    value="0"
+    class="range-input"
+  />
+  <div class="offset-row">
+    <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
+  </div>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="phone">
-                <img src="./assets/masks/Phone.PNG" alt="Phone shape" />
-                <span>Phone</span>
-              </button>
+  <label class="checkbox-row">
+    <input type="checkbox" id="invertMask" />
+    <span>Invert shape</span>
+  </label>
 
-              <button class="sample-card preset-shape-card" type="button" data-mask="trophy">
-                <img src="./assets/masks/Trophy.PNG" alt="Trophy shape" />
-                <span>Trophy</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="house-fence">
-                <img src="./assets/masks/House-fence.PNG" alt="House fence shape" />
-                <span>House Fence</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="candle">
-                <img src="./assets/masks/Candle.PNG" alt="Candle shape" />
-                <span>Candle</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="t-shirts">
-                <img src="./assets/masks/T-shirts.PNG" alt="T-shirts shape" />
-                <span>T-Shirts</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="hammer">
-                <img src="./assets/masks/Hammer.PNG" alt="Hammer shape" />
-                <span>Hammer</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="shop">
-                <img src="./assets/masks/Shop.PNG" alt="Shop shape" />
-                <span>Shop</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="info">
-                <img src="./assets/masks/Info.PNG" alt="Info shape" />
-                <span>Info</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="camera">
-                <img src="./assets/masks/Camera.PNG" alt="Camera shape" />
-                <span>Camera</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="balloon">
-                <img src="./assets/masks/Balloon.PNG" alt="Balloon shape" />
-                <span>Balloon</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="credit-card-hand">
-                <img src="./assets/masks/Credit-card-hand.PNG" alt="Credit card hand shape" />
-                <span>Card Hand</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="martini-glass">
-                <img src="./assets/masks/Martini-glass.PNG" alt="Martini glass shape" />
-                <span>Martini</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="pizza-slice">
-                <img src="./assets/masks/Pizza-slice.PNG" alt="Pizza slice shape" />
-                <span>Pizza</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="door">
-                <img src="./assets/masks/Door.PNG" alt="Door shape" />
-                <span>Door</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="mug">
-                <img src="./assets/masks/mug.PNG" alt="Mug shape" />
-                <span>Mug</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="wine-glass">
-                <img src="./assets/masks/Wine-glass.PNG" alt="Wine glass shape" />
-                <span>Wine</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="fish">
-                <img src="./assets/masks/Fish.png.PNG" alt="Fish shape" />
-                <span>Fish</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="house-2">
-                <img src="./assets/masks/House-2.PNG" alt="House 2 shape" />
-                <span>House 2</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="food-platter">
-                <img src="./assets/masks/Food-platter.PNG" alt="Food platter shape" />
-                <span>Platter</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="lobster">
-                <img src="./assets/masks/Lobster.PNG" alt="Lobster shape" />
-                <span>Lobster</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="key">
-                <img src="./assets/masks/Key.PNG" alt="Key shape" />
-                <span>Key</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="tip-jar">
-                <img src="./assets/masks/Tip-jar.PNG" alt="Tip jar shape" />
-                <span>Tip Jar</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="wallet">
-                <img src="./assets/masks/Wallet.PNG" alt="Wallet shape" />
-                <span>Wallet</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="ticket">
-                <img src="./assets/masks/Ticket.PNG" alt="Ticket shape" />
-                <span>Ticket</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="calendar">
-                <img src="./assets/masks/Calendar.PNG" alt="Calendar shape" />
-                <span>Calendar</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="cloud">
-                <img src="./assets/masks/Cloud.PNG" alt="Cloud shape" />
-                <span>Cloud</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="lock">
-                <img src="./assets/masks/Lock.PNG" alt="Lock shape" />
-                <span>Lock</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="gift">
-                <img src="./assets/masks/Gift.PNG" alt="Gift shape" />
-                <span>Gift</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="profile">
-                <img src="./assets/masks/Profile.PNG" alt="Profile shape" />
-                <span>Profile</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="heart">
-                <img src="./assets/masks/Heart.PNG" alt="Heart shape" />
-                <span>Heart</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="play-button">
-                <img src="./assets/masks/Play-button.PNG" alt="Play button shape" />
-                <span>Play</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="megaphone">
-                <img src="./assets/masks/Megaphone.PNG" alt="Megaphone shape" />
-                <span>Megaphone</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="repair-wrench">
-                <img src="./assets/masks/Repair-Wrench.PNG" alt="Repair wrench shape" />
-                <span>Repair</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="pharmacy">
-                <img src="./assets/masks/Pharmacy.PNG" alt="Pharmacy shape" />
-                <span>Pharmacy</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="human-head">
-                <img src="./assets/masks/Human-head.PNG" alt="Human head shape" />
-                <span>Human Head</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="house">
-                <img src="./assets/masks/house.png" alt="House shape" />
-                <span>House</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="star">
-                <img src="./assets/masks/star.png" alt="Star shape" />
-                <span>Star</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="tree">
-                <img src="./assets/masks/tree.png" alt="Tree shape" />
-                <span>Tree</span>
-              </button>
-
-              <button class="sample-card preset-shape-card" type="button" data-mask="turtle">
-                <img src="./assets/masks/turtle.png" alt="Turtle shape" />
-                <span>Turtle</span>
-              </button>
-
-            </div>
-          </div>
-
-          <select id="maskSelect" class="select-input hidden"></select>
-
-          <label class="label" for="customMaskUpload">Or upload your custom silhouette</label>
-          <input id="customMaskUpload" type="file" accept="image/*" class="file-input" />
-
-          <p class="helper">
-            Tap a preset shape above, or upload your own custom silhouette.
-          </p>
-        </div>
-
-        <div class="section">
-          <h2>3. Size + Create</h2>
-
-          <label class="label" for="qrSizeSelect">QR size</label>
-          <select id="qrSizeSelect" class="select-input">
-            <option value="xxsmall">Extra Extra Small</option>
-            <option value="xsmall">Extra Small</option>
-            <option value="small">Small</option>
-            <option value="medium" selected>Medium</option>
-            <option value="large">Large</option>
-          </select>
-
-          <label class="label" for="maskScale">Shape size</label>
-          <input
-            id="maskScale"
-            type="range"
-            min="80"
-            max="140"
-            step="1"
-            value="100"
-            class="range-input"
-          />
-          <div class="offset-row">
-            <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
-          </div>
-
-          <label class="label" for="maskPadding">Shape padding</label>
-          <input
-            id="maskPadding"
-            type="range"
-            min="0"
-            max="120"
-            step="1"
-            value="0"
-            class="range-input"
-          />
-          <div class="offset-row">
-            <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
-          </div>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="invertMask" />
-            <span>Invert shape</span>
-          </label>
-
-          <div class="action-row action-row-single">
-            <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
-          </div>
-        </div>
+  <div class="action-row action-row-single">
+    <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
+  </div>
+</div>
 
         <div class="section preview-adjust-section">
           <h2>4. Preview + Adjust</h2>
