@@ -304,9 +304,11 @@ function centerSupport(maskCtx, x, y, size) {
 
 function scoreQrCandidate(maskCtx, integralData, x, y, size) {
   const coverage = rectCoverage(integralData, x, y, size);
-  if (coverage < 0.72) return -Infinity;
+  if (coverage < 0.76) return -Infinity;
 
   const corner = cornerSupport(maskCtx, x, y, size);
+  if (corner < 0.62) return -Infinity;
+
   const edge = edgeSupport(maskCtx, x, y, size);
   const center = centerSupport(maskCtx, x, y, size);
 
@@ -322,11 +324,11 @@ function scoreQrCandidate(maskCtx, integralData, x, y, size) {
   const sizeScore = size / maskCtx.canvas.width;
 
   return (
-    coverage * 5.5 +
-    corner * 2.6 +
-    edge * 1.8 +
-    center * 1.4 +
-    centerBias * 0.8 +
+    coverage * 6.0 +
+    corner * 3.2 +
+    edge * 1.9 +
+    center * 1.2 +
+    centerBias * 0.9 +
     sizeScore * 1.2
   );
 }
@@ -348,7 +350,7 @@ function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium"
     const maxX = outputSize - qrDisplaySize;
     const maxY = outputSize - qrDisplaySize;
 
-    const step = Math.max(6, Math.floor(moduleDisplaySize * 1.5));
+    const step = Math.max(4, Math.floor(moduleDisplaySize));
 
     let localBest = null;
 
@@ -382,13 +384,73 @@ function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium"
   return best;
 }
 
+/* -----------------------------
+   QR MODULE INTEGRATION HELPERS
+----------------------------- */
+
+function getQrModuleValue(qrCanvas, col, row) {
+  const ctx = qrCanvas.getContext("2d");
+  const data = ctx.getImageData(col, row, 1, 1).data;
+  return data[0] < 128;
+}
+
+function isFinderRegion(col, row, moduleCount) {
+  const topLeft = col < 7 && row < 7;
+  const topRight = col >= moduleCount - 7 && row < 7;
+  const bottomLeft = col < 7 && row >= moduleCount - 7;
+  return topLeft || topRight || bottomLeft;
+}
+
+function drawQrModulesIntegrated(ctx, qrCanvas, maskCtx, fit, tilePool) {
+  const moduleCount = qrCanvas.width;
+  const moduleDisplaySize = fit.moduleDisplaySize;
+  const startX = Math.round(fit.x);
+  const startY = Math.round(fit.y);
+
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      const isDark = getQrModuleValue(qrCanvas, col, row);
+      if (!isDark) continue;
+
+      const x = startX + col * moduleDisplaySize;
+      const y = startY + row * moduleDisplaySize;
+      const size = moduleDisplaySize;
+
+      const coverage = cellMaskCoverage(maskCtx, x, y, size);
+      if (coverage < 0.55) continue;
+
+      const isFinder = isFinderRegion(col, row, moduleCount);
+
+      if (isFinder) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(x, y, size, size);
+        continue;
+      }
+
+      const tileCanvas = normalizeTile(
+        tilePool[pickTileIndex(col, row, tilePool.length, 91)]
+      );
+
+      if (tileCanvas) {
+        drawTile(ctx, tileCanvas, x, y, size);
+      } else {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(x, y, size, size);
+      }
+
+      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillRect(x, y, size, size);
+    }
+  }
+}
+
 export function render(options) {
   const {
     tiles,
     maskImg,
     outputCanvas,
     sourceQrCanvas,
-    overlayQrCanvas,
+    overlayQrCanvas, // kept for compatibility, but no longer used as top pasted layer
     moduleCount,
     qrSize = "medium",
     qrOffsetX = 0,
@@ -428,34 +490,37 @@ export function render(options) {
 
   const mctx = maskCanvas.getContext("2d");
 
-  const camoCanvas = document.createElement("canvas");
-  camoCanvas.width = OUTPUT_SIZE;
-  camoCanvas.height = OUTPUT_SIZE;
+  const mainCanvas = document.createElement("canvas");
+  mainCanvas.width = OUTPUT_SIZE;
+  mainCanvas.height = OUTPUT_SIZE;
 
-  const cctx = camoCanvas.getContext("2d");
-  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  cctx.imageSmoothingEnabled = false;
+  const mainCtx = mainCanvas.getContext("2d");
+  mainCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  mainCtx.imageSmoothingEnabled = false;
 
   const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, safeModuleCount, qrSize);
 
-  const centerX = clamp(
-    Math.round(autoFit.x + qrOffsetX),
-    0,
-    OUTPUT_SIZE - autoFit.qrDisplaySize
-  );
+  const fit = {
+    ...autoFit,
+    x: clamp(
+      Math.round(autoFit.x + qrOffsetX),
+      0,
+      OUTPUT_SIZE - autoFit.qrDisplaySize
+    ),
+    y: clamp(
+      Math.round(autoFit.y + qrOffsetY),
+      0,
+      OUTPUT_SIZE - autoFit.qrDisplaySize
+    )
+  };
 
-  const centerY = clamp(
-    Math.round(autoFit.y + qrOffsetY),
-    0,
-    OUTPUT_SIZE - autoFit.qrDisplaySize
-  );
-
-  const moduleDisplaySize = autoFit.moduleDisplaySize;
+  const moduleDisplaySize = fit.moduleDisplaySize;
   const tileDisplaySize = moduleDisplaySize * safeBlockModules;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
 
+  // Base camo fill for the whole silhouette
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
@@ -469,52 +534,19 @@ export function render(options) {
       );
       if (!tileCanvas) continue;
 
-      drawTile(cctx, tileCanvas, x, y, tileDisplaySize);
+      drawTile(mainCtx, tileCanvas, x, y, tileDisplaySize);
     }
   }
 
-  cctx.globalCompositeOperation = "destination-in";
-  cctx.drawImage(maskCanvas, 0, 0);
-  cctx.globalCompositeOperation = "source-over";
+  // Integrate the QR modules directly into the artwork
+  drawQrModulesIntegrated(mainCtx, sourceQrCanvas, mctx, fit, tiles);
 
-  ctx.drawImage(camoCanvas, 0, 0);
+  // Clip final artwork to mask
+  mainCtx.globalCompositeOperation = "destination-in";
+  mainCtx.drawImage(maskCanvas, 0, 0);
+  mainCtx.globalCompositeOperation = "source-over";
+
+  ctx.drawImage(mainCanvas, 0, 0);
 
   applyEdgePostFX(ctx, maskCanvas, 3);
-
-  const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
-
-  ctx.imageSmoothingEnabled = false;
-  if ("mozImageSmoothingEnabled" in ctx) ctx.mozImageSmoothingEnabled = false;
-  if ("webkitImageSmoothingEnabled" in ctx) ctx.webkitImageSmoothingEnabled = false;
-  if ("msImageSmoothingEnabled" in ctx) ctx.msImageSmoothingEnabled = false;
-
-  const qrDrawX = centerX;
-  const qrDrawY = centerY;
-  const qrDrawSize = Math.round(autoFit.qrDisplaySize);
-
-  const qrLayerCanvas = document.createElement("canvas");
-  qrLayerCanvas.width = OUTPUT_SIZE;
-  qrLayerCanvas.height = OUTPUT_SIZE;
-
-  const qrLayerCtx = qrLayerCanvas.getContext("2d");
-  qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  qrLayerCtx.imageSmoothingEnabled = false;
-
-  qrLayerCtx.drawImage(
-    topQrCanvas,
-    0,
-    0,
-    topQrCanvas.width,
-    topQrCanvas.height,
-    qrDrawX,
-    qrDrawY,
-    qrDrawSize,
-    qrDrawSize
-  );
-
-  qrLayerCtx.globalCompositeOperation = "destination-in";
-  qrLayerCtx.drawImage(maskCanvas, 0, 0);
-  qrLayerCtx.globalCompositeOperation = "source-over";
-
-  ctx.drawImage(qrLayerCanvas, 0, 0);
 }
