@@ -91,7 +91,7 @@ const NUDGE_STEP_SMALL = 8;
 const NUDGE_STEP_MEDIUM = 24;
 const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
-const DEFAULT_QR_SIZE = "medium";
+const DEFAULT_QR_SIZE = "small";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_MASK_PADDING = 0;
@@ -102,15 +102,15 @@ const DEFAULT_UPLOAD_THRESHOLD = 145;
 const SAMPLE_BASE = "./assets/Samples/";
 
 const samplePreviewCandidates = {
-  "coffee-mug-qr": [
+  "Coffee-mug-qr": [
     `${SAMPLE_BASE}Coffee-mug-qr.png`,
     `${SAMPLE_BASE}coffee-mug-qr.png`
   ],
-  "calendar-qr": [
+  "Calendar-qr": [
     `${SAMPLE_BASE}Calendar-qr.png`,
     `${SAMPLE_BASE}calendar-qr.png`
   ],
-  "headphones-qr": [
+  "Headphones-qr": [
     `${SAMPLE_BASE}Headphones-qr.png`,
     `${SAMPLE_BASE}headphones-qr.png`
   ],
