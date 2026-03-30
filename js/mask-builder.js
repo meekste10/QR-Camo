@@ -1,20 +1,65 @@
+function luminance(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function colorDistance(a, b) {
+  const dr = a.r - b.r;
+  const dg = a.g - b.g;
+  const db = a.b - b.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function sampleCornerBackground(imageData, sampleSize = 24) {
+  const { width, height, data } = imageData;
+
+  const corners = [
+    [0, 0],
+    [width - sampleSize, 0],
+    [0, height - sampleSize],
+    [width - sampleSize, height - sampleSize]
+  ];
+
+  let totalR = 0;
+  let totalG = 0;
+  let totalB = 0;
+  let count = 0;
+
+  for (const [sx, sy] of corners) {
+    for (let y = Math.max(0, sy); y < Math.min(height, sy + sampleSize); y++) {
+      for (let x = Math.max(0, sx); x < Math.min(width, sx + sampleSize); x++) {
+        const i = (y * width + x) * 4;
+        const a = data[i + 3];
+        if (a === 0) continue;
+
+        totalR += data[i];
+        totalG += data[i + 1];
+        totalB += data[i + 2];
+        count++;
+      }
+    }
+  }
+
+  if (!count) {
+    return { r: 255, g: 255, b: 255 };
+  }
+
+  return {
+    r: Math.round(totalR / count),
+    g: Math.round(totalG / count),
+    b: Math.round(totalB / count)
+  };
+}
+
 export function buildMaskFromImage(img, options = {}) {
   const {
     size = 800,
-    targetFill = 0.9,
-
-    // Background cleanup
-    removeWhiteBackground = true,
-    backgroundThreshold = 245,
-
-    // Base fill logic
     threshold = 180,
     invert = false,
+    targetFill = 0.9,
 
-    // Smarter logo handling
-    subtractDarkDetails = true,
-    holeThreshold = 90,
-    maxHoleFraction = 0.38
+    removeDetectedBackground = true,
+    backgroundTolerance = 52,
+    forceBackgroundToWhite = true
   } = options;
 
   const canvas = document.createElement("canvas");
@@ -40,70 +85,59 @@ export function buildMaskFromImage(img, options = {}) {
   const imageData = ctx.getImageData(0, 0, size, size);
   const d = imageData.data;
 
-  const pixelCount = size * size;
-  const baseInside = new Uint8Array(pixelCount);
-  const darkHole = new Uint8Array(pixelCount);
+  const bg = sampleCornerBackground(imageData, 24);
+  const bgLum = luminance(bg.r, bg.g, bg.b);
+  const bgIsDark = bgLum < 110;
 
-  let foregroundCount = 0;
-  let darkForegroundCount = 0;
-
-  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+  for (let i = 0; i < d.length; i += 4) {
     const r = d[i];
     const g = d[i + 1];
     const b = d[i + 2];
     const a = d[i + 3];
 
-    if (a === 0) continue;
+    if (a === 0) {
+      d[i] = 0;
+      d[i + 1] = 0;
+      d[i + 2] = 0;
+      d[i + 3] = 0;
+      continue;
+    }
 
-    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    const distFromBg = colorDistance(
+      { r, g, b },
+      bg
+    );
 
-    const isNearWhite =
-      r >= backgroundThreshold &&
-      g >= backgroundThreshold &&
-      b >= backgroundThreshold;
+    const isBackgroundLike =
+      removeDetectedBackground && distFromBg <= backgroundTolerance;
 
-    // Step 1: establish base foreground
-    let inside = gray < threshold;
+    if (isBackgroundLike) {
+      if (forceBackgroundToWhite) {
+        d[i] = 255;
+        d[i + 1] = 255;
+        d[i + 2] = 255;
+        d[i + 3] = 0;
+      } else {
+        d[i] = 0;
+        d[i + 1] = 0;
+        d[i + 2] = 0;
+        d[i + 3] = 0;
+      }
+      continue;
+    }
 
-    // If requested, treat non-white opaque pixels as foreground too.
-    // This helps colored logos like Spotify.
-    if (removeWhiteBackground && !isNearWhite) {
-      inside = true;
+    const gray = Math.round(luminance(r, g, b));
+
+    let inside;
+
+    if (bgIsDark) {
+      // If background is dark, preserve lighter subject areas too.
+      inside = gray > 40;
+    } else {
+      inside = gray < threshold;
     }
 
     if (invert) inside = !inside;
-
-    if (inside) {
-      baseInside[p] = 1;
-      foregroundCount++;
-
-      // Track very dark internal details that may need to become cutouts
-      if (gray <= holeThreshold) {
-        darkHole[p] = 1;
-        darkForegroundCount++;
-      }
-    }
-  }
-
-  // Decide whether dark pixels should be subtracted as internal holes.
-  // Good for logos like Spotify.
-  const holeFraction = foregroundCount
-    ? darkForegroundCount / foregroundCount
-    : 0;
-
-  const shouldSubtractDarkDetails =
-    subtractDarkDetails &&
-    foregroundCount > 0 &&
-    darkForegroundCount > 0 &&
-    holeFraction > 0.01 &&
-    holeFraction < maxHoleFraction;
-
-  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-    let inside = baseInside[p] === 1;
-
-    if (inside && shouldSubtractDarkDetails && darkHole[p] === 1) {
-      inside = false;
-    }
 
     if (inside) {
       d[i] = 0;
