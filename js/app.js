@@ -929,7 +929,6 @@ function initSampleCardImages() {
     };
   });
 }
-
 function init() {
   if (appVersionBadge) {
     appVersionBadge.textContent = APP_VERSION;
@@ -962,40 +961,42 @@ function init() {
   }
 
   if (qrTextInput) {
-  qrTextInput.addEventListener("focus", () => {
-    if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
-      qrTextInput.select();
-    }
-  });
+    qrTextInput.addEventListener("focus", () => {
+      if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
+        qrTextInput.select();
+      }
+    });
 
-  qrTextInput.addEventListener("keydown", async (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
+    qrTextInput.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
 
-    resetCreateButton();
-    resetGenerateButton();
-    resetQrPreparedState();
+      resetCreateButton();
+      resetGenerateButton();
+      resetQrPreparedState();
 
-    if (maskSelect?.value || state.customMaskImage) {
-      unlockWorkflowAfterShape();
-      await createQrCamo();
-    }
-  });
+      if (maskSelect?.value || state.customMaskImage) {
+        unlockWorkflowAfterShape();
+        await createQrCamo();
+      }
+    });
 
-  qrTextInput.addEventListener("input", () => {
-    resetCreateButton();
-    resetGenerateButton();
-    resetQrPreparedState();
-    setPreviewMeta(`Link updated · press Enter to regenerate · ${APP_VERSION}`);
-  });
+    qrTextInput.addEventListener("input", () => {
+      if (qrUpload) qrUpload.value = "";
 
-  qrTextInput.addEventListener("blur", () => {
-    const value = qrTextInput.value.trim();
-    if (!value) {
-      qrTextInput.value = DEFAULT_QR_TEXT;
-    }
-  });
-}
+      resetCreateButton();
+      resetGenerateButton();
+      resetQrPreparedState();
+      setPreviewMeta(`Link updated · press Enter to regenerate · ${APP_VERSION}`);
+    });
+
+    qrTextInput.addEventListener("blur", () => {
+      const value = qrTextInput.value.trim();
+      if (!value) {
+        qrTextInput.value = DEFAULT_QR_TEXT;
+      }
+    });
+  }
 
   if (qrUpload) {
     qrUpload.addEventListener("change", async () => {
