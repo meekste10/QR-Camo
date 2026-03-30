@@ -629,7 +629,14 @@ function buildCurrentMaskFromUploaded() {
   if (!state.customMaskImage) return null;
 
   const maskCanvas = buildMaskFromImage(state.customMaskImage, {
-    size: 800
+    size: 800,
+    targetFill: 0.9,
+    removeWhiteBackground: true,
+    backgroundThreshold: 245,
+    threshold: 180,
+    subtractDarkDetails: true,
+    holeThreshold: 90,
+    maxHoleFraction: 0.38
   });
 
   state.customMaskCanvas = maskCanvas;
