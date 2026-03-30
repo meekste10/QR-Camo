@@ -1,55 +1,96 @@
 const BASE = "./assets/masks/";
 
-export const maskPresets = {
-  location: `${BASE}Location.png.PNG`,
-  "dollar-sign": `${BASE}Dollar-sign.PNG`,
-  microphone: `${BASE}Microphone.PNG`,
-  file: `${BASE}File.PNG`,
-  keyhole: `${BASE}Keyhole.PNG`,
-  toolkit: `${BASE}Toolkit.PNG`,
-  "shop-2": `${BASE}Shop-2.PNG`,
-  phone: `${BASE}Phone. PNG`,
-  trophy: `${BASE}Trophy.PNG`,
+export const presetShapeCategories = [
+  {
+    category: "Business",
+    shapes: [
+      { key: "calendar", label: "Calendar", src: `${BASE}Calendar.PNG` },
+      { key: "camera", label: "Camera", src: `${BASE}Camera PNG` },
+      { key: "cloud", label: "Cloud", src: `${BASE}Cloud.PNG` },
+      { key: "file", label: "File", src: `${BASE}File.PNG` },
+      { key: "info", label: "Info", src: `${BASE}Info.PNG` },
+      { key: "location", label: "Location", src: `${BASE}Location.png.PNG` },
+      { key: "megaphone", label: "Megaphone", src: `${BASE}Megaphone.PNG` },
+      { key: "phone", label: "Phone", src: `${BASE}Phone. PNG` },
+      { key: "profile", label: "Profile", src: `${BASE}Profile. PNG` },
+      { key: "ticket", label: "Ticket", src: `${BASE}Ticket.PNG` },
+      { key: "trophy", label: "Trophy", src: `${BASE}Trophy.PNG` }
+    ]
+  },
+  {
+    category: "Celebration & Events",
+    shapes: [
+      { key: "balloon", label: "Balloon", src: `${BASE}Balloon.PNG` },
+      { key: "candle", label: "Candle", src: `${BASE}Candle.PNG` },
+      { key: "gift", label: "Gift", src: `${BASE}Gift.PNG` },
+      { key: "heart", label: "Heart", src: `${BASE}Heart.PNG` },
+      { key: "star", label: "Star", src: `${BASE}star.png` }
+    ]
+  },
+  {
+    category: "Commerce & Payments",
+    shapes: [
+      { key: "credit-card-hand", label: "Card Hand", src: `${BASE}Credit-card-hand.PNG` },
+      { key: "dollar-sign", label: "Dollar Sign", src: `${BASE}Dollar-sign.PNG` },
+      { key: "shop", label: "Shop", src: `${BASE}Shop.PNG` },
+      { key: "shop-2", label: "Shop 2", src: `${BASE}Shop-2.PNG` },
+      { key: "tip-jar", label: "Tip Jar", src: `${BASE}Tip-jar.PNG` },
+      { key: "wallet", label: "Wallet", src: `${BASE}Wallet.PNG` }
+    ]
+  },
+  {
+    category: "Food & Drink",
+    shapes: [
+      { key: "fish", label: "Fish", src: `${BASE}Fish.png.PNG` },
+      { key: "food-platter", label: "Food Platter", src: `${BASE}Food-platter.PNG` },
+      { key: "lobster", label: "Lobster", src: `${BASE}Lobster.PNG` },
+      { key: "martini-glass", label: "Martini Glass", src: `${BASE}Martini-glass.PNG` },
+      { key: "mug", label: "Mug", src: `${BASE}mug.PNG` },
+      { key: "pizza-slice", label: "Pizza Slice", src: `${BASE}Pizza-slice.PNG` },
+      { key: "wine-glass", label: "Wine Glass", src: `${BASE}Wine-glass.PNG` }
+    ]
+  },
+  {
+    category: "Home, Property & Access",
+    shapes: [
+      { key: "door", label: "Door", src: `${BASE}Door.PNG` },
+      { key: "house", label: "House", src: `${BASE}house.png` },
+      { key: "house-2", label: "House 2", src: `${BASE}House-2.PNG` },
+      { key: "house-fence", label: "House Fence", src: `${BASE}House-fence.PNG` },
+      { key: "key", label: "Key", src: `${BASE}Key.PNG` },
+      { key: "keyhole", label: "Keyhole", src: `${BASE}Keyhole.PNG` },
+      { key: "lock", label: "Lock", src: `${BASE}Lock.PNG` },
+      { key: "tree", label: "Tree", src: `${BASE}tree.png` }
+    ]
+  },
+  {
+    category: "People & Health",
+    shapes: [
+      { key: "human-head", label: "Human Head", src: `${BASE}Human-head.PNG` },
+      { key: "pharmacy", label: "Pharmacy", src: `${BASE}Pharmacy.PNG` }
+    ]
+  },
+  {
+    category: "Tools & Utility",
+    shapes: [
+      { key: "hammer", label: "Hammer", src: `${BASE}Hammer.PNG` },
+      { key: "microphone", label: "Microphone", src: `${BASE}Microphone.PNG` },
+      { key: "play-button", label: "Play Button", src: `${BASE}Play-button.PNG` },
+      { key: "repair-wrench", label: "Repair Wrench", src: `${BASE}Repair-Wrench.PNG` },
+      { key: "toolkit", label: "Toolkit", src: `${BASE}Toolkit.PNG` },
+      { key: "t-shirts", label: "T-Shirts", src: `${BASE}T-shirts.PNG` }
+    ]
+  },
+  {
+    category: "Fun & Novelty",
+    shapes: [
+      { key: "turtle", label: "Turtle", src: `${BASE}turtle.png` }
+    ]
+  }
+];
 
-  "house-fence": `${BASE}House-fence.PNG`,
-  candle: `${BASE}Candle.PNG`,
-  "t-shirts": `${BASE}T-shirts.PNG`,
-  hammer: `${BASE}Hammer.PNG`,
-  shop: `${BASE}Shop.PNG`,
-  info: `${BASE}Info.PNG`,
-  camera: `${BASE}Camera PNG`,
-  balloon: `${BASE}Balloon.PNG`,
-  "credit-card-hand": `${BASE}Credit-card-hand.PNG`,
+export const allPresetShapes = presetShapeCategories.flatMap((group) => group.shapes);
 
-  "martini-glass": `${BASE}Martini-glass.PNG`,
-  "pizza-slice": `${BASE}Pizza-slice.PNG`,
-  door: `${BASE}Door.PNG`,
-  mug: `${BASE}mug.PNG`,
-  "wine-glass": `${BASE}Wine-glass.PNG`,
-  fish: `${BASE}Fish.png.PNG`,
-  "house-2": `${BASE}House-2.PNG`,
-  "food-platter": `${BASE}Food-platter.PNG`,
-  lobster: `${BASE}Lobster.PNG`,
-
-  key: `${BASE}Key.PNG`,
-  "tip-jar": `${BASE}Tip-jar.PNG`,
-  wallet: `${BASE}Wallet.PNG`,
-  ticket: `${BASE}Ticket.PNG`,
-  calendar: `${BASE}Calendar.PNG`,
-  cloud: `${BASE}Cloud.PNG`,
-  lock: `${BASE}Lock.PNG`,
-  gift: `${BASE}Gift.PNG`,
-  profile: `${BASE}Profile. PNG`,
-
-  heart: `${BASE}Heart.PNG`,
-  "play-button": `${BASE}Play-button.PNG`,
-  megaphone: `${BASE}Megaphone.PNG`,
-  "repair-wrench": `${BASE}Repair-Wrench.PNG`,
-  pharmacy: `${BASE}Pharmacy.PNG`,
-  "human-head": `${BASE}Human-head.PNG`,
-
-  house: `${BASE}house.png`,
-  star: `${BASE}star.png`,
-  tree: `${BASE}tree.png`,
-  turtle: `${BASE}turtle.png`
-};
+export const maskPresets = Object.fromEntries(
+  allPresetShapes.map((shape) => [shape.key, shape.src])
+);
