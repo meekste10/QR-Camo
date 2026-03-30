@@ -1,0 +1,9 @@
+{
+  "appId": "com.meekste10.qrcamo",
+  "appName": "QR Camo",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "iosScheme": "capacitor"
+  }
+}
