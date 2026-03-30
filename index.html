@@ -27,106 +27,51 @@
     <main class="workspace single-column-workspace">
       <section class="controls-card full-width-card">
 
-        <div class="section">
-          <h2>1. Create or upload a QR</h2>
+        <div class="section section--shape section--hero">
+          <div class="section-badge">Step 1</div>
+          <h2>Choose the shape first</h2>
+          <p class="helper">
+            Start with a preset or upload your own silhouette. Once a shape is chosen,
+            the QR and adjustment tools will open below.
+          </p>
 
-          <label class="label" for="qrTextInput">Paste link or text</label>
-          <input
-            id="qrTextInput"
-            type="text"
-            class="text-input"
-            placeholder="https://example.com"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <label class="label">Preset shapes</label>
 
-          <button id="makeQrBtn" class="btn-primary" type="button" hidden>Create QR</button>
+          <div class="samples-marquee-shell preset-marquee-shell">
+            <div id="presetShapesGrid" class="preset-categories-grid"></div>
+          </div>
 
-          <label class="label" for="qrUpload">Or upload an existing QR</label>
-          <input id="qrUpload" type="file" accept="image/*" class="file-input" />
+          <select id="maskSelect" class="select-input hidden"></select>
+
+          <div class="custom-upload-hero">
+            <div class="custom-upload-copy">
+              <div class="custom-upload-eyebrow">Main custom path</div>
+              <div class="custom-upload-title">Upload your custom silhouette</div>
+              <div class="custom-upload-subtitle">
+                Best for logos, icons, symbols, mascots, product shapes, and your own brand marks.
+              </div>
+            </div>
+
+            <label for="customMaskUpload" class="custom-upload-btn">
+              Choose image
+            </label>
+            <input id="customMaskUpload" type="file" accept="image/*" class="file-input custom-upload-input" />
+          </div>
         </div>
 
-      <div class="section">
-  <h2>2. Choose a shape</h2>
-
-  <label class="label">Preset shapes</label>
-
-  <div class="samples-marquee-shell preset-marquee-shell">
-    <div id="presetShapesGrid" class="preset-categories-grid"></div>
-  </div>
-
-  <select id="maskSelect" class="select-input hidden"></select>
-
-  <label class="label" for="customMaskUpload">Or upload your custom silhouette</label>
-  <input id="customMaskUpload" type="file" accept="image/*" class="file-input" />
-
-  <p class="helper">
-    Tap a preset shape above, or upload your own custom silhouette.
-  </p>
-</div>
-
-<div class="section">
-  <h2>3. Size + Create</h2>
-
-  <label class="label" for="qrSizeSelect">QR size</label>
-  <select id="qrSizeSelect" class="select-input">
-    <option value="xxsmall">Extra Extra Small</option>
-    <option value="xsmall"
-selected>Extra Small</option>
-    <option value="small">Small</option>
-    <option value="medium">Medium</option>
-    <option value="large">Large</option>
-  </select>
-
-  <label class="label" for="maskScale">Shape size</label>
-  <input
-    id="maskScale"
-    type="range"
-    min="80"
-    max="140"
-    step="1"
-    value="100"
-    class="range-input"
-  />
-  <div class="offset-row">
-    <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
-  </div>
-
-  <label class="label" for="maskPadding">Shape padding</label>
-  <input
-    id="maskPadding"
-    type="range"
-    min="0"
-    max="120"
-    step="1"
-    value="0"
-    class="range-input"
-  />
-  <div class="offset-row">
-    <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
-  </div>
-
-  <label class="checkbox-row">
-    <input type="checkbox" id="invertMask" />
-    <span>Invert shape</span>
-  </label>
-
-  <div class="action-row action-row-single">
-    <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
-  </div>
-</div>
-
-        <div class="section preview-adjust-section">
-          <h2>4. Preview + Adjust</h2>
+        <div id="previewStepSection" class="section preview-adjust-section progressive-step is-locked hidden section--preview">
+          <div class="section-badge">Step 2</div>
+          <h2>Live Preview</h2>
 
           <div class="preview-adjust-layout">
             <div class="preview-card embedded-preview-card">
               <div class="preview-header">
                 <div>
-                  <div class="preview-title">Live Preview</div>
-                  <div id="previewMeta" class="preview-meta">Waiting for QR or shape</div>
+                  <div class="preview-title">QR-Camo preview</div>
+                  <div id="previewMeta" class="preview-meta">Choose a shape to begin</div>
                 </div>
-                <div id="sourceMeta" class="source-meta">Nothing loaded yet</div>
+
+                <div id="sourceMeta" class="source-meta">waiting for shape</div>
               </div>
 
               <div class="preview-stage embedded-preview-stage">
@@ -134,17 +79,17 @@ selected>Extra Small</option>
                 <canvas id="outputCanvas" class="output-preview-layer"></canvas>
 
                 <div id="previewEmptyState" class="preview-empty-state">
-                  <div class="empty-icon">◌</div>
-                  <div class="empty-title">Nothing to preview yet</div>
+                  <div class="empty-icon">⬒</div>
+                  <div class="empty-title">Select a shape above</div>
                   <div class="empty-copy">
-                    Create or upload a QR, then choose a shape and generate.
+                    The QR will automatically generate and appear here.
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="adjust-panel-card">
-              <h3 class="adjust-title">Adjust</h3>
+              <h3 class="adjust-title">Position</h3>
 
               <div class="adjust-step-groups">
                 <div class="adjust-step-row">
@@ -186,8 +131,85 @@ selected>Extra Small</option>
           </div>
         </div>
 
-        <div class="section">
-          <h2>5. Color</h2>
+        <div id="qrStepSection" class="section section--qr progressive-step is-locked hidden">
+          <div class="section-badge">Step 3</div>
+          <h2>Create or change the QR</h2>
+
+          <label class="label" for="qrTextInput">Link or text</label>
+          <input
+            id="qrTextInput"
+            type="text"
+            class="text-input"
+            value="https://example.com"
+            placeholder="https://example.com"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
+          <button id="makeQrBtn" class="btn-primary" type="button" hidden>Create QR</button>
+
+          <label class="label" for="qrUpload">Or upload an existing QR</label>
+          <input id="qrUpload" type="file" accept="image/*" class="file-input" />
+
+          <p class="helper">
+            A default QR is ready to go. Replace the link any time and regenerate.
+          </p>
+        </div>
+
+        <div id="sizeStepSection" class="section section--size progressive-step is-locked hidden">
+          <div class="section-badge">Step 4</div>
+          <h2>Size + Create</h2>
+
+          <label class="label" for="qrSizeSelect">QR size</label>
+          <select id="qrSizeSelect" class="select-input">
+            <option value="xxsmall">Extra Extra Small</option>
+            <option value="xsmall" selected>Extra Small</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
+
+          <label class="label" for="maskScale">Shape size</label>
+          <input
+            id="maskScale"
+            type="range"
+            min="80"
+            max="140"
+            step="1"
+            value="100"
+            class="range-input"
+          />
+          <div class="offset-row">
+            <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
+          </div>
+
+          <label class="label" for="maskPadding">Shape padding</label>
+          <input
+            id="maskPadding"
+            type="range"
+            min="0"
+            max="120"
+            step="1"
+            value="0"
+            class="range-input"
+          />
+          <div class="offset-row">
+            <div class="offset-chip">Padding: <span id="maskPaddingLabel">0</span>px</div>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="invertMask" />
+            <span>Invert shape</span>
+          </label>
+
+          <div class="action-row action-row-single">
+            <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
+          </div>
+        </div>
+
+        <div id="colorStepSection" class="section section--color progressive-step is-locked hidden">
+          <div class="section-badge">Step 5</div>
+          <h2>Color</h2>
 
           <div class="color-row">
             <label class="color-field">
@@ -211,8 +233,9 @@ selected>Extra Small</option>
           </div>
         </div>
 
-        <div class="section samples-section">
-          <h2>6. Samples</h2>
+        <div id="samplesStepSection" class="section samples-section section--samples progressive-step is-locked hidden">
+          <div class="section-badge">Step 6</div>
+          <h2>Samples</h2>
           <p class="helper">Swipe through example QR-Camo designs.</p>
 
           <div class="samples-marquee-shell">
