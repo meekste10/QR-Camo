@@ -34,6 +34,7 @@ const maskScale = document.getElementById("maskScale");
 const maskScaleLabel = document.getElementById("maskScaleLabel");
 const maskPadding = document.getElementById("maskPadding");
 const maskPaddingLabel = document.getElementById("maskPaddingLabel");
+const invertMask = document.getElementById("invertMask");
 
 const qrOffsetX = document.getElementById("qrOffsetX");
 const qrOffsetY = document.getElementById("qrOffsetY");
@@ -44,6 +45,17 @@ const nudgeUp = document.getElementById("nudgeUp");
 const nudgeRight = document.getElementById("nudgeRight");
 const nudgeDown = document.getElementById("nudgeDown");
 const nudgeLeft = document.getElementById("nudgeLeft");
+
+const nudgeUpMedium = document.getElementById("nudgeUpMedium");
+const nudgeRightMedium = document.getElementById("nudgeRightMedium");
+const nudgeDownMedium = document.getElementById("nudgeDownMedium");
+const nudgeLeftMedium = document.getElementById("nudgeLeftMedium");
+
+const nudgeUpLarge = document.getElementById("nudgeUpLarge");
+const nudgeRightLarge = document.getElementById("nudgeRightLarge");
+const nudgeDownLarge = document.getElementById("nudgeDownLarge");
+const nudgeLeftLarge = document.getElementById("nudgeLeftLarge");
+
 const resetPositionBtn = document.getElementById("resetPositionBtn");
 
 const foregroundColor = document.getElementById("foregroundColor");
@@ -75,8 +87,11 @@ state.modulePixelSize = 1;
 state.blockModules = 2;
 state.hasRenderedOnce = false;
 
-const NUDGE_STEP = 8;
+const NUDGE_STEP_SMALL = 8;
+const NUDGE_STEP_MEDIUM = 24;
+const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
+const DEFAULT_QR_SIZE = "medium";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_MASK_PADDING = 0;
@@ -414,9 +429,10 @@ function resetAll() {
   if (customMaskUpload) customMaskUpload.value = "";
 
   if (maskSelect) maskSelect.value = "";
-  if (qrSizeSelect) qrSizeSelect.value = "medium";
+  if (qrSizeSelect) qrSizeSelect.value = DEFAULT_QR_SIZE;
   if (maskScale) maskScale.value = String(DEFAULT_MASK_SCALE);
   if (maskPadding) maskPadding.value = String(DEFAULT_MASK_PADDING);
+  if (invertMask) invertMask.checked = false;
 
   syncPresetShapeSelectionUI();
 
@@ -688,6 +704,7 @@ async function renderOutput() {
       blendTightness: DEFAULT_BLEND_TIGHTNESS,
       maskScale: Number(maskScale.value || DEFAULT_MASK_SCALE),
       maskPadding: Number(maskPadding.value || DEFAULT_MASK_PADDING),
+      invertMask: !!invertMask?.checked,
       blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
     });
 
@@ -950,10 +967,28 @@ function init() {
     await autoRenderIfReady();
   });
 
-  nudgeUp.addEventListener("click", () => nudge(0, -NUDGE_STEP));
-  nudgeRight.addEventListener("click", () => nudge(NUDGE_STEP, 0));
-  nudgeDown.addEventListener("click", () => nudge(0, NUDGE_STEP));
-  nudgeLeft.addEventListener("click", () => nudge(-NUDGE_STEP, 0));
+  if (invertMask) {
+    invertMask.addEventListener("change", async () => {
+      resetGenerateButton();
+      await autoRenderIfReady();
+    });
+  }
+
+  nudgeUp.addEventListener("click", () => nudge(0, -NUDGE_STEP_SMALL));
+  nudgeRight.addEventListener("click", () => nudge(NUDGE_STEP_SMALL, 0));
+  nudgeDown.addEventListener("click", () => nudge(0, NUDGE_STEP_SMALL));
+  nudgeLeft.addEventListener("click", () => nudge(-NUDGE_STEP_SMALL, 0));
+
+  if (nudgeUpMedium) nudgeUpMedium.addEventListener("click", () => nudge(0, -NUDGE_STEP_MEDIUM));
+  if (nudgeRightMedium) nudgeRightMedium.addEventListener("click", () => nudge(NUDGE_STEP_MEDIUM, 0));
+  if (nudgeDownMedium) nudgeDownMedium.addEventListener("click", () => nudge(0, NUDGE_STEP_MEDIUM));
+  if (nudgeLeftMedium) nudgeLeftMedium.addEventListener("click", () => nudge(-NUDGE_STEP_MEDIUM, 0));
+
+  if (nudgeUpLarge) nudgeUpLarge.addEventListener("click", () => nudge(0, -NUDGE_STEP_LARGE));
+  if (nudgeRightLarge) nudgeRightLarge.addEventListener("click", () => nudge(NUDGE_STEP_LARGE, 0));
+  if (nudgeDownLarge) nudgeDownLarge.addEventListener("click", () => nudge(0, NUDGE_STEP_LARGE));
+  if (nudgeLeftLarge) nudgeLeftLarge.addEventListener("click", () => nudge(-NUDGE_STEP_LARGE, 0));
+
   resetPositionBtn.addEventListener("click", resetPosition);
 
   foregroundColor.addEventListener("input", async () => {
