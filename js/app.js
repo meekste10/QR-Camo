@@ -972,23 +972,40 @@ function init() {
   }
 
   if (qrTextInput) {
-    qrTextInput.addEventListener("keydown", async (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
+  qrTextInput.addEventListener("focus", () => {
+    if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
+      qrTextInput.select();
+    }
+  });
+
+  qrTextInput.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    resetCreateButton();
+    resetGenerateButton();
+    resetQrPreparedState();
+
+    if (maskSelect?.value || state.customMaskImage) {
+      unlockWorkflowAfterShape();
       await createQrCamo();
-    });
+    }
+  });
 
-    qrTextInput.addEventListener("input", async () => {
-      resetCreateButton();
-      resetGenerateButton();
-      resetQrPreparedState();
+  qrTextInput.addEventListener("input", () => {
+    resetCreateButton();
+    resetGenerateButton();
+    resetQrPreparedState();
+    setPreviewMeta(`Link updated · press Enter to regenerate · ${APP_VERSION}`);
+  });
 
-      if (maskSelect?.value || state.customMaskImage) {
-        unlockWorkflowAfterShape();
-        await ensurePreviewFlowAfterShapeSelection();
-      }
-    });
-  }
+  qrTextInput.addEventListener("blur", () => {
+    const value = qrTextInput.value.trim();
+    if (!value) {
+      qrTextInput.value = DEFAULT_QR_TEXT;
+    }
+  });
+}
 
   if (qrUpload) {
     qrUpload.addEventListener("change", async () => {
