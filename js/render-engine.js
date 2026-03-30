@@ -187,201 +187,6 @@ function applyEdgePostFX(ctx, maskCanvas, depth = 3) {
   ctx.restore();
 }
 
-/* -----------------------------
-   SMART QR FIT HELPERS
------------------------------ */
-
-function sizeFractionsForPreset(qrSize = "medium") {
-  if (qrSize === "xxsmall") return [0.20, 0.18, 0.16, 0.14, 0.12];
-  if (qrSize === "xsmall") return [0.26, 0.24, 0.22, 0.20, 0.18];
-  if (qrSize === "small") return [0.34, 0.31, 0.28, 0.26, 0.22];
-  if (qrSize === "large") return [0.52, 0.48, 0.44, 0.40, 0.36];
-  return [0.42, 0.38, 0.34, 0.30, 0.26];
-}
-
-function buildIntegralMask(maskCtx) {
-  const { width, height } = maskCtx.canvas;
-  const integral = new Uint32Array((width + 1) * (height + 1));
-
-  for (let y = 0; y < height; y++) {
-    let rowSum = 0;
-    for (let x = 0; x < width; x++) {
-      rowSum += pointInsideMask(maskCtx, x, y) ? 1 : 0;
-      const idx = (y + 1) * (width + 1) + (x + 1);
-      integral[idx] = integral[y * (width + 1) + (x + 1)] + rowSum;
-    }
-  }
-
-  return { integral, width, height };
-}
-
-function rectInsideCount(integralData, x, y, size) {
-  const { integral, width, height } = integralData;
-
-  const x0 = clamp(Math.floor(x), 0, width);
-  const y0 = clamp(Math.floor(y), 0, height);
-  const x1 = clamp(Math.floor(x + size), 0, width);
-  const y1 = clamp(Math.floor(y + size), 0, height);
-
-  const stride = width + 1;
-
-  return (
-    integral[y1 * stride + x1]
-    - integral[y0 * stride + x1]
-    - integral[y1 * stride + x0]
-    + integral[y0 * stride + x0]
-  );
-}
-
-function rectCoverage(integralData, x, y, size) {
-  const inside = rectInsideCount(integralData, x, y, size);
-  const total = Math.max(1, Math.floor(size) * Math.floor(size));
-  return inside / total;
-}
-
-function squareSampleCoverage(maskCtx, x, y, size, divisions = 5) {
-  let inside = 0;
-  let total = 0;
-
-  const step = size / divisions;
-
-  for (let gy = 0; gy < divisions; gy++) {
-    for (let gx = 0; gx < divisions; gx++) {
-      const sx = x + gx * step + step / 2;
-      const sy = y + gy * step + step / 2;
-      if (pointInsideMask(maskCtx, sx, sy)) inside++;
-      total++;
-    }
-  }
-
-  return total ? inside / total : 0;
-}
-
-function cornerSupport(maskCtx, x, y, size) {
-  const inset = Math.max(6, Math.floor(size * 0.08));
-  const probe = Math.max(8, Math.floor(size * 0.16));
-
-  const corners = [
-    [x + inset, y + inset],
-    [x + size - inset - probe, y + inset],
-    [x + inset, y + size - inset - probe],
-    [x + size - inset - probe, y + size - inset - probe]
-  ];
-
-  let total = 0;
-  for (const [cx, cy] of corners) {
-    total += squareSampleCoverage(maskCtx, cx, cy, probe, 4);
-  }
-
-  return total / corners.length;
-}
-
-function edgeSupport(maskCtx, x, y, size) {
-  const probe = Math.max(8, Math.floor(size * 0.14));
-  const mid = Math.floor(size / 2);
-
-  const zones = [
-    [x + mid - probe / 2, y + 4],
-    [x + mid - probe / 2, y + size - probe - 4],
-    [x + 4, y + mid - probe / 2],
-    [x + size - probe - 4, y + mid - probe / 2]
-  ];
-
-  let total = 0;
-  for (const [zx, zy] of zones) {
-    total += squareSampleCoverage(maskCtx, zx, zy, probe, 4);
-  }
-
-  return total / zones.length;
-}
-
-function centerSupport(maskCtx, x, y, size) {
-  const probe = Math.max(12, Math.floor(size * 0.22));
-  const cx = x + size / 2 - probe / 2;
-  const cy = y + size / 2 - probe / 2;
-  return squareSampleCoverage(maskCtx, cx, cy, probe, 5);
-}
-
-function scoreQrCandidate(maskCtx, integralData, x, y, size) {
-  const coverage = rectCoverage(integralData, x, y, size);
-  if (coverage < 0.72) return -Infinity;
-
-  const corner = cornerSupport(maskCtx, x, y, size);
-  const edge = edgeSupport(maskCtx, x, y, size);
-  const center = centerSupport(maskCtx, x, y, size);
-
-  const maskCenterX = maskCtx.canvas.width / 2;
-  const maskCenterY = maskCtx.canvas.height / 2;
-  const qrCenterX = x + size / 2;
-  const qrCenterY = y + size / 2;
-
-  const distFromCenter = Math.hypot(qrCenterX - maskCenterX, qrCenterY - maskCenterY);
-  const maxDist = Math.hypot(maskCenterX, maskCenterY);
-  const centerBias = 1 - distFromCenter / Math.max(1, maxDist);
-
-  const sizeScore = size / maskCtx.canvas.width;
-
-  return (
-    coverage * 5.5 +
-    corner * 2.6 +
-    edge * 1.8 +
-    center * 1.4 +
-    centerBias * 0.8 +
-    sizeScore * 1.2
-  );
-}
-
-function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium") {
-  const safeModuleCount = Math.max(21, moduleCount || 21);
-  const fractions = sizeFractionsForPreset(qrSize);
-  const integralData = buildIntegralMask(maskCtx);
-
-  let best = null;
-
-  for (const fraction of fractions) {
-    let qrDisplaySize = Math.floor(outputSize * fraction);
-    let moduleDisplaySize = Math.max(2, Math.floor(qrDisplaySize / safeModuleCount));
-    qrDisplaySize = moduleDisplaySize * safeModuleCount;
-
-    if (qrDisplaySize <= 0 || qrDisplaySize > outputSize) continue;
-
-    const maxX = outputSize - qrDisplaySize;
-    const maxY = outputSize - qrDisplaySize;
-
-    const step = Math.max(6, Math.floor(moduleDisplaySize * 1.5));
-
-    let localBest = null;
-
-    for (let y = 0; y <= maxY; y += step) {
-      for (let x = 0; x <= maxX; x += step) {
-        const score = scoreQrCandidate(maskCtx, integralData, x, y, qrDisplaySize);
-        if (score === -Infinity) continue;
-
-        if (!localBest || score > localBest.score) {
-          localBest = {
-            x,
-            y,
-            qrDisplaySize,
-            moduleDisplaySize,
-            score
-          };
-        }
-      }
-    }
-
-    if (localBest) {
-      best = localBest;
-      break;
-    }
-  }
-
-  if (!best) {
-    return fitQrCenter(outputSize, safeModuleCount, qrSize);
-  }
-
-  return best;
-}
-
 export function render(options) {
   const {
     tiles,
@@ -436,21 +241,11 @@ export function render(options) {
   cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   cctx.imageSmoothingEnabled = false;
 
-  const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, safeModuleCount, qrSize);
+  const centerFit = fitQrCenter(OUTPUT_SIZE, safeModuleCount, qrSize);
+  const centerX = centerFit.x + qrOffsetX;
+  const centerY = centerFit.y + qrOffsetY;
 
-  const centerX = clamp(
-    Math.round(autoFit.x + qrOffsetX),
-    0,
-    OUTPUT_SIZE - autoFit.qrDisplaySize
-  );
-
-  const centerY = clamp(
-    Math.round(autoFit.y + qrOffsetY),
-    0,
-    OUTPUT_SIZE - autoFit.qrDisplaySize
-  );
-
-  const moduleDisplaySize = autoFit.moduleDisplaySize;
+  const moduleDisplaySize = centerFit.moduleDisplaySize;
   const tileDisplaySize = moduleDisplaySize * safeBlockModules;
 
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
@@ -488,9 +283,9 @@ export function render(options) {
   if ("webkitImageSmoothingEnabled" in ctx) ctx.webkitImageSmoothingEnabled = false;
   if ("msImageSmoothingEnabled" in ctx) ctx.msImageSmoothingEnabled = false;
 
-  const qrDrawX = centerX;
-  const qrDrawY = centerY;
-  const qrDrawSize = Math.round(autoFit.qrDisplaySize);
+  const qrDrawX = Math.round(centerX);
+  const qrDrawY = Math.round(centerY);
+  const qrDrawSize = Math.round(centerFit.qrDisplaySize);
 
   const qrLayerCanvas = document.createElement("canvas");
   qrLayerCanvas.width = OUTPUT_SIZE;
