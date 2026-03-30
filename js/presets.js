@@ -5,14 +5,14 @@ export const presetShapeCategories = [
     category: "Business",
     shapes: [
       { key: "calendar", label: "Calendar", src: `${BASE}Calendar.PNG` },
-      { key: "camera", label: "Camera", src: `${BASE}Camera PNG` },
+      { key: "camera", label: "Camera", src: `${BASE}Camera.PNG` },
       { key: "cloud", label: "Cloud", src: `${BASE}Cloud.PNG` },
       { key: "file", label: "File", src: `${BASE}File.PNG` },
       { key: "info", label: "Info", src: `${BASE}Info.PNG` },
       { key: "location", label: "Location", src: `${BASE}Location.png.PNG` },
       { key: "megaphone", label: "Megaphone", src: `${BASE}Megaphone.PNG` },
-      { key: "phone", label: "Phone", src: `${BASE}Phone. PNG` },
-      { key: "profile", label: "Profile", src: `${BASE}Profile. PNG` },
+      { key: "phone", label: "Phone", src: `${BASE}Phone.PNG` },
+      { key: "profile", label: "Profile", src: `${BASE}Profile.PNG` },
       { key: "ticket", label: "Ticket", src: `${BASE}Ticket.PNG` },
       { key: "trophy", label: "Trophy", src: `${BASE}Trophy.PNG` }
     ]
