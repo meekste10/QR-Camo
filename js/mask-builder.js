@@ -14,9 +14,9 @@ function sampleCornerBackground(imageData, sampleSize = 24) {
 
   const corners = [
     [0, 0],
-    [width - sampleSize, 0],
-    [0, height - sampleSize],
-    [width - sampleSize, height - sampleSize]
+    [Math.max(0, width - sampleSize), 0],
+    [0, Math.max(0, height - sampleSize)],
+    [Math.max(0, width - sampleSize), Math.max(0, height - sampleSize)]
   ];
 
   let totalR = 0;
@@ -25,8 +25,8 @@ function sampleCornerBackground(imageData, sampleSize = 24) {
   let count = 0;
 
   for (const [sx, sy] of corners) {
-    for (let y = Math.max(0, sy); y < Math.min(height, sy + sampleSize); y++) {
-      for (let x = Math.max(0, sx); x < Math.min(width, sx + sampleSize); x++) {
+    for (let y = sy; y < Math.min(height, sy + sampleSize); y++) {
+      for (let x = sx; x < Math.min(width, sx + sampleSize); x++) {
         const i = (y * width + x) * 4;
         const a = data[i + 3];
         if (a === 0) continue;
@@ -50,16 +50,49 @@ function sampleCornerBackground(imageData, sampleSize = 24) {
   };
 }
 
+function rgbToHsl(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+
+  if (max === min) {
+    return { h: 0, s: 0, l };
+  }
+
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+  let h = 0;
+  switch (max) {
+    case r:
+      h = (g - b) / d + (g < b ? 6 : 0);
+      break;
+    case g:
+      h = (b - r) / d + 2;
+      break;
+    default:
+      h = (r - g) / d + 4;
+      break;
+  }
+
+  h /= 6;
+  return { h, s, l };
+}
+
 export function buildMaskFromImage(img, options = {}) {
   const {
     size = 800,
+    targetFill = 0.9,
     threshold = 180,
     invert = false,
-    targetFill = 0.9,
-
     removeDetectedBackground = true,
-    backgroundTolerance = 52,
-    forceBackgroundToWhite = true
+    backgroundTolerance = 58,
+    forceBackgroundToWhite = true,
+    saturationBoostCutoff = 0.16
   } = options;
 
   const canvas = document.createElement("canvas");
@@ -75,8 +108,8 @@ export function buildMaskFromImage(img, options = {}) {
     (size * targetFill) / img.height
   );
 
-  const drawW = Math.round(img.width * scale);
-  const drawH = Math.round(img.height * scale);
+  const drawW = Math.max(1, Math.round(img.width * scale));
+  const drawH = Math.max(1, Math.round(img.height * scale));
   const drawX = Math.floor((size - drawW) / 2);
   const drawY = Math.floor((size - drawH) / 2);
 
@@ -87,7 +120,7 @@ export function buildMaskFromImage(img, options = {}) {
 
   const bg = sampleCornerBackground(imageData, 24);
   const bgLum = luminance(bg.r, bg.g, bg.b);
-  const bgIsDark = bgLum < 110;
+  const bgHsl = rgbToHsl(bg.r, bg.g, bg.b);
 
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i];
@@ -103,15 +136,17 @@ export function buildMaskFromImage(img, options = {}) {
       continue;
     }
 
-    const distFromBg = colorDistance(
-      { r, g, b },
-      bg
-    );
+    const lum = luminance(r, g, b);
+    const hsl = rgbToHsl(r, g, b);
+    const distFromBg = colorDistance({ r, g, b }, bg);
 
-    const isBackgroundLike =
-      removeDetectedBackground && distFromBg <= backgroundTolerance;
+    const closeToBg =
+      removeDetectedBackground &&
+      distFromBg <= backgroundTolerance &&
+      Math.abs(hsl.l - bgHsl.l) < 0.16 &&
+      Math.abs(hsl.s - bgHsl.s) < 0.22;
 
-    if (isBackgroundLike) {
+    if (closeToBg) {
       if (forceBackgroundToWhite) {
         d[i] = 255;
         d[i + 1] = 255;
@@ -126,16 +161,18 @@ export function buildMaskFromImage(img, options = {}) {
       continue;
     }
 
-    const gray = Math.round(luminance(r, g, b));
+    const isStrongColoredForeground =
+      hsl.s >= saturationBoostCutoff &&
+      distFromBg > Math.max(42, backgroundTolerance * 0.7);
 
-    let inside;
+    const isDarkForeground = lum < threshold;
+    const isLightForegroundOnDarkBg =
+      bgLum < 110 && lum > bgLum + 22 && distFromBg > 26;
 
-    if (bgIsDark) {
-      // If background is dark, preserve lighter subject areas too.
-      inside = gray > 40;
-    } else {
-      inside = gray < threshold;
-    }
+    let inside =
+      isStrongColoredForeground ||
+      isDarkForeground ||
+      isLightForegroundOnDarkBg;
 
     if (invert) inside = !inside;
 
