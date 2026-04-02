@@ -1,98 +1,12 @@
-function luminance(r, g, b) {
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-function colorDistance(a, b) {
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
-  const db = a.b - b.b;
-  return Math.sqrt(dr * dr + dg * dg + db * db);
-}
-
-function sampleCornerBackground(imageData, sampleSize = 24) {
-  const { width, height, data } = imageData;
-
-  const corners = [
-    [0, 0],
-    [Math.max(0, width - sampleSize), 0],
-    [0, Math.max(0, height - sampleSize)],
-    [Math.max(0, width - sampleSize), Math.max(0, height - sampleSize)]
-  ];
-
-  let totalR = 0;
-  let totalG = 0;
-  let totalB = 0;
-  let count = 0;
-
-  for (const [sx, sy] of corners) {
-    for (let y = sy; y < Math.min(height, sy + sampleSize); y++) {
-      for (let x = sx; x < Math.min(width, sx + sampleSize); x++) {
-        const i = (y * width + x) * 4;
-        const a = data[i + 3];
-        if (a === 0) continue;
-
-        totalR += data[i];
-        totalG += data[i + 1];
-        totalB += data[i + 2];
-        count++;
-      }
-    }
-  }
-
-  if (!count) {
-    return { r: 255, g: 255, b: 255 };
-  }
-
-  return {
-    r: Math.round(totalR / count),
-    g: Math.round(totalG / count),
-    b: Math.round(totalB / count)
-  };
-}
-
-function rgbToHsl(r, g, b) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-
-  if (max === min) {
-    return { h: 0, s: 0, l };
-  }
-
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-  let h = 0;
-  switch (max) {
-    case r:
-      h = (g - b) / d + (g < b ? 6 : 0);
-      break;
-    case g:
-      h = (b - r) / d + 2;
-      break;
-    default:
-      h = (r - g) / d + 4;
-      break;
-  }
-
-  h /= 6;
-  return { h, s, l };
-}
-
 export function buildMaskFromImage(img, options = {}) {
   const {
     size = 800,
-    targetFill = 0.9,
     threshold = 180,
     invert = false,
+    targetFill = 0.9,
     removeDetectedBackground = true,
-    backgroundTolerance = 58,
-    forceBackgroundToWhite = true,
-    saturationBoostCutoff = 0.16
+    backgroundTolerance = 52,
+    forceBackgroundToWhite = true
   } = options;
 
   const canvas = document.createElement("canvas");
@@ -113,82 +27,307 @@ export function buildMaskFromImage(img, options = {}) {
   const drawX = Math.floor((size - drawW) / 2);
   const drawY = Math.floor((size - drawH) / 2);
 
+  if (forceBackgroundToWhite) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+  }
+
   ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-  const imageData = ctx.getImageData(0, 0, size, size);
-  const d = imageData.data;
+  let imageData = ctx.getImageData(0, 0, size, size);
+  let d = imageData.data;
 
-  const bg = sampleCornerBackground(imageData, 24);
-  const bgLum = luminance(bg.r, bg.g, bg.b);
-  const bgHsl = rgbToHsl(bg.r, bg.g, bg.b);
+  function luminance(r, g, b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  }
 
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i];
-    const g = d[i + 1];
-    const b = d[i + 2];
-    const a = d[i + 3];
+  function colorDistance(r1, g1, b1, r2, g2, b2) {
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }
 
-    if (a === 0) {
-      d[i] = 0;
-      d[i + 1] = 0;
-      d[i + 2] = 0;
-      d[i + 3] = 0;
-      continue;
+  function getPixel(x, y) {
+    const clampedX = Math.max(0, Math.min(size - 1, x));
+    const clampedY = Math.max(0, Math.min(size - 1, y));
+    const idx = (clampedY * size + clampedX) * 4;
+    return {
+      r: d[idx],
+      g: d[idx + 1],
+      b: d[idx + 2],
+      a: d[idx + 3]
+    };
+  }
+
+  function averagePixels(samples) {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let a = 0;
+
+    for (const p of samples) {
+      r += p.r;
+      g += p.g;
+      b += p.b;
+      a += p.a;
     }
 
-    const lum = luminance(r, g, b);
-    const hsl = rgbToHsl(r, g, b);
-    const distFromBg = colorDistance({ r, g, b }, bg);
+    const count = Math.max(1, samples.length);
 
-    const closeToBg =
-      removeDetectedBackground &&
-      distFromBg <= backgroundTolerance &&
-      Math.abs(hsl.l - bgHsl.l) < 0.16 &&
-      Math.abs(hsl.s - bgHsl.s) < 0.22;
+    return {
+      r: r / count,
+      g: g / count,
+      b: b / count,
+      a: a / count
+    };
+  }
 
-    if (closeToBg) {
-      if (forceBackgroundToWhite) {
-        d[i] = 255;
-        d[i + 1] = 255;
-        d[i + 2] = 255;
-        d[i + 3] = 0;
-      } else {
-        d[i] = 0;
-        d[i + 1] = 0;
-        d[i + 2] = 0;
-        d[i + 3] = 0;
+  function estimateBackgroundColor() {
+    const samples = [];
+    const step = Math.max(4, Math.floor(size / 40));
+
+    for (let x = 0; x < size; x += step) {
+      samples.push(getPixel(x, 0));
+      samples.push(getPixel(x, size - 1));
+    }
+
+    for (let y = 0; y < size; y += step) {
+      samples.push(getPixel(0, y));
+      samples.push(getPixel(size - 1, y));
+    }
+
+    return averagePixels(samples);
+  }
+
+  function buildGrayscaleAndEdgeMaps() {
+    const gray = new Float32Array(size * size);
+    const edge = new Float32Array(size * size);
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const idx = (y * size + x) * 4;
+        gray[y * size + x] = luminance(d[idx], d[idx + 1], d[idx + 2]);
       }
-      continue;
     }
 
-    const isStrongColoredForeground =
-      hsl.s >= saturationBoostCutoff &&
-      distFromBg > Math.max(42, backgroundTolerance * 0.7);
+    for (let y = 1; y < size - 1; y++) {
+      for (let x = 1; x < size - 1; x++) {
+        const center = gray[y * size + x];
+        const left = gray[y * size + (x - 1)];
+        const right = gray[y * size + (x + 1)];
+        const up = gray[(y - 1) * size + x];
+        const down = gray[(y + 1) * size + x];
 
-    const isDarkForeground = lum < threshold;
-    const isLightForegroundOnDarkBg =
-      bgLum < 110 && lum > bgLum + 22 && distFromBg > 26;
+        const gx = Math.abs(right - left);
+        const gy = Math.abs(down - up);
 
-    let inside =
-      isStrongColoredForeground ||
-      isDarkForeground ||
-      isLightForegroundOnDarkBg;
+        edge[y * size + x] = (gx + gy) * 0.5;
+      }
+    }
 
-    if (invert) inside = !inside;
+    return { gray, edge };
+  }
 
-    if (inside) {
-      d[i] = 0;
-      d[i + 1] = 0;
-      d[i + 2] = 0;
-      d[i + 3] = 255;
+  function buildBinaryMask() {
+    const bg = estimateBackgroundColor();
+    const { gray, edge } = buildGrayscaleAndEdgeMaps();
+    const mask = new Uint8ClampedArray(size * size);
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const pIdx = (y * size + x) * 4;
+        const mIdx = y * size + x;
+
+        const r = d[pIdx];
+        const g = d[pIdx + 1];
+        const b = d[pIdx + 2];
+        const a = d[pIdx + 3];
+
+        if (a === 0) {
+          mask[mIdx] = invert ? 255 : 0;
+          continue;
+        }
+
+        const lum = gray[mIdx];
+        const edgeStrength = edge[mIdx];
+        const bgDist = colorDistance(r, g, b, bg.r, bg.g, bg.b);
+
+        const isNearBackground =
+          removeDetectedBackground &&
+          bgDist <= backgroundTolerance &&
+          edgeStrength < 22;
+
+        let inside = false;
+
+        if (isNearBackground) {
+          inside = false;
+        } else {
+          const darkEnough = lum < threshold;
+          const edgeEnough = edgeStrength > 18;
+          inside = darkEnough || edgeEnough;
+        }
+
+        if (invert) inside = !inside;
+
+        mask[mIdx] = inside ? 255 : 0;
+      }
+    }
+
+    return mask;
+  }
+
+  function dilate(mask, radius = 1) {
+    const out = new Uint8ClampedArray(mask.length);
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let on = false;
+
+        for (let dy = -radius; dy <= radius && !on; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+            if (mask[ny * size + nx] > 0) {
+              on = true;
+              break;
+            }
+          }
+        }
+
+        out[y * size + x] = on ? 255 : 0;
+      }
+    }
+
+    return out;
+  }
+
+  function erode(mask, radius = 1) {
+    const out = new Uint8ClampedArray(mask.length);
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let on = true;
+
+        for (let dy = -radius; dy <= radius && on; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) {
+              on = false;
+              break;
+            }
+            if (mask[ny * size + nx] === 0) {
+              on = false;
+              break;
+            }
+          }
+        }
+
+        out[y * size + x] = on ? 255 : 0;
+      }
+    }
+
+    return out;
+  }
+
+  function closeMask(mask) {
+    // fills small gaps and makes edges more coherent
+    return erode(dilate(mask, 1), 1);
+  }
+
+  function openMask(mask) {
+    // removes tiny noise specks
+    return dilate(erode(mask, 1), 1);
+  }
+
+  function keepLargestConnectedComponent(mask) {
+    const visited = new Uint8Array(size * size);
+    let bestComponent = null;
+    let bestCount = 0;
+
+    const neighbors = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1]
+    ];
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const startIdx = y * size + x;
+        if (visited[startIdx] || mask[startIdx] === 0) continue;
+
+        const queue = [startIdx];
+        const component = [];
+        visited[startIdx] = 1;
+
+        while (queue.length) {
+          const idx = queue.pop();
+          component.push(idx);
+
+          const cx = idx % size;
+          const cy = Math.floor(idx / size);
+
+          for (const [dx, dy] of neighbors) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+
+            const nIdx = ny * size + nx;
+            if (visited[nIdx] || mask[nIdx] === 0) continue;
+
+            visited[nIdx] = 1;
+            queue.push(nIdx);
+          }
+        }
+
+        if (component.length > bestCount) {
+          bestCount = component.length;
+          bestComponent = component;
+        }
+      }
+    }
+
+    if (!bestComponent) return mask;
+
+    const out = new Uint8ClampedArray(size * size);
+    for (const idx of bestComponent) {
+      out[idx] = 255;
+    }
+    return out;
+  }
+
+  let mask = buildBinaryMask();
+
+  mask = closeMask(mask);
+  mask = openMask(mask);
+  mask = keepLargestConnectedComponent(mask);
+
+  // draw final alpha mask
+  const out = ctx.createImageData(size, size);
+  const outData = out.data;
+
+  for (let i = 0; i < mask.length; i++) {
+    const v = mask[i];
+    const idx = i * 4;
+
+    if (v > 0) {
+      outData[idx] = 0;
+      outData[idx + 1] = 0;
+      outData[idx + 2] = 0;
+      outData[idx + 3] = 255;
     } else {
-      d[i] = 0;
-      d[i + 1] = 0;
-      d[i + 2] = 0;
-      d[i + 3] = 0;
+      outData[idx] = 0;
+      outData[idx + 1] = 0;
+      outData[idx + 2] = 0;
+      outData[idx + 3] = 0;
     }
   }
 
-  ctx.putImageData(imageData, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  ctx.putImageData(out, 0, 0);
+
   return canvas;
 }
