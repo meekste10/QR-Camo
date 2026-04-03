@@ -134,13 +134,7 @@ function scheduleAutoRender(delay = 90) {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(async () => {
     renderTimer = null;
-    if (isRendering) return;
-    isRendering = true;
-    try {
-      await autoRenderIfReady();
-    } finally {
-      isRendering = false;
-    }
+    await autoRenderIfReady();
   }, delay);
 }
 
