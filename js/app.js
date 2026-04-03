@@ -96,7 +96,10 @@ const NUDGE_STEP_SMALL = 8;
 const NUDGE_STEP_MEDIUM = 24;
 const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
-const DEFAULT_QR_SIZE = "xsmall";
+
+// changed default from xsmall to xxsmall
+const DEFAULT_QR_SIZE = "xxsmall";
+
 const DEFAULT_QR_TEXT = "https://example.com";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
@@ -1026,6 +1029,12 @@ function init() {
 
   if (qrTextInput && !qrTextInput.value.trim()) {
     qrTextInput.value = DEFAULT_QR_TEXT;
+  }
+
+  if (qrSizeSelect && !qrSizeSelect.value) {
+    qrSizeSelect.value = DEFAULT_QR_SIZE;
+  } else if (qrSizeSelect) {
+    qrSizeSelect.value = DEFAULT_QR_SIZE;
   }
 
   syncOffsetLabels();
