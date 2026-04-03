@@ -111,6 +111,7 @@ const SAMPLE_BASE = "./assets/Samples/";
 let nudgeCount = 0;
 let renderCount = 0;
 let renderTimer = null;
+let isRendering = false;
 
 function track(eventName, props = {}) {
   const payload = {
@@ -133,7 +134,13 @@ function scheduleAutoRender(delay = 90) {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(async () => {
     renderTimer = null;
-    await autoRenderIfReady();
+    if (isRendering) return;
+    isRendering = true;
+    try {
+      await autoRenderIfReady();
+    } finally {
+      isRendering = false;
+    }
   }, delay);
 }
 
@@ -534,6 +541,8 @@ function resetAll() {
   nudgeCount = 0;
   renderCount = 0;
   clearTimeout(renderTimer);
+  renderTimer = null;
+  isRendering = false;
 
   syncOffsetLabels();
   syncMaskScaleLabel();
@@ -554,6 +563,7 @@ function resetAll() {
 
   resetCreateButton();
   resetGenerateButton();
+  setLoading(false);
 
   track("reset_all");
   setDebug(`Reset complete · ${APP_VERSION}`);
@@ -819,6 +829,10 @@ async function ensureQrPrepared() {
 async function renderOutput() {
   setLoading(true);
 
+  // give browser a chance to paint overlay first
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
   try {
     if (!state.sourceQrCanvas || !state.textureTiles?.length) {
       setDebug("Create or upload a QR first.");
@@ -880,44 +894,58 @@ async function renderOutput() {
 }
 
 async function createQrCamo() {
+  if (isRendering) return false;
+
   track("generate_clicked", currentTrackingProps());
 
   const okQr = await ensureQrPrepared();
   if (!okQr) return false;
 
-  const okRender = await renderOutput();
-  if (!okRender) return false;
+  isRendering = true;
+  try {
+    const okRender = await renderOutput();
+    if (!okRender) return false;
 
-  if (generateBtn) {
-    generateBtn.textContent = "Created";
-    generateBtn.classList.remove("btn-primary");
-    generateBtn.classList.add("btn-secondary");
-    generateBtn.disabled = true;
+    if (generateBtn) {
+      generateBtn.textContent = "Created";
+      generateBtn.classList.remove("btn-primary");
+      generateBtn.classList.add("btn-secondary");
+      generateBtn.disabled = true;
+    }
+
+    if (makeQrBtn) {
+      makeQrBtn.textContent = "Created";
+      makeQrBtn.classList.remove("btn-primary");
+      makeQrBtn.classList.add("btn-secondary");
+      makeQrBtn.disabled = true;
+    }
+
+    return true;
+  } finally {
+    isRendering = false;
   }
-
-  if (makeQrBtn) {
-    makeQrBtn.textContent = "Created";
-    makeQrBtn.classList.remove("btn-primary");
-    makeQrBtn.classList.add("btn-secondary");
-    makeQrBtn.disabled = true;
-  }
-
-  return true;
 }
 
 async function autoRenderIfReady() {
   if (!state.hasRenderedOnce) return;
   if (!state.sourceQrCanvas || !state.textureTiles?.length) return;
+  if (isRendering) return;
 
   resetGenerateButton();
-  const ok = await renderOutput();
-  if (!ok) return;
 
-  if (generateBtn) {
-    generateBtn.textContent = "Created";
-    generateBtn.classList.remove("btn-primary");
-    generateBtn.classList.add("btn-secondary");
-    generateBtn.disabled = true;
+  isRendering = true;
+  try {
+    const ok = await renderOutput();
+    if (!ok) return;
+
+    if (generateBtn) {
+      generateBtn.textContent = "Created";
+      generateBtn.classList.remove("btn-primary");
+      generateBtn.classList.add("btn-secondary");
+      generateBtn.disabled = true;
+    }
+  } finally {
+    isRendering = false;
   }
 }
 
@@ -1221,31 +1249,31 @@ function init() {
   }
 
   if (qrSizeSelect) {
-  qrSizeSelect.addEventListener("change", () => {
-    track("qr_size_changed", {
-      qrSize: qrSizeSelect.value
+    qrSizeSelect.addEventListener("change", () => {
+      track("qr_size_changed", {
+        qrSize: qrSizeSelect.value
+      });
+      setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
+      resetGenerateButton();
+      scheduleAutoRender();
     });
-    setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
-    resetGenerateButton();
-    scheduleAutoRender();
-  });
-}
+  }
 
-if (qrOffsetX) {
-  qrOffsetX.addEventListener("input", () => {
-    syncOffsetLabels();
-    resetGenerateButton();
-    scheduleAutoRender(30);
-  });
-}
+  if (qrOffsetX) {
+    qrOffsetX.addEventListener("input", () => {
+      syncOffsetLabels();
+      resetGenerateButton();
+      scheduleAutoRender(30);
+    });
+  }
 
-if (qrOffsetY) {
-  qrOffsetY.addEventListener("input", () => {
-    syncOffsetLabels();
-    resetGenerateButton();
-    scheduleAutoRender(30);
-  });
-}
+  if (qrOffsetY) {
+    qrOffsetY.addEventListener("input", () => {
+      syncOffsetLabels();
+      resetGenerateButton();
+      scheduleAutoRender(30);
+    });
+  }
 
   if (maskScale) {
     maskScale.addEventListener("input", () => {
@@ -1307,7 +1335,6 @@ if (qrOffsetY) {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        scheduleAutoRender(30);
       }
     });
   }
@@ -1321,7 +1348,6 @@ if (qrOffsetY) {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        scheduleAutoRender(30);
       }
     });
   }
@@ -1335,7 +1361,6 @@ if (qrOffsetY) {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        scheduleAutoRender(30);
       }
     });
   }
