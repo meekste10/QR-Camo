@@ -126,11 +126,13 @@ function track(eventName, props = {}) {
 function setLoading(on) {
   if (!loadingOverlay) return;
   loadingOverlay.classList.toggle("hidden", !on);
+  document.body.style.overflow = on ? "hidden" : "";
 }
 
 function scheduleAutoRender(delay = 90) {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(async () => {
+    renderTimer = null;
     await autoRenderIfReady();
   }, delay);
 }
@@ -1219,31 +1221,31 @@ function init() {
   }
 
   if (qrSizeSelect) {
-    qrSizeSelect.addEventListener("change", async () => {
-      track("qr_size_changed", {
-        qrSize: qrSizeSelect.value
-      });
-      setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
-      resetGenerateButton();
-      scheduleAutoRender();
+  qrSizeSelect.addEventListener("change", () => {
+    track("qr_size_changed", {
+      qrSize: qrSizeSelect.value
     });
-  }
+    setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
+    resetGenerateButton();
+    scheduleAutoRender();
+  });
+}
 
-  if (qrOffsetX) {
-    qrOffsetX.addEventListener("input", () => {
-      syncOffsetLabels();
-      resetGenerateButton();
-      scheduleAutoRender(30);
-    });
-  }
+if (qrOffsetX) {
+  qrOffsetX.addEventListener("input", () => {
+    syncOffsetLabels();
+    resetGenerateButton();
+    scheduleAutoRender(30);
+  });
+}
 
-  if (qrOffsetY) {
-    qrOffsetY.addEventListener("input", () => {
-      syncOffsetLabels();
-      resetGenerateButton();
-      scheduleAutoRender(30);
-    });
-  }
+if (qrOffsetY) {
+  qrOffsetY.addEventListener("input", () => {
+    syncOffsetLabels();
+    resetGenerateButton();
+    scheduleAutoRender(30);
+  });
+}
 
   if (maskScale) {
     maskScale.addEventListener("input", () => {
