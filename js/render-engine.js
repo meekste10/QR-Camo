@@ -388,7 +388,7 @@ function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium"
 }
 
 /* -----------------------------
-   QR MODULE HELPERS
+   QR LAYER HELPERS
 ----------------------------- */
 
 function getQrPixelData(qrCanvas) {
@@ -401,20 +401,7 @@ function qrModuleIsDark(qrData, qrWidth, x, y) {
   return qrData[idx] < 128;
 }
 
-function isFinderRegion(col, row, moduleCount) {
-  const topLeft = col <= 7 && row <= 7;
-  const topRight = col >= moduleCount - 8 && row <= 7;
-  const bottomLeft = col <= 7 && row >= moduleCount - 8;
-  return topLeft || topRight || bottomLeft;
-}
-
-function isTimingRegion(col, row, moduleCount) {
-  const onTimingRow = row === 6 && col > 7 && col < moduleCount - 8;
-  const onTimingCol = col === 6 && row > 7 && row < moduleCount - 8;
-  return onTimingRow || onTimingCol;
-}
-
-function drawTopQrModules(ctx, maskCtx, qrCanvas, fit) {
+function drawTopQrLayer(ctx, maskCtx, qrCanvas, fit) {
   const qrData = getQrPixelData(qrCanvas);
   const qrWidth = qrCanvas.width;
   const qrHeight = qrCanvas.height;
@@ -422,24 +409,15 @@ function drawTopQrModules(ctx, maskCtx, qrCanvas, fit) {
 
   for (let row = 0; row < qrHeight; row++) {
     for (let col = 0; col < qrWidth; col++) {
-      if (!qrModuleIsDark(qrData, qrWidth, col, row)) continue;
-
       const x = fit.x + col * moduleSize;
       const y = fit.y + row * moduleSize;
-      const coverage = cellMaskCoverage(maskCtx, x, y, moduleSize);
 
+      const coverage = cellMaskCoverage(maskCtx, x, y, moduleSize);
       if (coverage < 0.55) continue;
 
-      const finder = isFinderRegion(col, row, qrWidth);
-      const timing = isTimingRegion(col, row, qrWidth);
+      const isDark = qrModuleIsDark(qrData, qrWidth, col, row);
 
-      if (finder || timing) {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(x, y, moduleSize, moduleSize);
-        continue;
-      }
-
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = isDark ? "#000000" : "#ffffff";
       ctx.fillRect(x, y, moduleSize, moduleSize);
     }
   }
@@ -539,7 +517,6 @@ export function render(options) {
     }
   }
 
-  // Clip shape layer to mask
   cctx.globalCompositeOperation = "destination-in";
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
@@ -549,7 +526,7 @@ export function render(options) {
 
   applyEdgePostFX(ctx, maskCanvas, 3);
 
-  // Build QR-only top layer
+  // Build clean top QR layer
   const qrLayerCanvas = document.createElement("canvas");
   qrLayerCanvas.width = OUTPUT_SIZE;
   qrLayerCanvas.height = OUTPUT_SIZE;
@@ -558,15 +535,13 @@ export function render(options) {
   qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   qrLayerCtx.imageSmoothingEnabled = false;
 
-  const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
+  // Use normalized QR truth, not overlay image
+  drawTopQrLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
 
-  drawTopQrModules(qrLayerCtx, mctx, topQrCanvas, fit);
-
-  // Clip QR modules to same mask
   qrLayerCtx.globalCompositeOperation = "destination-in";
   qrLayerCtx.drawImage(maskCanvas, 0, 0);
   qrLayerCtx.globalCompositeOperation = "source-over";
 
-  // Draw QR modules ON TOP
+  // QR on TOP
   ctx.drawImage(qrLayerCanvas, 0, 0);
 }
