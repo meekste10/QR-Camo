@@ -972,7 +972,8 @@ function nudge(dx, dy) {
     nudgeCount
   });
 
-  scheduleAutoRender(30);
+  resetGenerateButton();
+  setPreviewMeta(`Position updated · click Create QR-Camo to refresh · ${APP_VERSION}`);
 }
 
 function resetPosition() {
@@ -981,7 +982,8 @@ function resetPosition() {
   syncOffsetLabels();
 
   track("position_reset");
-  scheduleAutoRender(30);
+  resetGenerateButton();
+  setPreviewMeta(`Position reset · click Create QR-Camo to refresh · ${APP_VERSION}`);
 }
 
 async function handlePresetShapeSelection(maskKey) {
@@ -1141,14 +1143,7 @@ function init() {
       textLength: (qrTextInput.value || "").trim().length
     });
 
-    setPreviewMeta(`Link updated · regenerating… · ${APP_VERSION}`);
-
-    if (maskSelect?.value || state.customMaskImage) {
-      clearTimeout(renderTimer);
-      renderTimer = setTimeout(async () => {
-        await createQrCamo();
-      }, 350);
-    }
+    setPreviewMeta(`Link updated · press Enter or Create · ${APP_VERSION}`);
   });
 
   qrTextInput.addEventListener("keydown", async (e) => {
@@ -1159,32 +1154,19 @@ function init() {
     await createQrCamo();
   });
 
-  qrTextInput.addEventListener("blur", () => {
+  qrTextInput.addEventListener("blur", async () => {
     const value = qrTextInput.value.trim();
+
     if (!value) {
       qrTextInput.value = DEFAULT_QR_TEXT;
+      return;
+    }
+
+    if (maskSelect?.value || state.customMaskImage) {
+      await createQrCamo();
     }
   });
 }
-
-  if (qrUpload) {
-    qrUpload.addEventListener("change", async () => {
-      const file = qrUpload?.files?.[0] || null;
-
-      track("qr_upload_selected", {
-        fileName: file?.name || null
-      });
-
-      resetCreateButton();
-      resetGenerateButton();
-      resetQrPreparedState();
-
-      if (maskSelect?.value || state.customMaskImage) {
-        unlockWorkflowAfterShape();
-        await ensurePreviewFlowAfterShapeSelection();
-      }
-    });
-  }
 
   if (customMaskUpload) {
     customMaskUpload.addEventListener("change", async (e) => {
