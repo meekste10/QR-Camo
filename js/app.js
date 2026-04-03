@@ -1113,49 +1113,59 @@ function init() {
   }
 
   if (qrTextInput) {
-    qrTextInput.addEventListener("focus", () => {
-      if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
-        qrTextInput.select();
-      }
+  qrTextInput.addEventListener("focus", () => {
+    if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
+      qrTextInput.select();
+    }
+  });
+
+  qrTextInput.addEventListener("input", () => {
+    if (qrUpload) qrUpload.value = "";
+
+    resetCreateButton();
+    resetGenerateButton();
+
+    state.sourceQrCanvas = null;
+    state.overlayQrCanvas = null;
+    state.textureTiles = [];
+    state.moduleCount = 21;
+    state.modulePixelSize = 1;
+    state.blockModules = 2;
+    state.hasRenderedOnce = false;
+
+    clearCanvas(sourcePreviewCanvas);
+    clearCanvas(outputCanvas);
+    updatePreviewFlags({ hasSource: false, hasOutput: false });
+
+    track("qr_text_changed", {
+      textLength: (qrTextInput.value || "").trim().length
     });
 
-    qrTextInput.addEventListener("keydown", async (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
+    setPreviewMeta(`Link updated · regenerating… · ${APP_VERSION}`);
 
-      resetCreateButton();
-      resetGenerateButton();
-      resetQrPreparedState();
-
-      track("qr_text_enter_pressed", {
-        textLength: (qrTextInput.value || "").trim().length
-      });
-
-      if (maskSelect?.value || state.customMaskImage) {
-        unlockWorkflowAfterShape();
+    if (maskSelect?.value || state.customMaskImage) {
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(async () => {
         await createQrCamo();
-      }
-    });
+      }, 350);
+    }
+  });
 
-    qrTextInput.addEventListener("input", () => {
-      if (qrUpload) qrUpload.value = "";
+  qrTextInput.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
 
-      resetCreateButton();
-      resetGenerateButton();
-      resetQrPreparedState();
-      track("qr_text_changed", {
-        textLength: (qrTextInput.value || "").trim().length
-      });
-      setPreviewMeta(`Link updated · press Enter to regenerate · ${APP_VERSION}`);
-    });
+    clearTimeout(renderTimer);
+    await createQrCamo();
+  });
 
-    qrTextInput.addEventListener("blur", () => {
-      const value = qrTextInput.value.trim();
-      if (!value) {
-        qrTextInput.value = DEFAULT_QR_TEXT;
-      }
-    });
-  }
+  qrTextInput.addEventListener("blur", () => {
+    const value = qrTextInput.value.trim();
+    if (!value) {
+      qrTextInput.value = DEFAULT_QR_TEXT;
+    }
+  });
+}
 
   if (qrUpload) {
     qrUpload.addEventListener("change", async () => {
