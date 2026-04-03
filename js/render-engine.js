@@ -112,7 +112,6 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
 
   for (let i = 0; i < d.length; i += 4) {
     const a = d[i + 3];
-
     if (a === 0) continue;
 
     const r = d[i];
@@ -415,7 +414,7 @@ function isTimingRegion(col, row, moduleCount) {
   return onTimingRow || onTimingCol;
 }
 
-function drawIntegratedQrModules(ctx, maskCtx, qrCanvas, fit, tiles) {
+function drawTopQrModules(ctx, maskCtx, qrCanvas, fit) {
   const qrData = getQrPixelData(qrCanvas);
   const qrWidth = qrCanvas.width;
   const qrHeight = qrCanvas.height;
@@ -440,18 +439,7 @@ function drawIntegratedQrModules(ctx, maskCtx, qrCanvas, fit, tiles) {
         continue;
       }
 
-      const tileCanvas = normalizeTile(
-        tiles[pickTileIndex(col, row, tiles.length, 91)]
-      );
-
-      if (tileCanvas) {
-        drawTile(ctx, tileCanvas, x, y, moduleSize);
-      } else {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(x, y, moduleSize, moduleSize);
-      }
-
-      ctx.fillStyle = "rgba(0,0,0,0.52)";
+      ctx.fillStyle = "#000000";
       ctx.fillRect(x, y, moduleSize, moduleSize);
     }
   }
@@ -503,13 +491,13 @@ export function render(options) {
 
   const mctx = maskCanvas.getContext("2d");
 
-  const mainCanvas = document.createElement("canvas");
-  mainCanvas.width = OUTPUT_SIZE;
-  mainCanvas.height = OUTPUT_SIZE;
+  const camoCanvas = document.createElement("canvas");
+  camoCanvas.width = OUTPUT_SIZE;
+  camoCanvas.height = OUTPUT_SIZE;
 
-  const mainCtx = mainCanvas.getContext("2d");
-  mainCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  mainCtx.imageSmoothingEnabled = false;
+  const cctx = camoCanvas.getContext("2d");
+  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  cctx.imageSmoothingEnabled = false;
 
   const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, safeModuleCount, qrSize);
 
@@ -533,7 +521,7 @@ export function render(options) {
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
 
-  // Base camo fill
+  // Base shape/camo layer
   for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
     for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
@@ -547,25 +535,38 @@ export function render(options) {
       );
       if (!tileCanvas) continue;
 
-      drawTile(mainCtx, tileCanvas, x, y, tileDisplaySize);
+      drawTile(cctx, tileCanvas, x, y, tileDisplaySize);
     }
   }
 
-  // Integrate QR into same artwork, not as a separate pasted square
-  drawIntegratedQrModules(
-    mainCtx,
-    mctx,
-    sourceQrCanvas,
-    fit,
-    tiles
-  );
+  // Clip shape layer to mask
+  cctx.globalCompositeOperation = "destination-in";
+  cctx.drawImage(maskCanvas, 0, 0);
+  cctx.globalCompositeOperation = "source-over";
 
-  // Clip final artwork to the silhouette
-  mainCtx.globalCompositeOperation = "destination-in";
-  mainCtx.drawImage(maskCanvas, 0, 0);
-  mainCtx.globalCompositeOperation = "source-over";
-
-  ctx.drawImage(mainCanvas, 0, 0);
+  // Draw shape first
+  ctx.drawImage(camoCanvas, 0, 0);
 
   applyEdgePostFX(ctx, maskCanvas, 3);
+
+  // Build QR-only top layer
+  const qrLayerCanvas = document.createElement("canvas");
+  qrLayerCanvas.width = OUTPUT_SIZE;
+  qrLayerCanvas.height = OUTPUT_SIZE;
+
+  const qrLayerCtx = qrLayerCanvas.getContext("2d");
+  qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  qrLayerCtx.imageSmoothingEnabled = false;
+
+  const topQrCanvas = overlayQrCanvas || sourceQrCanvas;
+
+  drawTopQrModules(qrLayerCtx, mctx, topQrCanvas, fit);
+
+  // Clip QR modules to same mask
+  qrLayerCtx.globalCompositeOperation = "destination-in";
+  qrLayerCtx.drawImage(maskCanvas, 0, 0);
+  qrLayerCtx.globalCompositeOperation = "source-over";
+
+  // Draw QR modules ON TOP
+  ctx.drawImage(qrLayerCanvas, 0, 0);
 }
