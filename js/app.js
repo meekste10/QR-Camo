@@ -35,6 +35,7 @@ const customMaskUpload = document.getElementById("customMaskUpload");
 
 const qrSizeSelect = document.getElementById("qrSizeSelect");
 const maskScale = document.getElementById("maskScale");
+const maskScaleText = document.getElementById("maskScaleText");
 const maskScaleLabel = document.getElementById("maskScaleLabel");
 const maskPadding = document.getElementById("maskPadding");
 const maskPaddingLabel = document.getElementById("maskPaddingLabel");
@@ -97,6 +98,7 @@ const NUDGE_STEP_SMALL = 8;
 const NUDGE_STEP_MEDIUM = 24;
 const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
+
 const DEFAULT_QR_SIZE = "xxsmall";
 const DEFAULT_QR_TEXT = "https://example.com";
 const DEFAULT_BLEND_TIGHTNESS = 50;
@@ -125,8 +127,9 @@ function track(eventName, props = {}) {
 }
 
 function setLoading(on) {
-  if (!loadingOverlay) return;
-  loadingOverlay.classList.toggle("hidden", !on);
+  if (loadingOverlay) {
+    loadingOverlay.classList.toggle("hidden", !on);
+  }
   document.body.style.overflow = on ? "hidden" : "";
 }
 
@@ -282,16 +285,19 @@ function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
 }
 
 function syncOffsetLabels() {
-  if (qrOffsetXLabel) qrOffsetXLabel.textContent = String(qrOffsetX.value);
-  if (qrOffsetYLabel) qrOffsetYLabel.textContent = String(qrOffsetY.value);
+  if (qrOffsetXLabel && qrOffsetX) qrOffsetXLabel.textContent = String(qrOffsetX.value);
+  if (qrOffsetYLabel && qrOffsetY) qrOffsetYLabel.textContent = String(qrOffsetY.value);
 }
 
 function syncMaskScaleLabel() {
-  if (maskScaleLabel) maskScaleLabel.textContent = String(maskScale.value);
+  if (maskScaleLabel && maskScale) maskScaleLabel.textContent = String(maskScale.value);
+  if (maskScaleText && maskScale) maskScaleText.value = String(maskScale.value);
 }
 
 function syncMaskPaddingLabel() {
-  if (maskPaddingLabel) maskPaddingLabel.textContent = String(maskPadding.value);
+  if (maskPaddingLabel && maskPadding) {
+    maskPaddingLabel.textContent = String(maskPadding.value);
+  }
 }
 
 function clamp(value, min, max) {
@@ -333,7 +339,7 @@ function contrastRatio(a, b) {
 }
 
 function updateContrastWarning() {
-  if (!contrastWarning) return;
+  if (!contrastWarning || !foregroundColor || !backgroundColor || !transparentBackground) return;
 
   if (transparentBackground.checked) {
     contrastWarning.classList.add("hidden");
@@ -384,6 +390,7 @@ function recolorOutputCanvas(canvas, fgHex, bgHex, useTransparentBackground) {
 }
 
 function applyCurrentColorsToOutput() {
+  if (!outputCanvas || !foregroundColor || !backgroundColor || !transparentBackground) return;
   if (!outputCanvas.width || !outputCanvas.height) return;
 
   recolorOutputCanvas(
@@ -473,8 +480,24 @@ function resetCreateButton() {
   makeQrBtn.disabled = false;
 }
 
+function setCreatedState() {
+  if (generateBtn) {
+    generateBtn.textContent = "Created";
+    generateBtn.classList.remove("btn-primary");
+    generateBtn.classList.add("btn-secondary");
+    generateBtn.disabled = true;
+  }
+
+  if (makeQrBtn) {
+    makeQrBtn.textContent = "Created";
+    makeQrBtn.classList.remove("btn-primary");
+    makeQrBtn.classList.add("btn-secondary");
+    makeQrBtn.disabled = true;
+  }
+}
+
 function syncPresetShapeSelectionUI() {
-  if (!presetShapesGrid) return;
+  if (!presetShapesGrid || !maskSelect) return;
 
   const cards = presetShapesGrid.querySelectorAll(".preset-shape-card");
   cards.forEach((card) => {
@@ -510,6 +533,7 @@ function resetAll() {
   if (maskSelect) maskSelect.value = "";
   if (qrSizeSelect) qrSizeSelect.value = DEFAULT_QR_SIZE;
   if (maskScale) maskScale.value = String(DEFAULT_MASK_SCALE);
+  if (maskScaleText) maskScaleText.value = String(DEFAULT_MASK_SCALE);
   if (maskPadding) maskPadding.value = String(DEFAULT_MASK_PADDING);
   if (invertMask) invertMask.checked = false;
 
@@ -823,7 +847,6 @@ async function ensureQrPrepared() {
 async function renderOutput() {
   setLoading(true);
 
-  // give browser a chance to paint overlay first
   await new Promise((resolve) => requestAnimationFrame(resolve));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -838,7 +861,7 @@ async function renderOutput() {
     if (state.customMaskImage) {
       maskSource = buildCurrentMaskFromUploaded();
     } else {
-      const selectedMask = maskSelect.value;
+      const selectedMask = maskSelect?.value;
       if (!selectedMask || !maskPresets[selectedMask]) {
         throw new Error("No valid preset shape selected");
       }
@@ -853,12 +876,12 @@ async function renderOutput() {
       sourceQrCanvas: state.sourceQrCanvas,
       overlayQrCanvas: state.overlayQrCanvas || state.sourceQrCanvas,
       moduleCount: state.moduleCount,
-      qrSize: qrSizeSelect.value,
-      qrOffsetX: Number(qrOffsetX.value || 0),
-      qrOffsetY: Number(qrOffsetY.value || 0),
+      qrSize: qrSizeSelect?.value || DEFAULT_QR_SIZE,
+      qrOffsetX: Number(qrOffsetX?.value || 0),
+      qrOffsetY: Number(qrOffsetY?.value || 0),
       blendTightness: DEFAULT_BLEND_TIGHTNESS,
-      maskScale: Number(maskScale.value || DEFAULT_MASK_SCALE),
-      maskPadding: Number(maskPadding.value || DEFAULT_MASK_PADDING),
+      maskScale: Number(maskScale?.value || DEFAULT_MASK_SCALE),
+      maskPadding: Number(maskPadding?.value || DEFAULT_MASK_PADDING),
       invertMask: !!invertMask?.checked,
       blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
     });
@@ -899,21 +922,7 @@ async function createQrCamo() {
   try {
     const okRender = await renderOutput();
     if (!okRender) return false;
-
-    if (generateBtn) {
-      generateBtn.textContent = "Created";
-      generateBtn.classList.remove("btn-primary");
-      generateBtn.classList.add("btn-secondary");
-      generateBtn.disabled = true;
-    }
-
-    if (makeQrBtn) {
-      makeQrBtn.textContent = "Created";
-      makeQrBtn.classList.remove("btn-primary");
-      makeQrBtn.classList.add("btn-secondary");
-      makeQrBtn.disabled = true;
-    }
-
+    setCreatedState();
     return true;
   } finally {
     isRendering = false;
@@ -931,13 +940,7 @@ async function autoRenderIfReady() {
   try {
     const ok = await renderOutput();
     if (!ok) return;
-
-    if (generateBtn) {
-      generateBtn.textContent = "Created";
-      generateBtn.classList.remove("btn-primary");
-      generateBtn.classList.add("btn-secondary");
-      generateBtn.disabled = true;
-    }
+    setCreatedState();
   } finally {
     isRendering = false;
   }
@@ -952,15 +955,20 @@ async function ensurePreviewFlowAfterShapeSelection() {
 function nudge(dx, dy) {
   nudgeCount += 1;
 
-  qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -PAN_LIMIT, PAN_LIMIT));
-  qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -PAN_LIMIT, PAN_LIMIT));
+  if (qrOffsetX) {
+    qrOffsetX.value = String(clamp(Number(qrOffsetX.value || 0) + dx, -PAN_LIMIT, PAN_LIMIT));
+  }
+  if (qrOffsetY) {
+    qrOffsetY.value = String(clamp(Number(qrOffsetY.value || 0) + dy, -PAN_LIMIT, PAN_LIMIT));
+  }
+
   syncOffsetLabels();
 
   track("nudge_applied", {
     dx,
     dy,
-    offsetX: Number(qrOffsetX.value || 0),
-    offsetY: Number(qrOffsetY.value || 0),
+    offsetX: Number(qrOffsetX?.value || 0),
+    offsetY: Number(qrOffsetY?.value || 0),
     nudgeCount
   });
 
@@ -968,12 +976,11 @@ function nudge(dx, dy) {
 }
 
 function resetPosition() {
-  qrOffsetX.value = "0";
-  qrOffsetY.value = "0";
+  if (qrOffsetX) qrOffsetX.value = "0";
+  if (qrOffsetY) qrOffsetY.value = "0";
   syncOffsetLabels();
 
   track("position_reset");
-
   scheduleAutoRender(30);
 }
 
@@ -1073,6 +1080,14 @@ function init() {
 
   if (qrSizeSelect) {
     qrSizeSelect.value = DEFAULT_QR_SIZE;
+  }
+
+  if (maskScale) {
+    maskScale.value = String(DEFAULT_MASK_SCALE);
+  }
+
+  if (maskScaleText) {
+    maskScaleText.value = String(DEFAULT_MASK_SCALE);
   }
 
   syncOffsetLabels();
@@ -1221,7 +1236,7 @@ function init() {
   if (exportBtn) {
     exportBtn.addEventListener("click", () => {
       try {
-        if (!outputCanvas.width || !outputCanvas.height) {
+        if (!outputCanvas || !outputCanvas.width || !outputCanvas.height) {
           track("export_blocked_no_output");
           setDebug("Generate a QR-Camo first.");
           return;
@@ -1280,6 +1295,26 @@ function init() {
     });
   }
 
+  if (maskScaleText) {
+    maskScaleText.addEventListener("input", () => {
+      let next = Number(maskScaleText.value || DEFAULT_MASK_SCALE);
+      if (!Number.isFinite(next)) return;
+
+      next = Math.max(100, Math.min(250, next));
+
+      if (maskScale) {
+        maskScale.value = String(next);
+      }
+
+      syncMaskScaleLabel();
+      track("mask_scale_changed", {
+        value: next
+      });
+      resetGenerateButton();
+      scheduleAutoRender();
+    });
+  }
+
   if (maskPadding) {
     maskPadding.addEventListener("input", () => {
       syncMaskPaddingLabel();
@@ -1327,7 +1362,7 @@ function init() {
       });
       updateContrastWarning();
       resetGenerateButton();
-      if (state.hasRenderedOnce && outputCanvas.width) {
+      if (state.hasRenderedOnce && outputCanvas?.width) {
         applyCurrentColorsToOutput();
       }
     });
@@ -1340,7 +1375,7 @@ function init() {
       });
       updateContrastWarning();
       resetGenerateButton();
-      if (state.hasRenderedOnce && outputCanvas.width) {
+      if (state.hasRenderedOnce && outputCanvas?.width) {
         applyCurrentColorsToOutput();
       }
     });
@@ -1353,7 +1388,7 @@ function init() {
       });
       updateContrastWarning();
       resetGenerateButton();
-      if (state.hasRenderedOnce && outputCanvas.width) {
+      if (state.hasRenderedOnce && outputCanvas?.width) {
         applyCurrentColorsToOutput();
       }
     });
