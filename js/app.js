@@ -841,10 +841,11 @@ async function renderOutput() {
     });
 
     applyCurrentColorsToOutput();
-    updatePreviewFlags({ hasSource: true, hasOutput: true });
+clearCanvas(sourcePreviewCanvas);
+updatePreviewFlags({ hasSource: false, hasOutput: true });
 
-    state.hasRenderedOnce = true;
-    renderCount += 1;
+state.hasRenderedOnce = true;
+renderCount += 1;
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     track("render_success", currentTrackingProps());
