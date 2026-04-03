@@ -1136,4 +1136,7 @@ input[type="color"]::-moz-color-swatch{
     width:100%;
     max-width:100%;
   }
+  .shape-action-row{
+  width:100%;
+  margin-top:8px;
 }
