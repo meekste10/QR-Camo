@@ -24,6 +24,7 @@ const qrReadyBadge = document.getElementById("qrReadyBadge");
 const shapeReadyBadge = document.getElementById("shapeReadyBadge");
 const engineStatus = document.getElementById("engineStatus");
 const appVersionBadge = document.getElementById("appVersionBadge");
+const loadingOverlay = document.getElementById("loadingOverlay");
 
 const qrTextInput = document.getElementById("qrTextInput");
 const makeQrBtn = document.getElementById("makeQrBtn");
@@ -96,10 +97,7 @@ const NUDGE_STEP_SMALL = 8;
 const NUDGE_STEP_MEDIUM = 24;
 const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
-
-// changed default from xsmall to xxsmall
 const DEFAULT_QR_SIZE = "xxsmall";
-
 const DEFAULT_QR_TEXT = "https://example.com";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
@@ -112,6 +110,7 @@ const SAMPLE_BASE = "./assets/Samples/";
 
 let nudgeCount = 0;
 let renderCount = 0;
+let renderTimer = null;
 
 function track(eventName, props = {}) {
   const payload = {
@@ -122,6 +121,18 @@ function track(eventName, props = {}) {
   };
 
   console.log("[QR CAMO TRACK]", payload);
+}
+
+function setLoading(on) {
+  if (!loadingOverlay) return;
+  loadingOverlay.classList.toggle("hidden", !on);
+}
+
+function scheduleAutoRender(delay = 90) {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(async () => {
+    await autoRenderIfReady();
+  }, delay);
 }
 
 function currentTrackingProps() {
@@ -520,6 +531,7 @@ function resetAll() {
 
   nudgeCount = 0;
   renderCount = 0;
+  clearTimeout(renderTimer);
 
   syncOffsetLabels();
   syncMaskScaleLabel();
@@ -654,7 +666,6 @@ async function handleQrUpload(file) {
   drawContain(ictx, img, 1024, 1024, 20, "#ffffff");
 
   const inputImageData = ictx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
-
   const normalized = normalizeQrImageData(inputImageData, DEFAULT_UPLOAD_THRESHOLD);
 
   const trimmedOnly = normalized.trimmedImageData;
@@ -804,6 +815,8 @@ async function ensureQrPrepared() {
 }
 
 async function renderOutput() {
+  setLoading(true);
+
   try {
     if (!state.sourceQrCanvas || !state.textureTiles?.length) {
       setDebug("Create or upload a QR first.");
@@ -841,11 +854,11 @@ async function renderOutput() {
     });
 
     applyCurrentColorsToOutput();
-clearCanvas(sourcePreviewCanvas);
-updatePreviewFlags({ hasSource: false, hasOutput: true });
+    clearCanvas(sourcePreviewCanvas);
+    updatePreviewFlags({ hasSource: false, hasOutput: true });
 
-state.hasRenderedOnce = true;
-renderCount += 1;
+    state.hasRenderedOnce = true;
+    renderCount += 1;
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION} · tiles ${state.textureTiles.length}`);
     track("render_success", currentTrackingProps());
@@ -859,6 +872,8 @@ renderCount += 1;
     });
     setDebug(`Render failed: ${err.message}`);
     return false;
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -925,7 +940,7 @@ function nudge(dx, dy) {
     nudgeCount
   });
 
-  renderOutput();
+  scheduleAutoRender(30);
 }
 
 function resetPosition() {
@@ -935,7 +950,7 @@ function resetPosition() {
 
   track("position_reset");
 
-  renderOutput();
+  scheduleAutoRender(30);
 }
 
 async function handlePresetShapeSelection(maskKey) {
@@ -1032,9 +1047,7 @@ function init() {
     qrTextInput.value = DEFAULT_QR_TEXT;
   }
 
-  if (qrSizeSelect && !qrSizeSelect.value) {
-    qrSizeSelect.value = DEFAULT_QR_SIZE;
-  } else if (qrSizeSelect) {
+  if (qrSizeSelect) {
     qrSizeSelect.value = DEFAULT_QR_SIZE;
   }
 
@@ -1212,55 +1225,55 @@ function init() {
       });
       setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender();
     });
   }
 
   if (qrOffsetX) {
-    qrOffsetX.addEventListener("input", async () => {
+    qrOffsetX.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender(30);
     });
   }
 
   if (qrOffsetY) {
-    qrOffsetY.addEventListener("input", async () => {
+    qrOffsetY.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender(30);
     });
   }
 
   if (maskScale) {
-    maskScale.addEventListener("input", async () => {
+    maskScale.addEventListener("input", () => {
       syncMaskScaleLabel();
       track("mask_scale_changed", {
         value: Number(maskScale.value || 0)
       });
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender();
     });
   }
 
   if (maskPadding) {
-    maskPadding.addEventListener("input", async () => {
+    maskPadding.addEventListener("input", () => {
       syncMaskPaddingLabel();
       track("mask_padding_changed", {
         value: Number(maskPadding.value || 0)
       });
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender();
     });
   }
 
   if (invertMask) {
-    invertMask.addEventListener("change", async () => {
+    invertMask.addEventListener("change", () => {
       track("invert_mask_toggled", {
         value: !!invertMask.checked
       });
       resetGenerateButton();
-      await autoRenderIfReady();
+      scheduleAutoRender();
     });
   }
 
@@ -1284,7 +1297,7 @@ function init() {
   }
 
   if (foregroundColor) {
-    foregroundColor.addEventListener("input", async () => {
+    foregroundColor.addEventListener("input", () => {
       track("foreground_color_changed", {
         value: foregroundColor.value
       });
@@ -1292,13 +1305,13 @@ function init() {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        await autoRenderIfReady();
+        scheduleAutoRender(30);
       }
     });
   }
 
   if (backgroundColor) {
-    backgroundColor.addEventListener("input", async () => {
+    backgroundColor.addEventListener("input", () => {
       track("background_color_changed", {
         value: backgroundColor.value
       });
@@ -1306,13 +1319,13 @@ function init() {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        await autoRenderIfReady();
+        scheduleAutoRender(30);
       }
     });
   }
 
   if (transparentBackground) {
-    transparentBackground.addEventListener("change", async () => {
+    transparentBackground.addEventListener("change", () => {
       track("transparent_background_toggled", {
         value: !!transparentBackground.checked
       });
@@ -1320,7 +1333,7 @@ function init() {
       resetGenerateButton();
       if (state.hasRenderedOnce && outputCanvas.width) {
         applyCurrentColorsToOutput();
-        await autoRenderIfReady();
+        scheduleAutoRender(30);
       }
     });
   }
