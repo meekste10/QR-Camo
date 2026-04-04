@@ -332,56 +332,6 @@ function scoreQrCandidate(maskCtx, integralData, x, y, size) {
   );
 }
 
-function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium") {
-  const safeModuleCount = Math.max(21, moduleCount || 21);
-  const fractions = sizeFractionsForPreset(qrSize);
-  const integralData = buildIntegralMask(maskCtx);
-
-  let best = null;
-
-  for (const fraction of fractions) {
-    let qrDisplaySize = Math.floor(outputSize * fraction);
-    let moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / safeModuleCount));
-    qrDisplaySize = moduleDisplaySize * safeModuleCount;
-
-    if (qrDisplaySize <= 0 || qrDisplaySize > outputSize) continue;
-
-    const maxX = outputSize - qrDisplaySize;
-    const maxY = outputSize - qrDisplaySize;
-    const step = Math.max(3, Math.floor(moduleDisplaySize));
-
-    let localBest = null;
-
-    for (let y = 0; y <= maxY; y += step) {
-      for (let x = 0; x <= maxX; x += step) {
-        const score = scoreQrCandidate(maskCtx, integralData, x, y, qrDisplaySize);
-        if (score === -Infinity) continue;
-
-        if (!localBest || score > localBest.score) {
-          localBest = {
-            x,
-            y,
-            qrDisplaySize,
-            moduleDisplaySize,
-            score
-          };
-        }
-      }
-    }
-
-    if (localBest) {
-      best = localBest;
-      break;
-    }
-  }
-
-  if (!best) {
-    return fitQrCenter(outputSize, safeModuleCount, qrSize);
-  }
-
-  return best;
-}
-
 function getQrPixelData(qrCanvas) {
   const qctx = qrCanvas.getContext("2d");
   return qctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height).data;
@@ -392,7 +342,7 @@ function qrModuleIsDark(qrData, qrWidth, x, y) {
   return qrData[idx] < 128;
 }
 
-function drawTopQrLayer(ctx, maskCtx, qrCanvas, fit) {
+function drawQrChannelLayer(ctx, maskCtx, qrCanvas, fit) {
   const qrData = getQrPixelData(qrCanvas);
   const qrWidth = qrCanvas.width;
   const qrHeight = qrCanvas.height;
@@ -412,6 +362,15 @@ function drawTopQrLayer(ctx, maskCtx, qrCanvas, fit) {
       ctx.fillRect(x, y, moduleSize, moduleSize);
     }
   }
+}
+
+function rectsOverlap(a, b, padding = 0) {
+  return !(
+    a.x + a.qrDisplaySize + padding <= b.x ||
+    b.x + b.qrDisplaySize + padding <= a.x ||
+    a.y + a.qrDisplaySize + padding <= b.y ||
+    b.y + b.qrDisplaySize + padding <= a.y
+  );
 }
 
 export function buildMaskCanvas({
@@ -479,6 +438,188 @@ export function renderStapledBase(options) {
   return baseCanvas;
 }
 
+export function findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize = "medium") {
+  const safeModuleCount = Math.max(21, moduleCount || 21);
+  const fractions = sizeFractionsForPreset(qrSize);
+  const integralData = buildIntegralMask(maskCtx);
+
+  const candidates = [];
+  const seen = new Set();
+
+  for (const fraction of fractions) {
+    let qrDisplaySize = Math.floor(outputSize * fraction);
+    let moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / safeModuleCount));
+    qrDisplaySize = moduleDisplaySize * safeModuleCount;
+
+    if (qrDisplaySize <= 0 || qrDisplaySize > outputSize) continue;
+
+    const maxX = outputSize - qrDisplaySize;
+    const maxY = outputSize - qrDisplaySize;
+    const step = Math.max(3, Math.floor(moduleDisplaySize));
+
+    for (let y = 0; y <= maxY; y += step) {
+      for (let x = 0; x <= maxX; x += step) {
+        const score = scoreQrCandidate(maskCtx, integralData, x, y, qrDisplaySize);
+        if (score === -Infinity) continue;
+
+        const coverage = rectCoverage(integralData, x, y, qrDisplaySize);
+        const corner = cornerSupport(maskCtx, x, y, qrDisplaySize);
+        const edge = edgeSupport(maskCtx, x, y, qrDisplaySize);
+        const center = centerSupport(maskCtx, x, y, qrDisplaySize);
+
+        const key = [
+          Math.round(x / 4),
+          Math.round(y / 4),
+          qrDisplaySize
+        ].join(":");
+
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        candidates.push({
+          x,
+          y,
+          qrDisplaySize,
+          moduleDisplaySize,
+          score,
+          coverage,
+          corner,
+          edge,
+          center
+        });
+      }
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates;
+}
+
+export function selectBestQrChannels(candidates, count = 5, minSpacing = 24) {
+  const selected = [];
+
+  for (const candidate of candidates) {
+    const overlaps = selected.some((picked) => rectsOverlap(candidate, picked, minSpacing));
+    if (overlaps) continue;
+
+    selected.push(candidate);
+    if (selected.length >= count) break;
+  }
+
+  return selected;
+}
+
+export function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium") {
+  const candidates = findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize);
+  if (candidates.length) return candidates[0];
+  return fitQrCenter(outputSize, Math.max(21, moduleCount || 21), qrSize);
+}
+
+export function createAutoQrChannels({
+  maskCanvas,
+  moduleCount,
+  qrSize = "medium",
+  channelCount = 5,
+  minSpacing = 24,
+  outputSize = 800
+}) {
+  const maskCtx = maskCanvas.getContext("2d");
+  const candidates = findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize);
+  const selected = selectBestQrChannels(candidates, channelCount, minSpacing);
+
+  return selected.map((fit, index) => ({
+    id: index + 1,
+    enabled: true,
+    size: qrSize,
+    x: 0,
+    y: 0,
+    autoX: fit.x,
+    autoY: fit.y,
+    fitScore: fit.score,
+    cornersFit: fit.corner >= 0.95 ? 4 : 3,
+    overlapRisk: 0,
+    qrDisplaySize: fit.qrDisplaySize,
+    moduleDisplaySize: fit.moduleDisplaySize
+  }));
+}
+
+export function drawMultipleQrOverlays(options) {
+  const {
+    baseCanvas,
+    maskCanvas,
+    outputCanvas,
+    sourceQrCanvas,
+    moduleCount,
+    channels = [],
+    outputSize = 800
+  } = options;
+
+  outputCanvas.width = outputSize;
+  outputCanvas.height = outputSize;
+
+  const ctx = outputCanvas.getContext("2d");
+  ctx.clearRect(0, 0, outputSize, outputSize);
+  ctx.imageSmoothingEnabled = false;
+
+  if (baseCanvas) {
+    ctx.drawImage(baseCanvas, 0, 0);
+  }
+
+  if (!sourceQrCanvas || !maskCanvas) {
+    return;
+  }
+
+  const mctx = maskCanvas.getContext("2d");
+
+  for (const channel of channels) {
+    if (!channel || !channel.enabled) continue;
+
+    const fitBase = channel.qrDisplaySize && channel.moduleDisplaySize
+      ? {
+          x: channel.autoX || 0,
+          y: channel.autoY || 0,
+          qrDisplaySize: channel.qrDisplaySize,
+          moduleDisplaySize: channel.moduleDisplaySize
+        }
+      : findBestQrPlacement(
+          mctx,
+          outputSize,
+          Math.max(21, moduleCount || 21),
+          channel.size || "medium"
+        );
+
+    const fit = {
+      ...fitBase,
+      x: clamp(
+        Math.round((channel.autoX ?? fitBase.x) + (channel.x || 0)),
+        0,
+        outputSize - fitBase.qrDisplaySize
+      ),
+      y: clamp(
+        Math.round((channel.autoY ?? fitBase.y) + (channel.y || 0)),
+        0,
+        outputSize - fitBase.qrDisplaySize
+      )
+    };
+
+    const qrLayerCanvas = document.createElement("canvas");
+    qrLayerCanvas.width = outputSize;
+    qrLayerCanvas.height = outputSize;
+
+    const qrLayerCtx = qrLayerCanvas.getContext("2d");
+    qrLayerCtx.clearRect(0, 0, outputSize, outputSize);
+    qrLayerCtx.imageSmoothingEnabled = false;
+
+    drawQrChannelLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
+
+    qrLayerCtx.globalCompositeOperation = "destination-in";
+    qrLayerCtx.drawImage(maskCanvas, 0, 0);
+    qrLayerCtx.globalCompositeOperation = "source-over";
+
+    ctx.drawImage(qrLayerCanvas, 0, 0);
+  }
+}
+
 export function drawQrOverlayOnly(options) {
   const {
     baseCanvas,
@@ -508,7 +649,12 @@ export function drawQrOverlayOnly(options) {
   }
 
   const mctx = maskCanvas.getContext("2d");
-  const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, Math.max(21, moduleCount || 21), qrSize);
+  const autoFit = findBestQrPlacement(
+    mctx,
+    OUTPUT_SIZE,
+    Math.max(21, moduleCount || 21),
+    qrSize
+  );
 
   const fit = {
     ...autoFit,
@@ -532,7 +678,7 @@ export function drawQrOverlayOnly(options) {
   qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   qrLayerCtx.imageSmoothingEnabled = false;
 
-  drawTopQrLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
+  drawQrChannelLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
 
   qrLayerCtx.globalCompositeOperation = "destination-in";
   qrLayerCtx.drawImage(maskCanvas, 0, 0);
@@ -555,7 +701,8 @@ export function render(options) {
     maskScale = 100,
     maskPadding = 0,
     invertMask = false,
-    blockModules = 2
+    blockModules = 2,
+    channels = null
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -576,16 +723,28 @@ export function render(options) {
     blockModules
   });
 
-  drawQrOverlayOnly({
-    baseCanvas,
-    maskCanvas,
-    outputCanvas,
-    sourceQrCanvas,
-    moduleCount,
-    qrSize,
-    qrOffsetX,
-    qrOffsetY
-  });
+  if (Array.isArray(channels) && channels.length) {
+    drawMultipleQrOverlays({
+      baseCanvas,
+      maskCanvas,
+      outputCanvas,
+      sourceQrCanvas,
+      moduleCount,
+      channels,
+      outputSize: OUTPUT_SIZE
+    });
+  } else {
+    drawQrOverlayOnly({
+      baseCanvas,
+      maskCanvas,
+      outputCanvas,
+      sourceQrCanvas,
+      moduleCount,
+      qrSize,
+      qrOffsetX,
+      qrOffsetY
+    });
+  }
 
   return { baseCanvas, maskCanvas };
 }
