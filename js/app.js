@@ -100,7 +100,7 @@ const NUDGE_STEP_LARGE = 56;
 const PAN_LIMIT = 360;
 
 const DEFAULT_QR_SIZE = "xxsmall";
-const DEFAULT_QR_TEXT = "https://example.com";
+const DEFAULT_QR_TEXT = "";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_MASK_PADDING = 0;
@@ -139,6 +139,14 @@ function scheduleAutoRender(delay = 90) {
     renderTimer = null;
     await autoRenderIfReady();
   }, delay);
+}
+
+function hasRealQrInput() {
+  return !!(state.sourceQrCanvas && state.textureTiles?.length);
+}
+
+function hasRealShapeInput() {
+  return !!(state.customMaskImage || (maskSelect?.value && maskPresets[maskSelect.value]));
 }
 
 function currentTrackingProps() {
@@ -263,12 +271,13 @@ function setStepVisible(el, visible) {
   el.classList.toggle("is-locked", !visible);
 }
 
-function unlockWorkflowAfterShape() {
-  setStepVisible(previewStepSection, true);
-  setStepVisible(samplesStepSection, true);
+function unlockWorkflowAfterBothReady() {
+  const ready = hasRealQrInput() && hasRealShapeInput();
+  setStepVisible(previewStepSection, ready);
+  setStepVisible(samplesStepSection, ready);
 }
 
-function lockWorkflowUntilShape() {
+function lockWorkflowUntilReady() {
   setStepVisible(previewStepSection, false);
   setStepVisible(samplesStepSection, false);
 }
@@ -446,18 +455,6 @@ function paintSourcePreview(sourceCanvas) {
   updatePreviewFlags({ hasSource: true, hasOutput: false });
 }
 
-function paintOutputPreview(sourceCanvas) {
-  if (!sourceCanvas || !outputCanvas) return;
-
-  outputCanvas.width = 800;
-  outputCanvas.height = 800;
-
-  const ctx = outputCanvas.getContext("2d");
-  drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
-
-  updatePreviewFlags({ hasSource: false, hasOutput: true });
-}
-
 function clearCanvas(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -470,14 +467,6 @@ function resetGenerateButton() {
   generateBtn.classList.remove("btn-secondary");
   generateBtn.classList.add("btn-primary");
   generateBtn.disabled = false;
-}
-
-function resetCreateButton() {
-  if (!makeQrBtn) return;
-  makeQrBtn.textContent = "Create QR";
-  makeQrBtn.classList.remove("btn-secondary");
-  makeQrBtn.classList.add("btn-primary");
-  makeQrBtn.disabled = false;
 }
 
 function setCreatedState() {
@@ -506,7 +495,7 @@ function syncPresetShapeSelectionUI() {
   });
 }
 
-function resetQrPreparedState() {
+function clearQrPreparedState() {
   state.sourceQrCanvas = null;
   state.overlayQrCanvas = null;
   state.textureTiles = [];
@@ -523,10 +512,12 @@ function resetQrPreparedState() {
     hasSource: false,
     hasOutput: false
   });
+
+  lockWorkflowUntilReady();
 }
 
 function resetAll() {
-  if (qrTextInput) qrTextInput.value = DEFAULT_QR_TEXT;
+  if (qrTextInput) qrTextInput.value = "";
   if (qrUpload) qrUpload.value = "";
   if (customMaskUpload) customMaskUpload.value = "";
 
@@ -574,12 +565,11 @@ function resetAll() {
   show(shapeReadyBadge, false);
 
   updatePreviewFlags({ hasSource: false, hasOutput: false });
-  lockWorkflowUntilShape();
+  lockWorkflowUntilReady();
 
-  setPreviewMeta(`Choose a shape to begin · ${APP_VERSION}`);
-  setSourceMeta("waiting for shape");
+  setPreviewMeta(`Paste a link or upload a QR to begin · ${APP_VERSION}`);
+  setSourceMeta("waiting for QR source");
 
-  resetCreateButton();
   resetGenerateButton();
   setLoading(false);
 
@@ -677,8 +667,8 @@ async function buildQrFromText(text) {
   state.blockModules = DEFAULT_BLOCK_MODULES;
 
   paintSourcePreview(generated.overlayCanvas);
-  setSourceMeta("Generated from link/text");
-  setPreviewMeta(`QR ready · ${APP_VERSION} · modules ${generated.moduleCount}`);
+  setSourceMeta("QR prepared from link");
+  setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
   show(qrReadyBadge, true);
 
   track("qr_generated_from_text", {
@@ -734,9 +724,7 @@ async function handleQrUpload(file) {
 
   paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
-  setPreviewMeta(
-    `QR ready · ${APP_VERSION} · modules ${normalized.moduleCount} · tilePx ${uploadTilePx}`
-  );
+  setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
   show(qrReadyBadge, true);
 
   track("qr_upload_processed", {
@@ -826,7 +814,7 @@ function populatePresetShapeCards() {
 }
 
 async function ensureQrPrepared() {
-  if (state.sourceQrCanvas && state.textureTiles?.length) return true;
+  if (hasRealQrInput()) return true;
 
   const uploadedFile = qrUpload?.files?.[0];
   if (uploadedFile) {
@@ -834,10 +822,9 @@ async function ensureQrPrepared() {
     return true;
   }
 
-  let text = (qrTextInput?.value || "").trim();
+  const text = (qrTextInput?.value || "").trim();
   if (!text) {
-    text = DEFAULT_QR_TEXT;
-    if (qrTextInput) qrTextInput.value = text;
+    return false;
   }
 
   await buildQrFromText(text);
@@ -851,8 +838,13 @@ async function renderOutput() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   try {
-    if (!state.sourceQrCanvas || !state.textureTiles?.length) {
-      setDebug("Create or upload a QR first.");
+    if (!hasRealQrInput()) {
+      setDebug("Paste a link or upload a QR first.");
+      return false;
+    }
+
+    if (!hasRealShapeInput()) {
+      setDebug("Choose a shape first.");
       return false;
     }
 
@@ -916,7 +908,19 @@ async function createQrCamo() {
   track("generate_clicked", currentTrackingProps());
 
   const okQr = await ensureQrPrepared();
-  if (!okQr) return false;
+  if (!okQr) {
+    setDebug("Paste a link or upload a QR first.");
+    setPreviewMeta(`QR needed first · ${APP_VERSION}`);
+    return false;
+  }
+
+  if (!hasRealShapeInput()) {
+    setDebug("Choose a shape next.");
+    setPreviewMeta(`Shape needed next · ${APP_VERSION}`);
+    return false;
+  }
+
+  unlockWorkflowAfterBothReady();
 
   isRendering = true;
   try {
@@ -931,7 +935,8 @@ async function createQrCamo() {
 
 async function autoRenderIfReady() {
   if (!state.hasRenderedOnce) return;
-  if (!state.sourceQrCanvas || !state.textureTiles?.length) return;
+  if (!hasRealQrInput()) return;
+  if (!hasRealShapeInput()) return;
   if (isRendering) return;
 
   resetGenerateButton();
@@ -944,12 +949,6 @@ async function autoRenderIfReady() {
   } finally {
     isRendering = false;
   }
-}
-
-async function ensurePreviewFlowAfterShapeSelection() {
-  unlockWorkflowAfterShape();
-  await ensureQrPrepared();
-  await createQrCamo();
 }
 
 function nudge(dx, dy) {
@@ -972,8 +971,12 @@ function nudge(dx, dy) {
     nudgeCount
   });
 
-  resetGenerateButton();
-  setPreviewMeta(`Position updated · click Create QR-Camo to refresh · ${APP_VERSION}`);
+  if (state.hasRenderedOnce) {
+    scheduleAutoRender(30);
+  } else {
+    resetGenerateButton();
+    setPreviewMeta(`Position updated · create after first render · ${APP_VERSION}`);
+  }
 }
 
 function resetPosition() {
@@ -982,8 +985,13 @@ function resetPosition() {
   syncOffsetLabels();
 
   track("position_reset");
-  resetGenerateButton();
-  setPreviewMeta(`Position reset · click Create QR-Camo to refresh · ${APP_VERSION}`);
+
+  if (state.hasRenderedOnce) {
+    scheduleAutoRender(30);
+  } else {
+    resetGenerateButton();
+    setPreviewMeta(`Position reset · create after first render · ${APP_VERSION}`);
+  }
 }
 
 async function handlePresetShapeSelection(maskKey) {
@@ -1006,7 +1014,12 @@ async function handlePresetShapeSelection(maskKey) {
   track("preset_shape_selected", { shape: maskKey });
   setDebug(`Preset shape selected · ${APP_VERSION}`);
 
-  await ensurePreviewFlowAfterShapeSelection();
+  if (hasRealQrInput()) {
+    unlockWorkflowAfterBothReady();
+    await createQrCamo();
+  } else {
+    setPreviewMeta(`Shape ready · paste a link or upload a QR next · ${APP_VERSION}`);
+  }
 }
 
 async function showSamplePreview(sampleKey) {
@@ -1020,7 +1033,13 @@ async function showSamplePreview(sampleKey) {
     const { img, src } = await resolveFirstWorkingImage(candidates);
 
     clearCanvas(sourcePreviewCanvas);
-    paintOutputPreview(img);
+
+    outputCanvas.width = 800;
+    outputCanvas.height = 800;
+    const ctx = outputCanvas.getContext("2d");
+    drawContain(ctx, img, 800, 800, 40, "#0a1020");
+
+    updatePreviewFlags({ hasSource: false, hasOutput: true });
 
     setPreviewMeta(`Sample preview · ${APP_VERSION}`);
     setSourceMeta(src.split("/").pop());
@@ -1076,8 +1095,8 @@ function init() {
   populatePresetShapeCards();
   initSampleCardImages();
 
-  if (qrTextInput && !qrTextInput.value.trim()) {
-    qrTextInput.value = DEFAULT_QR_TEXT;
+  if (qrTextInput) {
+    qrTextInput.value = "";
   }
 
   if (qrSizeSelect) {
@@ -1098,75 +1117,88 @@ function init() {
   syncPresetShapeSelectionUI();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
-  lockWorkflowUntilShape();
+  lockWorkflowUntilReady();
 
-  setPreviewMeta(`Choose a shape to begin · ${APP_VERSION}`);
-  setSourceMeta("waiting for shape");
+  setPreviewMeta(`Paste a link or upload a QR to begin · ${APP_VERSION}`);
+  setSourceMeta("waiting for QR source");
   setDebug(`Ready · ${APP_VERSION}`);
 
   track("app_loaded", {
     userAgent: navigator.userAgent
   });
 
-  if (makeQrBtn) {
-    makeQrBtn.addEventListener("click", async () => {
-      await createQrCamo();
+  if (qrTextInput) {
+    qrTextInput.addEventListener("focus", () => {
+      if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
+        qrTextInput.select();
+      }
+    });
+
+    qrTextInput.addEventListener("input", () => {
+      if (qrUpload) qrUpload.value = "";
+
+      clearTimeout(renderTimer);
+      resetGenerateButton();
+      clearQrPreparedState();
+
+      track("qr_text_changed", {
+        textLength: (qrTextInput.value || "").trim().length
+      });
+
+      setPreviewMeta(`Link updated · press Enter or choose a shape after QR is ready · ${APP_VERSION}`);
+    });
+
+    qrTextInput.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+
+      const okQr = await ensureQrPrepared();
+      if (!okQr) return;
+
+      if (hasRealShapeInput()) {
+        unlockWorkflowAfterBothReady();
+        await createQrCamo();
+      } else {
+        setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
+      }
+    });
+
+    qrTextInput.addEventListener("blur", async () => {
+      const value = qrTextInput.value.trim();
+      if (!value) return;
+
+      const okQr = await ensureQrPrepared();
+      if (!okQr) return;
+
+      if (hasRealShapeInput()) {
+        unlockWorkflowAfterBothReady();
+        await createQrCamo();
+      } else {
+        setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
+      }
     });
   }
 
-  if (qrTextInput) {
-  qrTextInput.addEventListener("focus", () => {
-    if (qrTextInput.value.trim() === DEFAULT_QR_TEXT) {
-      qrTextInput.select();
-    }
-  });
+  if (qrUpload) {
+    qrUpload.addEventListener("change", async () => {
+      const file = qrUpload?.files?.[0] || null;
 
-  qrTextInput.addEventListener("input", () => {
-    if (qrUpload) qrUpload.value = "";
+      track("qr_upload_selected", {
+        fileName: file?.name || null
+      });
 
-    resetCreateButton();
-    resetGenerateButton();
+      clearQrPreparedState();
 
-    state.sourceQrCanvas = null;
-    state.overlayQrCanvas = null;
-    state.textureTiles = [];
-    state.moduleCount = 21;
-    state.modulePixelSize = 1;
-    state.blockModules = 2;
-    state.hasRenderedOnce = false;
+      if (!file) return;
 
-    clearCanvas(sourcePreviewCanvas);
-    clearCanvas(outputCanvas);
-    updatePreviewFlags({ hasSource: false, hasOutput: false });
+      await handleQrUpload(file);
 
-    track("qr_text_changed", {
-      textLength: (qrTextInput.value || "").trim().length
+      if (hasRealShapeInput()) {
+        unlockWorkflowAfterBothReady();
+        await createQrCamo();
+      }
     });
-
-    setPreviewMeta(`Link updated · press Enter or Create · ${APP_VERSION}`);
-  });
-
-  qrTextInput.addEventListener("keydown", async (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-
-    clearTimeout(renderTimer);
-    await createQrCamo();
-  });
-
-  qrTextInput.addEventListener("blur", async () => {
-    const value = qrTextInput.value.trim();
-
-    if (!value) {
-      qrTextInput.value = DEFAULT_QR_TEXT;
-      return;
-    }
-
-    if (maskSelect?.value || state.customMaskImage) {
-      await createQrCamo();
-    }
-  });
-}
+  }
 
   if (customMaskUpload) {
     customMaskUpload.addEventListener("change", async (e) => {
@@ -1193,7 +1225,12 @@ function init() {
 
         setDebug(`Custom shape uploaded · ${APP_VERSION}`);
 
-        await ensurePreviewFlowAfterShapeSelection();
+        if (hasRealQrInput()) {
+          unlockWorkflowAfterBothReady();
+          await createQrCamo();
+        } else {
+          setPreviewMeta(`Shape ready · paste a link or upload a QR next · ${APP_VERSION}`);
+        }
       } catch (err) {
         console.error(err);
         track("custom_shape_upload_failed", {
@@ -1254,9 +1291,10 @@ function init() {
       track("qr_size_changed", {
         qrSize: qrSizeSelect.value
       });
-      setDebug(`QR size: ${qrSizeSelect.value} · ${APP_VERSION}`);
       resetGenerateButton();
-      scheduleAutoRender();
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender();
+      }
     });
   }
 
@@ -1264,7 +1302,9 @@ function init() {
     qrOffsetX.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      scheduleAutoRender(30);
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender(30);
+      }
     });
   }
 
@@ -1272,7 +1312,9 @@ function init() {
     qrOffsetY.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      scheduleAutoRender(30);
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender(30);
+      }
     });
   }
 
@@ -1283,7 +1325,9 @@ function init() {
         value: Number(maskScale.value || 0)
       });
       resetGenerateButton();
-      scheduleAutoRender();
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender();
+      }
     });
   }
 
@@ -1303,18 +1347,9 @@ function init() {
         value: next
       });
       resetGenerateButton();
-      scheduleAutoRender();
-    });
-  }
-
-  if (maskPadding) {
-    maskPadding.addEventListener("input", () => {
-      syncMaskPaddingLabel();
-      track("mask_padding_changed", {
-        value: Number(maskPadding.value || 0)
-      });
-      resetGenerateButton();
-      scheduleAutoRender();
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender();
+      }
     });
   }
 
@@ -1324,7 +1359,9 @@ function init() {
         value: !!invertMask.checked
       });
       resetGenerateButton();
-      scheduleAutoRender();
+      if (state.hasRenderedOnce) {
+        scheduleAutoRender();
+      }
     });
   }
 
