@@ -23,7 +23,7 @@
           <div class="section-badge">Step 1</div>
           <h2>Paste your link or upload a QR</h2>
           <p class="helper">
-            Start with the real destination first. The app will wait to build the final QR-Camo until both your QR and your shape are ready.
+            Start with the real destination first. The app waits to build the final QR-Camo until both your QR and your shape are ready.
           </p>
 
           <label class="label" for="qrTextInput">Link</label>
@@ -72,7 +72,7 @@
         </div>
 
         <div id="previewStepSection" class="section preview-adjust-section progressive-step is-locked hidden section--preview">
-          <div class="section-badge">Step 2</div>
+          <div class="section-badge">Step 3</div>
           <h2>Adjust</h2>
 
           <div class="preview-adjust-layout single-stack-layout">
@@ -82,6 +82,7 @@
                   <div class="preview-title">QR-Camo preview</div>
                   <div id="previewMeta" class="preview-meta">Paste a link or upload a QR to begin</div>
                 </div>
+                <div id="sourceMeta" class="source-meta">waiting for QR source</div>
               </div>
 
               <div class="preview-stage embedded-preview-stage">
@@ -99,48 +100,46 @@
             </div>
 
             <div class="adjust-panel-card adjust-panel-card--full">
-              <label class="label" for="qrSizeSelect">QR size</label>
-              <select id="qrSizeSelect" class="select-input">
-                <option value="xxxxsmall">Extra Extra Extra Extra Small</option>
-                <option value="xxxsmall">Extra Extra Extra Small</option>
-                <option value="xxsmall" selected>Extra Extra Small</option>
-                <option value="xsmall">Extra Small</option>
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large</option>
-              </select>
 
-              <div class="control-duo-row">
+              <div class="adjust-grid-top">
+                <div class="control-block">
+                  <label class="label" for="qrSizeSelect">Default QR size</label>
+                  <select id="qrSizeSelect" class="select-input">
+                    <option value="xxxxsmall">Extra Extra Extra Extra Small</option>
+                    <option value="xxxsmall">Extra Extra Extra Small</option>
+                    <option value="xxsmall" selected>Extra Extra Small</option>
+                    <option value="xsmall">Extra Small</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+
+                <div class="control-block">
+                  <label class="label" for="selectedChannelSelect">Selected QR channel</label>
+                  <select id="selectedChannelSelect" class="select-input"></select>
+                </div>
+              </div>
+
+              <div class="channel-controls-section">
+                <div class="mini-section-title">QR channels</div>
+                <div id="channelControls" class="channel-controls"></div>
+              </div>
+
+              <div class="control-duo-row control-duo-row--tight">
                 <div class="direction-card">
-                  <div class="mini-section-title">Move QR</div>
+                  <div class="mini-section-title">Move selected QR</div>
 
-                  <div class="adjust-step-groups">
-                    <div class="adjust-step-row">
-                      <span class="adjust-step-label">Fine</span>
-                      <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+                  <div class="dpad-wrap">
+                    <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+
+                    <div class="dpad-middle">
                       <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
                       <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
                       <button id="nudgeRight" class="nudge-btn" type="button">→</button>
-                      <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
                     </div>
 
-                    <div class="adjust-step-row">
-                      <span class="adjust-step-label">Medium</span>
-                      <button id="nudgeUpMedium" class="nudge-btn nudge-btn-mid" type="button">↑</button>
-                      <button id="nudgeLeftMedium" class="nudge-btn nudge-btn-mid" type="button">←</button>
-                      <div class="nudge-spacer"></div>
-                      <button id="nudgeRightMedium" class="nudge-btn nudge-btn-mid" type="button">→</button>
-                      <button id="nudgeDownMedium" class="nudge-btn nudge-btn-mid" type="button">↓</button>
-                    </div>
-
-                    <div class="adjust-step-row">
-                      <span class="adjust-step-label">Large</span>
-                      <button id="nudgeUpLarge" class="nudge-btn nudge-btn-outer" type="button">↑</button>
-                      <button id="nudgeLeftLarge" class="nudge-btn nudge-btn-outer" type="button">←</button>
-                      <div class="nudge-spacer"></div>
-                      <button id="nudgeRightLarge" class="nudge-btn nudge-btn-outer" type="button">→</button>
-                      <button id="nudgeDownLarge" class="nudge-btn nudge-btn-outer" type="button">↓</button>
-                    </div>
+                    <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
                   </div>
 
                   <div class="offset-row">
@@ -150,6 +149,17 @@
 
                   <input type="hidden" id="qrOffsetX" value="0" />
                   <input type="hidden" id="qrOffsetY" value="0" />
+
+                  <!-- legacy hidden buttons kept so app.js doesn't break if referenced -->
+                  <button id="nudgeUpMedium" class="hidden" type="button"></button>
+                  <button id="nudgeRightMedium" class="hidden" type="button"></button>
+                  <button id="nudgeDownMedium" class="hidden" type="button"></button>
+                  <button id="nudgeLeftMedium" class="hidden" type="button"></button>
+
+                  <button id="nudgeUpLarge" class="hidden" type="button"></button>
+                  <button id="nudgeRightLarge" class="hidden" type="button"></button>
+                  <button id="nudgeDownLarge" class="hidden" type="button"></button>
+                  <button id="nudgeLeftLarge" class="hidden" type="button"></button>
                 </div>
 
                 <div class="color-card">
@@ -203,15 +213,15 @@
                     <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
                   </div>
 
-                  <div class="action-row shape-action-row">
-                    <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
-                    <button id="exportBtn" class="btn-secondary" type="button">Export PNG</button>
-                  </div>
-
                   <div id="contrastWarning" class="helper hidden">
                     Low contrast may reduce scan reliability.
                   </div>
                 </div>
+              </div>
+
+              <div class="action-row shape-action-row">
+                <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
+                <button id="exportBtn" class="btn-secondary" type="button">Export PNG</button>
               </div>
 
               <div class="action-row action-row-single">
