@@ -10,7 +10,7 @@
   <div class="app-shell">
     <header class="hero-header">
       <img
-        src="./QR Camo Logo.png"
+        src="./63B43405-72A2-476B-B490-59C40C5C3927.jpeg"
         alt="QR Camo"
         class="hero-logo"
       />
@@ -19,8 +19,30 @@
     <main class="workspace single-column-workspace">
       <section class="controls-card full-width-card">
 
-        <div class="section section--shape section--hero">
-          <div class="section-badge">Step 1</div>
+        <div class="section section--hero">
+          <div class="section-badge">Step 1A</div>
+          <h2>Paste your link or upload a QR</h2>
+          <p class="helper">
+            Start with the real destination first. The app will wait to build the final QR-Camo until both your QR and your shape are ready.
+          </p>
+
+          <label class="label" for="qrTextInput">Link</label>
+          <input
+            id="qrTextInput"
+            type="text"
+            class="text-input"
+            value=""
+            placeholder="https://example.com"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
+          <label class="label" for="qrUpload">Upload your own QR if you have one</label>
+          <input id="qrUpload" type="file" accept="image/*" class="file-input" />
+        </div>
+
+        <div class="section section--shape">
+          <div class="section-badge">Step 1B</div>
           <h2>Choose your shape</h2>
           <p class="helper">
             Upload your own silhouette first, or choose a preset below.
@@ -58,7 +80,7 @@
               <div class="preview-header compact-preview-header">
                 <div>
                   <div class="preview-title">QR-Camo preview</div>
-                  <div id="previewMeta" class="preview-meta">Choose a shape to begin</div>
+                  <div id="previewMeta" class="preview-meta">Paste a link or upload a QR to begin</div>
                 </div>
               </div>
 
@@ -68,26 +90,15 @@
 
                 <div id="previewEmptyState" class="preview-empty-state">
                   <div class="empty-icon">⬒</div>
-                  <div class="empty-title">Select a shape above</div>
+                  <div class="empty-title">Start with your link or QR</div>
                   <div class="empty-copy">
-                    The QR will automatically generate and appear here.
+                    Once your QR source and shape are both ready, your QR-Camo will appear here.
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="adjust-panel-card adjust-panel-card--full">
-              <label class="label" for="qrTextInput">Link</label>
-              <input
-                id="qrTextInput"
-                type="text"
-                class="text-input"
-                value="https://example.com"
-                placeholder="https://example.com"
-                autocomplete="off"
-                spellcheck="false"
-              />
-
               <label class="label" for="qrSizeSelect">QR size</label>
               <select id="qrSizeSelect" class="select-input">
                 <option value="xxxxsmall">Extra Extra Extra Extra Small</option>
@@ -191,19 +202,17 @@
                   <div class="offset-row">
                     <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
                   </div>
+
                   <div class="action-row shape-action-row">
-  <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
-  <button id="exportBtn" class="btn-secondary" type="button">Export PNG</button>
-</div>
+                    <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
+                    <button id="exportBtn" class="btn-secondary" type="button">Export PNG</button>
+                  </div>
 
                   <div id="contrastWarning" class="helper hidden">
                     Low contrast may reduce scan reliability.
                   </div>
                 </div>
               </div>
-
-              <label class="label" for="qrUpload">Upload your own QR if you have one</label>
-              <input id="qrUpload" type="file" accept="image/*" class="file-input" />
 
               <div class="action-row action-row-single">
                 <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
@@ -219,102 +228,27 @@
 
           <div class="samples-marquee-shell">
             <div class="samples-marquee-track" id="samplesGrid">
-
-              <button class="sample-card" type="button" data-sample="Coffee-mug-qr">
-                <img alt="Coffee mug QR sample" />
-                <span>Coffee Mug</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="Calendar-qr">
-                <img alt="Calendar QR sample" />
-                <span>Calendar</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="Headphones-qr">
-                <img alt="Headphones QR sample" />
-                <span>Headphones</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="repair-wrench-qr">
-                <img alt="Repair wrench QR sample" />
-                <span>Repair</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="profile-icon-qr">
-                <img alt="Profile QR sample" />
-                <span>Profile</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="lock-icon-qr">
-                <img alt="Lock QR sample" />
-                <span>Lock</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="shop-bag-qr">
-                <img alt="Shop bag QR sample" />
-                <span>Shop Bag</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="gift-qr">
-                <img alt="Gift QR sample" />
-                <span>Gift</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="play-button-qr">
-                <img alt="Play button QR sample" />
-                <span>Play</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="map-qr">
-                <img alt="Map QR sample" />
-                <span>Map</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="trophy-qr">
-                <img alt="Trophy QR sample" />
-                <span>Trophy</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="human-head-qr">
-                <img alt="Human head QR sample" />
-                <span>Human Head</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="door-qr">
-                <img alt="Door QR sample" />
-                <span>Door</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="pharmacy-qr">
-                <img alt="Pharmacy QR sample" />
-                <span>Pharmacy</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="question-icon-qr">
-                <img alt="Question icon QR sample" />
-                <span>Question</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="info-icon-qr">
-                <img alt="Info icon QR sample" />
-                <span>Info</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="pizza-greek-qr">
-                <img alt="Pizza Greek QR sample" />
-                <span>Pizza Greek</span>
-              </button>
-
-              <button class="sample-card" type="button" data-sample="heart-lt-blue-qr">
-                <img alt="Heart QR sample" />
-                <span>Heart</span>
-              </button>
-
+              <button class="sample-card" type="button" data-sample="Coffee-mug-qr"><img alt="Coffee mug QR sample" /><span>Coffee Mug</span></button>
+              <button class="sample-card" type="button" data-sample="Calendar-qr"><img alt="Calendar QR sample" /><span>Calendar</span></button>
+              <button class="sample-card" type="button" data-sample="Headphones-qr"><img alt="Headphones QR sample" /><span>Headphones</span></button>
+              <button class="sample-card" type="button" data-sample="repair-wrench-qr"><img alt="Repair wrench QR sample" /><span>Repair</span></button>
+              <button class="sample-card" type="button" data-sample="profile-icon-qr"><img alt="Profile QR sample" /><span>Profile</span></button>
+              <button class="sample-card" type="button" data-sample="lock-icon-qr"><img alt="Lock QR sample" /><span>Lock</span></button>
+              <button class="sample-card" type="button" data-sample="shop-bag-qr"><img alt="Shop bag QR sample" /><span>Shop Bag</span></button>
+              <button class="sample-card" type="button" data-sample="gift-qr"><img alt="Gift QR sample" /><span>Gift</span></button>
+              <button class="sample-card" type="button" data-sample="play-button-qr"><img alt="Play button QR sample" /><span>Play</span></button>
+              <button class="sample-card" type="button" data-sample="map-qr"><img alt="Map QR sample" /><span>Map</span></button>
+              <button class="sample-card" type="button" data-sample="trophy-qr"><img alt="Trophy QR sample" /><span>Trophy</span></button>
+              <button class="sample-card" type="button" data-sample="human-head-qr"><img alt="Human head QR sample" /><span>Human Head</span></button>
+              <button class="sample-card" type="button" data-sample="door-qr"><img alt="Door QR sample" /><span>Door</span></button>
+              <button class="sample-card" type="button" data-sample="pharmacy-qr"><img alt="Pharmacy QR sample" /><span>Pharmacy</span></button>
+              <button class="sample-card" type="button" data-sample="question-icon-qr"><img alt="Question icon QR sample" /><span>Question</span></button>
+              <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info icon QR sample" /><span>Info</span></button>
+              <button class="sample-card" type="button" data-sample="pizza-greek-qr"><img alt="Pizza Greek QR sample" /><span>Pizza Greek</span></button>
+              <button class="sample-card" type="button" data-sample="heart-lt-blue-qr"><img alt="Heart QR sample" /><span>Heart</span></button>
             </div>
           </div>
         </div>
-
-        
 
         <div id="debugPanel" class="debug-box">Ready.</div>
       </section>
