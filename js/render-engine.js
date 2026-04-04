@@ -188,10 +188,6 @@ function applyEdgePostFX(ctx, maskCanvas, depth = 3) {
   ctx.restore();
 }
 
-/* -----------------------------
-   SMART QR FIT HELPERS
------------------------------ */
-
 function sizeFractionsForPreset(qrSize = "medium") {
   if (qrSize === "xxxxsmall") return [0.12, 0.10, 0.09, 0.08, 0.07];
   if (qrSize === "xxxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
@@ -352,7 +348,6 @@ function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium"
 
     const maxX = outputSize - qrDisplaySize;
     const maxY = outputSize - qrDisplaySize;
-
     const step = Math.max(3, Math.floor(moduleDisplaySize));
 
     let localBest = null;
@@ -387,10 +382,6 @@ function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium"
   return best;
 }
 
-/* -----------------------------
-   QR LAYER HELPERS
------------------------------ */
-
 function getQrPixelData(qrCanvas) {
   const qctx = qrCanvas.getContext("2d");
   return qctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height).data;
@@ -423,85 +414,47 @@ function drawTopQrLayer(ctx, maskCtx, qrCanvas, fit) {
   }
 }
 
-export function render(options) {
+export function buildMaskCanvas({
+  maskImg,
+  outputSize = 800,
+  maskScale = 100,
+  maskPadding = 0,
+  invertMask = false
+}) {
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = outputSize;
+  maskCanvas.height = outputSize;
+  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale, maskPadding, invertMask);
+  return maskCanvas;
+}
+
+export function renderStapledBase(options) {
   const {
     tiles,
-    maskImg,
-    outputCanvas,
-    sourceQrCanvas,
-    overlayQrCanvas,
-    moduleCount,
-    qrSize = "medium",
-    qrOffsetX = 0,
-    qrOffsetY = 0,
+    maskCanvas,
+    outputSize = 800,
     blendTightness = 50,
-    maskScale = 100,
-    maskPadding = 0,
-    invertMask = false,
     blockModules = 2
   } = options;
 
-  const OUTPUT_SIZE = 800;
-  const ctx = outputCanvas.getContext("2d");
-
-  outputCanvas.width = OUTPUT_SIZE;
-  outputCanvas.height = OUTPUT_SIZE;
-  ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  ctx.imageSmoothingEnabled = false;
-
-  if (!tiles || !tiles.length) {
-    throw new Error("Render failed: no tiles available");
-  }
-  if (!maskImg) {
-    throw new Error("Render failed: no mask image available");
-  }
-  if (!sourceQrCanvas) {
-    throw new Error("Render failed: no source QR canvas available");
-  }
-
-  const safeModuleCount = Math.max(21, moduleCount || sourceQrCanvas.width);
+  const mctx = maskCanvas.getContext("2d");
   const safeBlockModules = Math.max(1, blockModules);
 
-  const maskCanvas = document.createElement("canvas");
-  maskCanvas.width = OUTPUT_SIZE;
-  maskCanvas.height = OUTPUT_SIZE;
-  drawScaledMaskToCanvas(maskImg, maskCanvas, maskScale, maskPadding, invertMask);
+  const baseCanvas = document.createElement("canvas");
+  baseCanvas.width = outputSize;
+  baseCanvas.height = outputSize;
 
-  const mctx = maskCanvas.getContext("2d");
-
-  const camoCanvas = document.createElement("canvas");
-  camoCanvas.width = OUTPUT_SIZE;
-  camoCanvas.height = OUTPUT_SIZE;
-
-  const cctx = camoCanvas.getContext("2d");
-  cctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  const cctx = baseCanvas.getContext("2d");
+  cctx.clearRect(0, 0, outputSize, outputSize);
   cctx.imageSmoothingEnabled = false;
 
-  const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, safeModuleCount, qrSize);
-
-  const fit = {
-    ...autoFit,
-    x: clamp(
-      Math.round(autoFit.x + qrOffsetX),
-      0,
-      OUTPUT_SIZE - autoFit.qrDisplaySize
-    ),
-    y: clamp(
-      Math.round(autoFit.y + qrOffsetY),
-      0,
-      OUTPUT_SIZE - autoFit.qrDisplaySize
-    )
-  };
-
-  const moduleDisplaySize = fit.moduleDisplaySize;
+  const moduleDisplaySize = 8;
   const tileDisplaySize = Math.max(1, moduleDisplaySize * safeBlockModules);
-
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
 
-  // Base shape/camo layer
-  for (let y = 0; y < OUTPUT_SIZE; y += tileDisplaySize) {
-    for (let x = 0; x < OUTPUT_SIZE; x += tileDisplaySize) {
+  for (let y = 0; y < outputSize; y += tileDisplaySize) {
+    for (let x = 0; x < outputSize; x += tileDisplaySize) {
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
       if (coverage < minCoverage) continue;
 
@@ -521,12 +474,56 @@ export function render(options) {
   cctx.drawImage(maskCanvas, 0, 0);
   cctx.globalCompositeOperation = "source-over";
 
-  // Draw shape first
-  ctx.drawImage(camoCanvas, 0, 0);
+  applyEdgePostFX(cctx, maskCanvas, 3);
 
-  applyEdgePostFX(ctx, maskCanvas, 3);
+  return baseCanvas;
+}
 
-  // Build clean top QR layer
+export function drawQrOverlayOnly(options) {
+  const {
+    baseCanvas,
+    maskCanvas,
+    outputCanvas,
+    sourceQrCanvas,
+    moduleCount,
+    qrSize = "medium",
+    qrOffsetX = 0,
+    qrOffsetY = 0
+  } = options;
+
+  const OUTPUT_SIZE = outputCanvas.width || 800;
+  outputCanvas.width = OUTPUT_SIZE;
+  outputCanvas.height = OUTPUT_SIZE;
+
+  const ctx = outputCanvas.getContext("2d");
+  ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  ctx.imageSmoothingEnabled = false;
+
+  if (baseCanvas) {
+    ctx.drawImage(baseCanvas, 0, 0);
+  }
+
+  if (!sourceQrCanvas || !maskCanvas) {
+    return;
+  }
+
+  const mctx = maskCanvas.getContext("2d");
+  const autoFit = findBestQrPlacement(mctx, OUTPUT_SIZE, Math.max(21, moduleCount || 21), qrSize);
+
+  const fit = {
+    ...autoFit,
+    x: clamp(
+      Math.round(autoFit.x + qrOffsetX),
+      0,
+      OUTPUT_SIZE - autoFit.qrDisplaySize
+    ),
+    y: clamp(
+      Math.round(autoFit.y + qrOffsetY),
+      0,
+      OUTPUT_SIZE - autoFit.qrDisplaySize
+    )
+  };
+
   const qrLayerCanvas = document.createElement("canvas");
   qrLayerCanvas.width = OUTPUT_SIZE;
   qrLayerCanvas.height = OUTPUT_SIZE;
@@ -535,13 +532,60 @@ export function render(options) {
   qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
   qrLayerCtx.imageSmoothingEnabled = false;
 
-  // Use normalized QR truth, not overlay image
   drawTopQrLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
 
   qrLayerCtx.globalCompositeOperation = "destination-in";
   qrLayerCtx.drawImage(maskCanvas, 0, 0);
   qrLayerCtx.globalCompositeOperation = "source-over";
 
-  // QR on TOP
   ctx.drawImage(qrLayerCanvas, 0, 0);
+}
+
+export function render(options) {
+  const {
+    tiles,
+    maskImg,
+    outputCanvas,
+    sourceQrCanvas,
+    moduleCount,
+    qrSize = "medium",
+    qrOffsetX = 0,
+    qrOffsetY = 0,
+    blendTightness = 50,
+    maskScale = 100,
+    maskPadding = 0,
+    invertMask = false,
+    blockModules = 2
+  } = options;
+
+  const OUTPUT_SIZE = 800;
+
+  const maskCanvas = buildMaskCanvas({
+    maskImg,
+    outputSize: OUTPUT_SIZE,
+    maskScale,
+    maskPadding,
+    invertMask
+  });
+
+  const baseCanvas = renderStapledBase({
+    tiles,
+    maskCanvas,
+    outputSize: OUTPUT_SIZE,
+    blendTightness,
+    blockModules
+  });
+
+  drawQrOverlayOnly({
+    baseCanvas,
+    maskCanvas,
+    outputCanvas,
+    sourceQrCanvas,
+    moduleCount,
+    qrSize,
+    qrOffsetX,
+    qrOffsetY
+  });
+
+  return { baseCanvas, maskCanvas };
 }
