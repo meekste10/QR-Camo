@@ -14,7 +14,12 @@ import {
 } from "./presets.js?v=0.6.3";
 import { loadMask } from "./mask-engine.js?v=0.6.3";
 import { buildMaskFromImage } from "./mask-builder.js?v=0.6.3";
-import { render } from "./render-engine.js?v=0.6.3";
+import {
+  render,
+  buildMaskCanvas,
+  renderStapledBase,
+  drawQrOverlayOnly
+} from "./render-engine.js?v=0.6.3";
 import { exportPNG } from "./export.js?v=0.6.3";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
@@ -93,6 +98,9 @@ state.moduleCount = 21;
 state.modulePixelSize = 1;
 state.blockModules = 2;
 state.hasRenderedOnce = false;
+state.stapledBaseCanvas = null;
+state.currentMaskCanvas = null;
+state.lastBaseSignature = null;
 
 const NUDGE_STEP_SMALL = 8;
 const NUDGE_STEP_MEDIUM = 24;
@@ -495,6 +503,12 @@ function syncPresetShapeSelectionUI() {
   });
 }
 
+function clearLayerCache() {
+  state.stapledBaseCanvas = null;
+  state.currentMaskCanvas = null;
+  state.lastBaseSignature = null;
+}
+
 function clearQrPreparedState() {
   state.sourceQrCanvas = null;
   state.overlayQrCanvas = null;
@@ -503,6 +517,8 @@ function clearQrPreparedState() {
   state.modulePixelSize = 1;
   state.blockModules = 2;
   state.hasRenderedOnce = false;
+
+  clearLayerCache();
 
   clearCanvas(sourcePreviewCanvas);
   clearCanvas(outputCanvas);
@@ -514,6 +530,89 @@ function clearQrPreparedState() {
   });
 
   lockWorkflowUntilReady();
+}
+
+function getBaseSignature(maskSource) {
+  return JSON.stringify({
+    hasCustomMask: !!state.customMaskImage,
+    selectedMask: maskSelect?.value || "",
+    qrModuleCount: state.moduleCount || 21,
+    tileCount: state.textureTiles?.length || 0,
+    invertMask: !!invertMask?.checked,
+    maskScale: Number(maskScale?.value || 0),
+    maskPadding: Number(maskPadding?.value || 0),
+    blockModules: state.blockModules || DEFAULT_BLOCK_MODULES,
+    maskW: maskSource?.width || 0,
+    maskH: maskSource?.height || 0
+  });
+}
+
+async function getMaskSource() {
+  if (state.customMaskImage) {
+    return buildCurrentMaskFromUploaded();
+  }
+
+  const selectedMask = maskSelect?.value;
+  if (!selectedMask || !maskPresets[selectedMask]) {
+    throw new Error("No valid preset shape selected");
+  }
+
+  const loaded = await loadMask(maskPresets[selectedMask]);
+  show(shapeReadyBadge, true);
+  return loaded;
+}
+
+async function rebuildStapledBaseIfNeeded() {
+  const maskSource = await getMaskSource();
+  const signature = getBaseSignature(maskSource);
+
+  if (
+    state.stapledBaseCanvas &&
+    state.currentMaskCanvas &&
+    state.lastBaseSignature === signature
+  ) {
+    return;
+  }
+
+  state.currentMaskCanvas = buildMaskCanvas({
+    maskImg: maskSource,
+    outputSize: 800,
+    maskScale: Number(maskScale?.value || DEFAULT_MASK_SCALE),
+    maskPadding: Number(maskPadding?.value || DEFAULT_MASK_PADDING),
+    invertMask: !!invertMask?.checked
+  });
+
+  state.stapledBaseCanvas = renderStapledBase({
+    tiles: state.textureTiles,
+    maskCanvas: state.currentMaskCanvas,
+    outputSize: 800,
+    blendTightness: DEFAULT_BLEND_TIGHTNESS,
+    blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
+  });
+
+  state.lastBaseSignature = signature;
+}
+
+function redrawOverlayOnly() {
+  if (!state.stapledBaseCanvas || !state.currentMaskCanvas || !state.sourceQrCanvas) return;
+
+  outputCanvas.width = 800;
+  outputCanvas.height = 800;
+
+  drawQrOverlayOnly({
+    baseCanvas: state.stapledBaseCanvas,
+    maskCanvas: state.currentMaskCanvas,
+    outputCanvas,
+    sourceQrCanvas: state.sourceQrCanvas,
+    moduleCount: state.moduleCount,
+    qrSize: qrSizeSelect?.value || DEFAULT_QR_SIZE,
+    qrOffsetX: Number(qrOffsetX?.value || 0),
+    qrOffsetY: Number(qrOffsetY?.value || 0)
+  });
+
+  applyCurrentColorsToOutput();
+  clearCanvas(sourcePreviewCanvas);
+  updatePreviewFlags({ hasSource: false, hasOutput: true });
 }
 
 function resetAll() {
@@ -546,6 +645,8 @@ function resetAll() {
   state.modulePixelSize = 1;
   state.blockModules = 2;
   state.hasRenderedOnce = false;
+
+  clearLayerCache();
 
   nudgeCount = 0;
   renderCount = 0;
@@ -665,6 +766,9 @@ async function buildQrFromText(text) {
   state.moduleCount = generated.moduleCount;
   state.modulePixelSize = 1;
   state.blockModules = DEFAULT_BLOCK_MODULES;
+  state.hasRenderedOnce = false;
+
+  clearLayerCache();
 
   paintSourcePreview(generated.overlayCanvas);
   setSourceMeta("QR prepared from link");
@@ -721,6 +825,9 @@ async function handleQrUpload(file) {
   state.moduleCount = normalized.moduleCount;
   state.modulePixelSize = modulePixelSize;
   state.blockModules = DEFAULT_UPLOAD_BLOCK_MODULES;
+  state.hasRenderedOnce = false;
+
+  clearLayerCache();
 
   paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
@@ -848,39 +955,8 @@ async function renderOutput() {
       return false;
     }
 
-    let maskSource = null;
-
-    if (state.customMaskImage) {
-      maskSource = buildCurrentMaskFromUploaded();
-    } else {
-      const selectedMask = maskSelect?.value;
-      if (!selectedMask || !maskPresets[selectedMask]) {
-        throw new Error("No valid preset shape selected");
-      }
-      maskSource = await loadMask(maskPresets[selectedMask]);
-      show(shapeReadyBadge, true);
-    }
-
-    render({
-      tiles: state.textureTiles,
-      maskImg: maskSource,
-      outputCanvas,
-      sourceQrCanvas: state.sourceQrCanvas,
-      overlayQrCanvas: state.overlayQrCanvas || state.sourceQrCanvas,
-      moduleCount: state.moduleCount,
-      qrSize: qrSizeSelect?.value || DEFAULT_QR_SIZE,
-      qrOffsetX: Number(qrOffsetX?.value || 0),
-      qrOffsetY: Number(qrOffsetY?.value || 0),
-      blendTightness: DEFAULT_BLEND_TIGHTNESS,
-      maskScale: Number(maskScale?.value || DEFAULT_MASK_SCALE),
-      maskPadding: Number(maskPadding?.value || DEFAULT_MASK_PADDING),
-      invertMask: !!invertMask?.checked,
-      blockModules: state.blockModules || DEFAULT_BLOCK_MODULES
-    });
-
-    applyCurrentColorsToOutput();
-    clearCanvas(sourcePreviewCanvas);
-    updatePreviewFlags({ hasSource: false, hasOutput: true });
+    await rebuildStapledBaseIfNeeded();
+    redrawOverlayOnly();
 
     state.hasRenderedOnce = true;
     renderCount += 1;
@@ -971,11 +1047,11 @@ function nudge(dx, dy) {
     nudgeCount
   });
 
-  if (state.hasRenderedOnce) {
-    scheduleAutoRender(30);
-  } else {
-    resetGenerateButton();
-    setPreviewMeta(`Position updated · create after first render · ${APP_VERSION}`);
+  resetGenerateButton();
+
+  if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
+    redrawOverlayOnly();
+    setPreviewMeta(`QR position updated · ${APP_VERSION}`);
   }
 }
 
@@ -985,12 +1061,11 @@ function resetPosition() {
   syncOffsetLabels();
 
   track("position_reset");
+  resetGenerateButton();
 
-  if (state.hasRenderedOnce) {
-    scheduleAutoRender(30);
-  } else {
-    resetGenerateButton();
-    setPreviewMeta(`Position reset · create after first render · ${APP_VERSION}`);
+  if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
+    redrawOverlayOnly();
+    setPreviewMeta(`QR position reset · ${APP_VERSION}`);
   }
 }
 
@@ -1003,6 +1078,7 @@ async function handlePresetShapeSelection(maskKey) {
 
   state.customMaskImage = null;
   state.customMaskCanvas = null;
+  clearLayerCache();
 
   if (customMaskUpload) {
     customMaskUpload.value = "";
@@ -1145,7 +1221,7 @@ function init() {
         textLength: (qrTextInput.value || "").trim().length
       });
 
-      setPreviewMeta(`Link updated · press Enter or choose a shape after QR is ready · ${APP_VERSION}`);
+      setPreviewMeta(`Link updated · press Enter when ready · ${APP_VERSION}`);
     });
 
     qrTextInput.addEventListener("keydown", async (e) => {
@@ -1212,6 +1288,7 @@ function init() {
 
         state.customMaskImage = await loadImageFromFile(file);
         state.customMaskCanvas = null;
+        clearLayerCache();
 
         if (maskSelect) maskSelect.value = "";
         syncPresetShapeSelectionUI();
@@ -1292,8 +1369,10 @@ function init() {
         qrSize: qrSizeSelect.value
       });
       resetGenerateButton();
-      if (state.hasRenderedOnce) {
-        scheduleAutoRender();
+
+      if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
+        redrawOverlayOnly();
+        setPreviewMeta(`QR size updated · ${APP_VERSION}`);
       }
     });
   }
@@ -1302,8 +1381,9 @@ function init() {
     qrOffsetX.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      if (state.hasRenderedOnce) {
-        scheduleAutoRender(30);
+
+      if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
+        redrawOverlayOnly();
       }
     });
   }
@@ -1312,8 +1392,9 @@ function init() {
     qrOffsetY.addEventListener("input", () => {
       syncOffsetLabels();
       resetGenerateButton();
-      if (state.hasRenderedOnce) {
-        scheduleAutoRender(30);
+
+      if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
+        redrawOverlayOnly();
       }
     });
   }
@@ -1325,6 +1406,8 @@ function init() {
         value: Number(maskScale.value || 0)
       });
       resetGenerateButton();
+      clearLayerCache();
+
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
       }
@@ -1347,6 +1430,8 @@ function init() {
         value: next
       });
       resetGenerateButton();
+      clearLayerCache();
+
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
       }
@@ -1359,6 +1444,8 @@ function init() {
         value: !!invertMask.checked
       });
       resetGenerateButton();
+      clearLayerCache();
+
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
       }
