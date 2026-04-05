@@ -3,31 +3,7 @@ import { pointInsideMask } from "./mask-engine.js?v=0.6.3";
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
-function buildLiveChannelFit(channel, moduleCount, outputSize, liveScale = 1) {
-  const safeModuleCount = Math.max(21, moduleCount || 21);
 
-  const baseQrDisplaySize = Math.max(1, Number(channel.qrDisplaySize || 0));
-  const baseModuleDisplaySize = Math.max(1, Number(channel.moduleDisplaySize || 1));
-
-  const centerX = Number(channel.autoX || 0) + baseQrDisplaySize / 2 + Number(channel.x || 0);
-  const centerY = Number(channel.autoY || 0) + baseQrDisplaySize / 2 + Number(channel.y || 0);
-
-  let moduleDisplaySize = Math.max(1, Math.round(baseModuleDisplaySize * liveScale));
-  let qrDisplaySize = moduleDisplaySize * safeModuleCount;
-
-  let x = Math.round(centerX - qrDisplaySize / 2);
-  let y = Math.round(centerY - qrDisplaySize / 2);
-
-  x = clamp(x, 0, outputSize - qrDisplaySize);
-  y = clamp(y, 0, outputSize - qrDisplaySize);
-
-  return {
-    x,
-    y,
-    qrDisplaySize,
-    moduleDisplaySize
-  };
-}
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
@@ -397,6 +373,32 @@ function rectsOverlap(a, b, padding = 0) {
   );
 }
 
+function buildLiveChannelFit(channel, moduleCount, outputSize, liveScale = 1) {
+  const safeModuleCount = Math.max(21, moduleCount || 21);
+
+  const baseQrDisplaySize = Math.max(1, Number(channel.qrDisplaySize || 0));
+  const baseModuleDisplaySize = Math.max(1, Number(channel.moduleDisplaySize || 1));
+
+  const centerX = Number(channel.autoX || 0) + baseQrDisplaySize / 2 + Number(channel.x || 0);
+  const centerY = Number(channel.autoY || 0) + baseQrDisplaySize / 2 + Number(channel.y || 0);
+
+  let moduleDisplaySize = Math.max(1, Math.round(baseModuleDisplaySize * liveScale));
+  let qrDisplaySize = moduleDisplaySize * safeModuleCount;
+
+  let x = Math.round(centerX - qrDisplaySize / 2);
+  let y = Math.round(centerY - qrDisplaySize / 2);
+
+  x = clamp(x, 0, outputSize - qrDisplaySize);
+  y = clamp(y, 0, outputSize - qrDisplaySize);
+
+  return {
+    x,
+    y,
+    qrDisplaySize,
+    moduleDisplaySize
+  };
+}
+
 export function buildMaskCanvas({
   maskImg,
   outputSize = 800,
@@ -519,7 +521,7 @@ export function findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSi
   return candidates;
 }
 
-export function selectBestQrChannels(candidates, count = 5, minSpacing = 24) {
+export function selectBestQrChannels(candidates, count = 3, minSpacing = 24) {
   const selected = [];
 
   for (const candidate of candidates) {
@@ -543,7 +545,7 @@ export function createAutoQrChannels({
   maskCanvas,
   moduleCount,
   qrSize = "medium",
-  channelCount = 5,
+  channelCount = 3,
   minSpacing = 24,
   outputSize = 800
 }) {
@@ -620,6 +622,7 @@ export function drawMultipleQrOverlays(options) {
 
   ctx.drawImage(qrLayerCanvas, 0, 0);
 }
+
 export function drawQrOverlayOnly(options) {
   const {
     baseCanvas,
@@ -644,9 +647,7 @@ export function drawQrOverlayOnly(options) {
     ctx.drawImage(baseCanvas, 0, 0);
   }
 
-  if (!sourceQrCanvas || !maskCanvas) {
-    return;
-  }
+  if (!sourceQrCanvas || !maskCanvas) return;
 
   const mctx = maskCanvas.getContext("2d");
   const autoFit = findBestQrPlacement(
