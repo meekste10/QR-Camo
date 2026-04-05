@@ -103,7 +103,7 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
     dy,
     drawSize,
     drawSize
-  );i
+  );
 }
 
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0, invertMask = false) {
