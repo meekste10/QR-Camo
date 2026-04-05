@@ -39,6 +39,9 @@ const maskSelect = document.getElementById("maskSelect");
 const customMaskUpload = document.getElementById("customMaskUpload");
 
 const qrSizeSelect = document.getElementById("qrSizeSelect");
+const qrScaleSlider = document.getElementById("qrScaleSlider");
+const qrScaleLabel = document.getElementById("qrScaleLabel");
+
 const maskScale = document.getElementById("maskScale");
 const maskScaleText = document.getElementById("maskScaleText");
 const maskScaleLabel = document.getElementById("maskScaleLabel");
@@ -104,6 +107,8 @@ state.lastBaseSignature = null;
 
 state.selectedChannelId = 1;
 state.defaultChannelSize = "xxsmall";
+state.liveQrScale = 1;
+state.channelsDirty = true;
 state.qrChannels = [];
 
 const NUDGE_STEP = 8;
@@ -167,6 +172,7 @@ function hasRealShapeInput() {
 function currentTrackingProps() {
   return {
     qrSize: qrSizeSelect?.value || null,
+    liveQrScale: state.liveQrScale || 1,
     moduleCount: state.moduleCount || null,
     tileCount: state.textureTiles?.length || 0,
     hasCustomMask: !!state.customMaskImage,
@@ -328,6 +334,12 @@ function syncOffsetLabels() {
 function syncMaskScaleLabel() {
   if (maskScaleLabel && maskScale) maskScaleLabel.textContent = String(maskScale.value);
   if (maskScaleText && maskScale) maskScaleText.value = String(maskScale.value);
+}
+
+function syncQrScaleLabel() {
+  if (qrScaleLabel) {
+    qrScaleLabel.textContent = String(Math.round((state.liveQrScale || 1) * 100));
+  }
 }
 
 function clamp(value, min, max) {
@@ -690,6 +702,11 @@ function clearQrPreparedState() {
 
   resetQrChannels(qrSizeSelect?.value || DEFAULT_QR_SIZE);
   clearLayerCache();
+  state.channelsDirty = true;
+  state.liveQrScale = 1;
+
+  if (qrScaleSlider) qrScaleSlider.value = "100";
+  syncQrScaleLabel();
 
   clearCanvas(sourcePreviewCanvas);
   clearCanvas(outputCanvas);
@@ -763,7 +780,8 @@ async function rebuildStapledBaseIfNeeded() {
   state.lastBaseSignature = signature;
 }
 
-function regenerateAutoChannels() {
+function regenerateAutoChannelsIfNeeded() {
+  if (!state.channelsDirty) return;
   if (!state.currentMaskCanvas || !state.moduleCount) return;
 
   const sharedSize = qrSizeSelect?.value || state.defaultChannelSize || DEFAULT_QR_SIZE;
@@ -792,6 +810,8 @@ function regenerateAutoChannels() {
     };
   });
 
+  state.channelsDirty = false;
+
   populateSelectedChannelSelect();
   buildChannelControlsUI();
   syncSelectedChannelUI();
@@ -810,7 +830,8 @@ function redrawChannelsOnly() {
     sourceQrCanvas: state.sourceQrCanvas,
     moduleCount: state.moduleCount,
     channels: state.qrChannels,
-    outputSize: 800
+    outputSize: 800,
+    liveScale: Number(state.liveQrScale || 1)
   });
 
   applyCurrentColorsToOutput();
@@ -853,6 +874,10 @@ function resetAll() {
 
   resetQrChannels(DEFAULT_QR_SIZE);
   clearLayerCache();
+  state.channelsDirty = true;
+  state.liveQrScale = 1;
+
+  if (qrScaleSlider) qrScaleSlider.value = "100";
 
   nudgeCount = 0;
   renderCount = 0;
@@ -862,6 +887,7 @@ function resetAll() {
 
   syncOffsetLabels();
   syncMaskScaleLabel();
+  syncQrScaleLabel();
   updateContrastWarning();
 
   clearCanvas(sourcePreviewCanvas);
@@ -988,6 +1014,11 @@ async function buildQrFromText(text) {
 
   resetQrChannels(qrSizeSelect?.value || DEFAULT_QR_SIZE);
   clearLayerCache();
+  state.channelsDirty = true;
+  state.liveQrScale = 1;
+
+  if (qrScaleSlider) qrScaleSlider.value = "100";
+  syncQrScaleLabel();
 
   paintSourcePreview(generated.overlayCanvas);
   setSourceMeta("QR prepared from link");
@@ -1053,6 +1084,11 @@ async function handleQrUpload(file) {
 
   resetQrChannels(qrSizeSelect?.value || DEFAULT_QR_SIZE);
   clearLayerCache();
+  state.channelsDirty = true;
+  state.liveQrScale = 1;
+
+  if (qrScaleSlider) qrScaleSlider.value = "100";
+  syncQrScaleLabel();
 
   paintSourcePreview(state.overlayQrCanvas);
   setSourceMeta(file.name || "Uploaded QR");
@@ -1192,7 +1228,7 @@ async function renderOutput() {
     }
 
     await rebuildStapledBaseIfNeeded();
-    regenerateAutoChannels();
+    regenerateAutoChannelsIfNeeded();
     redrawChannelsOnly();
 
     state.hasRenderedOnce = true;
@@ -1328,6 +1364,7 @@ async function handlePresetShapeSelection(maskKey) {
   state.customMaskImage = null;
   state.customMaskCanvas = null;
   clearLayerCache();
+  state.channelsDirty = true;
 
   if (customMaskUpload) {
     customMaskUpload.value = "";
@@ -1439,6 +1476,10 @@ function init() {
     qrSizeSelect.value = DEFAULT_QR_SIZE;
   }
 
+  if (qrScaleSlider) {
+    qrScaleSlider.value = "100";
+  }
+
   if (maskScale) {
     maskScale.value = String(DEFAULT_MASK_SCALE);
   }
@@ -1449,6 +1490,7 @@ function init() {
 
   syncOffsetLabels();
   syncMaskScaleLabel();
+  syncQrScaleLabel();
   syncPresetShapeSelectionUI();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
@@ -1506,21 +1548,6 @@ function init() {
         setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
       }
     });
-
-    qrTextInput.addEventListener("blur", async () => {
-      const value = qrTextInput.value.trim();
-      if (!value) return;
-
-      const okQr = await ensureQrPrepared();
-      if (!okQr) return;
-
-      if (hasRealShapeInput()) {
-        unlockWorkflowAfterBothReady();
-        await createQrCamo();
-      } else {
-        setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
-      }
-    });
   }
 
   if (qrUpload) {
@@ -1557,6 +1584,7 @@ function init() {
         state.customMaskImage = await loadImageFromFile(file);
         state.customMaskCanvas = null;
         clearLayerCache();
+        state.channelsDirty = true;
 
         if (maskSelect) maskSelect.value = "";
         syncPresetShapeSelectionUI();
@@ -1632,16 +1660,13 @@ function init() {
   }
 
   if (qrSizeSelect) {
-    qrSizeSelect.addEventListener("change", () => {
+    qrSizeSelect.addEventListener("change", async () => {
       state.defaultChannelSize = qrSizeSelect.value;
-      state.qrChannels = state.qrChannels.map((c) => ({
-        ...c,
-        size: qrSizeSelect.value,
-        qrDisplaySize: 0,
-        moduleDisplaySize: 0
-      }));
+      state.channelsDirty = true;
+      state.liveQrScale = 1;
 
-      buildChannelControlsUI();
+      if (qrScaleSlider) qrScaleSlider.value = "100";
+      syncQrScaleLabel();
 
       track("default_channel_size_changed", {
         qrSize: qrSizeSelect.value
@@ -1649,9 +1674,22 @@ function init() {
 
       resetGenerateButton();
 
+      if (state.hasRenderedOnce) {
+        await autoRenderIfReady();
+      }
+    });
+  }
+
+  if (qrScaleSlider) {
+    qrScaleSlider.addEventListener("input", () => {
+      const pct = Number(qrScaleSlider.value || 100);
+      state.liveQrScale = pct / 100;
+      syncQrScaleLabel();
+      resetGenerateButton();
+
       if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
         redrawChannelsOnly();
-        setPreviewMeta(`QR size updated across all channels · ${APP_VERSION}`);
+        setPreviewMeta(`QR scale updated · ${APP_VERSION}`);
       }
     });
   }
@@ -1664,6 +1702,7 @@ function init() {
       });
       resetGenerateButton();
       clearLayerCache();
+      state.channelsDirty = true;
 
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
@@ -1688,6 +1727,7 @@ function init() {
       });
       resetGenerateButton();
       clearLayerCache();
+      state.channelsDirty = true;
 
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
@@ -1702,6 +1742,7 @@ function init() {
       });
       resetGenerateButton();
       clearLayerCache();
+      state.channelsDirty = true;
 
       if (state.hasRenderedOnce) {
         scheduleAutoRender();
