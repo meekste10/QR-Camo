@@ -17,7 +17,6 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (qrSize === "large") targetFraction = 0.42;
 
   let qrDisplaySize = Math.floor(outputSize * targetFraction);
-
   const moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / moduleCount));
   qrDisplaySize = moduleDisplaySize * moduleCount;
 
@@ -25,6 +24,16 @@ function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   const y = Math.floor((outputSize - qrDisplaySize) / 2);
 
   return { x, y, qrDisplaySize, moduleDisplaySize };
+}
+
+function sizeFractionsForPreset(qrSize = "medium") {
+  if (qrSize === "xxxxsmall") return [0.12, 0.10, 0.09, 0.08, 0.07];
+  if (qrSize === "xxxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
+  if (qrSize === "xxsmall") return [0.20, 0.18, 0.16, 0.14, 0.12];
+  if (qrSize === "xsmall") return [0.26, 0.24, 0.22, 0.20, 0.18];
+  if (qrSize === "small") return [0.34, 0.31, 0.28, 0.26, 0.22];
+  if (qrSize === "large") return [0.52, 0.48, 0.44, 0.40, 0.36];
+  return [0.42, 0.38, 0.34, 0.30, 0.26];
 }
 
 function normalizeTile(tile) {
@@ -178,24 +187,12 @@ function applyEdgePostFX(ctx, maskCanvas, depth = 3) {
   const shadowBand = buildEdgeBand(maskCanvas, safeDepth, "rgba(0,0,0,1)");
 
   ctx.save();
-
   ctx.globalAlpha = 0.14;
   ctx.drawImage(shadowBand, safeDepth, safeDepth);
 
   ctx.globalAlpha = 0.18;
   ctx.drawImage(highlightBand, -safeDepth, -safeDepth);
-
   ctx.restore();
-}
-
-function sizeFractionsForPreset(qrSize = "medium") {
-  if (qrSize === "xxxxsmall") return [0.12, 0.10, 0.09, 0.08, 0.07];
-  if (qrSize === "xxxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
-  if (qrSize === "xxsmall") return [0.20, 0.18, 0.16, 0.14, 0.12];
-  if (qrSize === "xsmall") return [0.26, 0.24, 0.22, 0.20, 0.18];
-  if (qrSize === "small") return [0.34, 0.31, 0.28, 0.26, 0.22];
-  if (qrSize === "large") return [0.52, 0.48, 0.44, 0.40, 0.36];
-  return [0.42, 0.38, 0.34, 0.30, 0.26];
 }
 
 function buildIntegralMask(maskCtx) {
@@ -241,7 +238,6 @@ function rectCoverage(integralData, x, y, size) {
 function squareSampleCoverage(maskCtx, x, y, size, divisions = 5) {
   let inside = 0;
   let total = 0;
-
   const step = size / divisions;
 
   for (let gy = 0; gy < divisions; gy++) {
@@ -342,7 +338,7 @@ function qrModuleIsDark(qrData, qrWidth, x, y) {
   return qrData[idx] < 128;
 }
 
-function drawQrChannelLayer(ctx, maskCtx, qrCanvas, fit) {
+function drawQrLayer(ctx, maskCtx, qrCanvas, fit) {
   const qrData = getQrPixelData(qrCanvas);
   const qrWidth = qrCanvas.width;
   const qrHeight = qrCanvas.height;
@@ -357,32 +353,24 @@ function drawQrChannelLayer(ctx, maskCtx, qrCanvas, fit) {
       if (coverage < 0.55) continue;
 
       const isDark = qrModuleIsDark(qrData, qrWidth, col, row);
-
       ctx.fillStyle = isDark ? "#000000" : "#ffffff";
       ctx.fillRect(x, y, moduleSize, moduleSize);
     }
   }
 }
 
-function rectsOverlap(a, b, padding = 0) {
-  return !(
-    a.x + a.qrDisplaySize + padding <= b.x ||
-    b.x + b.qrDisplaySize + padding <= a.x ||
-    a.y + a.qrDisplaySize + padding <= b.y ||
-    b.y + b.qrDisplaySize + padding <= a.y
-  );
-}
-
-function buildLiveChannelFit(channel, moduleCount, outputSize, liveScale = 1) {
+function buildLivePlacement(placement, moduleCount, outputSize, liveScale = 1, qrOffsetX = 0, qrOffsetY = 0) {
   const safeModuleCount = Math.max(21, moduleCount || 21);
 
-  const baseQrDisplaySize = Math.max(1, Number(channel.qrDisplaySize || 0));
-  const baseModuleDisplaySize = Math.max(1, Number(channel.moduleDisplaySize || 1));
+  const baseQrDisplaySize = Math.max(1, Number(placement?.qrDisplaySize || 0));
+  const baseModuleDisplaySize = Math.max(1, Number(placement?.moduleDisplaySize || 1));
+  const baseX = Number(placement?.x || 0);
+  const baseY = Number(placement?.y || 0);
 
-  const centerX = Number(channel.autoX || 0) + baseQrDisplaySize / 2 + Number(channel.x || 0);
-  const centerY = Number(channel.autoY || 0) + baseQrDisplaySize / 2 + Number(channel.y || 0);
+  const centerX = baseX + baseQrDisplaySize / 2 + Number(qrOffsetX || 0);
+  const centerY = baseY + baseQrDisplaySize / 2 + Number(qrOffsetY || 0);
 
-  let moduleDisplaySize = Math.max(1, Math.round(baseModuleDisplaySize * liveScale));
+  let moduleDisplaySize = Math.max(1, Math.round(baseModuleDisplaySize * Number(liveScale || 1)));
   let qrDisplaySize = moduleDisplaySize * safeModuleCount;
 
   let x = Math.round(centerX - qrDisplaySize / 2);
@@ -464,13 +452,12 @@ export function renderStapledBase(options) {
   return baseCanvas;
 }
 
-export function findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize = "medium") {
+export function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium") {
   const safeModuleCount = Math.max(21, moduleCount || 21);
   const fractions = sizeFractionsForPreset(qrSize);
   const integralData = buildIntegralMask(maskCtx);
 
-  const candidates = [];
-  const seen = new Set();
+  let best = null;
 
   for (const fraction of fractions) {
     let qrDisplaySize = Math.floor(outputSize * fraction);
@@ -488,97 +475,41 @@ export function findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSi
         const score = scoreQrCandidate(maskCtx, integralData, x, y, qrDisplaySize);
         if (score === -Infinity) continue;
 
-        const coverage = rectCoverage(integralData, x, y, qrDisplaySize);
-        const corner = cornerSupport(maskCtx, x, y, qrDisplaySize);
-        const edge = edgeSupport(maskCtx, x, y, qrDisplaySize);
-        const center = centerSupport(maskCtx, x, y, qrDisplaySize);
-
-        const key = [
-          Math.round(x / 4),
-          Math.round(y / 4),
-          qrDisplaySize
-        ].join(":");
-
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        candidates.push({
-          x,
-          y,
-          qrDisplaySize,
-          moduleDisplaySize,
-          score,
-          coverage,
-          corner,
-          edge,
-          center
-        });
+        if (!best || score > best.score) {
+          best = {
+            x,
+            y,
+            qrDisplaySize,
+            moduleDisplaySize,
+            score
+          };
+        }
       }
     }
+
+    if (best) break;
   }
 
-  candidates.sort((a, b) => b.score - a.score);
-  return candidates;
-}
-
-export function selectBestQrChannels(candidates, count = 3, minSpacing = 24) {
-  const selected = [];
-
-  for (const candidate of candidates) {
-    const overlaps = selected.some((picked) => rectsOverlap(candidate, picked, minSpacing));
-    if (overlaps) continue;
-
-    selected.push(candidate);
-    if (selected.length >= count) break;
+  if (!best) {
+    return fitQrCenter(outputSize, safeModuleCount, qrSize);
   }
 
-  return selected;
+  return best;
 }
 
-export function findBestQrPlacement(maskCtx, outputSize, moduleCount, qrSize = "medium") {
-  const candidates = findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize);
-  if (candidates.length) return candidates[0];
-  return fitQrCenter(outputSize, Math.max(21, moduleCount || 21), qrSize);
-}
-
-export function createAutoQrChannels({
-  maskCanvas,
-  moduleCount,
-  qrSize = "medium",
-  channelCount = 3,
-  minSpacing = 24,
-  outputSize = 800
-}) {
-  const maskCtx = maskCanvas.getContext("2d");
-  const candidates = findQrPlacementCandidates(maskCtx, outputSize, moduleCount, qrSize);
-  const selected = selectBestQrChannels(candidates, channelCount, minSpacing);
-
-  return selected.map((fit, index) => ({
-    id: index + 1,
-    enabled: true,
-    size: qrSize,
-    x: 0,
-    y: 0,
-    autoX: fit.x,
-    autoY: fit.y,
-    fitScore: fit.score,
-    cornersFit: fit.corner >= 0.95 ? 4 : 3,
-    overlapRisk: 0,
-    qrDisplaySize: fit.qrDisplaySize,
-    moduleDisplaySize: fit.moduleDisplaySize
-  }));
-}
-
-export function drawMultipleQrOverlays(options) {
+export function drawSingleQrOverlay(options) {
   const {
     baseCanvas,
     maskCanvas,
     outputCanvas,
     sourceQrCanvas,
     moduleCount,
-    channels = [],
-    outputSize = 800,
-    liveScale = 1
+    placement = null,
+    qrSize = "medium",
+    liveScale = 1,
+    qrOffsetX = 0,
+    qrOffsetY = 0,
+    outputSize = 800
   } = options;
 
   outputCanvas.width = outputSize;
@@ -594,92 +525,29 @@ export function drawMultipleQrOverlays(options) {
 
   if (!sourceQrCanvas || !maskCanvas) return;
 
-  const mctx = maskCanvas.getContext("2d");
+  const maskCtx = maskCanvas.getContext("2d");
+  const basePlacement =
+    placement ||
+    findBestQrPlacement(maskCtx, outputSize, Math.max(21, moduleCount || 21), qrSize);
+
+  const liveFit = buildLivePlacement(
+    basePlacement,
+    moduleCount,
+    outputSize,
+    liveScale,
+    qrOffsetX,
+    qrOffsetY
+  );
 
   const qrLayerCanvas = document.createElement("canvas");
   qrLayerCanvas.width = outputSize;
   qrLayerCanvas.height = outputSize;
+
   const qrLayerCtx = qrLayerCanvas.getContext("2d");
   qrLayerCtx.clearRect(0, 0, outputSize, outputSize);
   qrLayerCtx.imageSmoothingEnabled = false;
 
-  for (const channel of channels) {
-    if (!channel || !channel.enabled) continue;
-
-    const fit = buildLiveChannelFit(
-      channel,
-      moduleCount,
-      outputSize,
-      liveScale
-    );
-
-    drawQrChannelLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
-  }
-
-  qrLayerCtx.globalCompositeOperation = "destination-in";
-  qrLayerCtx.drawImage(maskCanvas, 0, 0);
-  qrLayerCtx.globalCompositeOperation = "source-over";
-
-  ctx.drawImage(qrLayerCanvas, 0, 0);
-}
-
-export function drawQrOverlayOnly(options) {
-  const {
-    baseCanvas,
-    maskCanvas,
-    outputCanvas,
-    sourceQrCanvas,
-    moduleCount,
-    qrSize = "medium",
-    qrOffsetX = 0,
-    qrOffsetY = 0
-  } = options;
-
-  const OUTPUT_SIZE = outputCanvas.width || 800;
-  outputCanvas.width = OUTPUT_SIZE;
-  outputCanvas.height = OUTPUT_SIZE;
-
-  const ctx = outputCanvas.getContext("2d");
-  ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  ctx.imageSmoothingEnabled = false;
-
-  if (baseCanvas) {
-    ctx.drawImage(baseCanvas, 0, 0);
-  }
-
-  if (!sourceQrCanvas || !maskCanvas) return;
-
-  const mctx = maskCanvas.getContext("2d");
-  const autoFit = findBestQrPlacement(
-    mctx,
-    OUTPUT_SIZE,
-    Math.max(21, moduleCount || 21),
-    qrSize
-  );
-
-  const fit = {
-    ...autoFit,
-    x: clamp(
-      Math.round(autoFit.x + qrOffsetX),
-      0,
-      OUTPUT_SIZE - autoFit.qrDisplaySize
-    ),
-    y: clamp(
-      Math.round(autoFit.y + qrOffsetY),
-      0,
-      OUTPUT_SIZE - autoFit.qrDisplaySize
-    )
-  };
-
-  const qrLayerCanvas = document.createElement("canvas");
-  qrLayerCanvas.width = OUTPUT_SIZE;
-  qrLayerCanvas.height = OUTPUT_SIZE;
-
-  const qrLayerCtx = qrLayerCanvas.getContext("2d");
-  qrLayerCtx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-  qrLayerCtx.imageSmoothingEnabled = false;
-
-  drawQrChannelLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
+  drawQrLayer(qrLayerCtx, maskCtx, sourceQrCanvas, liveFit);
 
   qrLayerCtx.globalCompositeOperation = "destination-in";
   qrLayerCtx.drawImage(maskCanvas, 0, 0);
@@ -703,7 +571,7 @@ export function render(options) {
     maskPadding = 0,
     invertMask = false,
     blockModules = 2,
-    channels = null
+    liveScale = 1
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -724,28 +592,26 @@ export function render(options) {
     blockModules
   });
 
-  if (Array.isArray(channels) && channels.length) {
-    drawMultipleQrOverlays({
-      baseCanvas,
-      maskCanvas,
-      outputCanvas,
-      sourceQrCanvas,
-      moduleCount,
-      channels,
-      outputSize: OUTPUT_SIZE
-    });
-  } else {
-    drawQrOverlayOnly({
-      baseCanvas,
-      maskCanvas,
-      outputCanvas,
-      sourceQrCanvas,
-      moduleCount,
-      qrSize,
-      qrOffsetX,
-      qrOffsetY
-    });
-  }
+  const placement = findBestQrPlacement(
+    maskCanvas.getContext("2d"),
+    OUTPUT_SIZE,
+    moduleCount,
+    qrSize
+  );
 
-  return { baseCanvas, maskCanvas };
+  drawSingleQrOverlay({
+    baseCanvas,
+    maskCanvas,
+    outputCanvas,
+    sourceQrCanvas,
+    moduleCount,
+    placement,
+    qrSize,
+    liveScale,
+    qrOffsetX,
+    qrOffsetY,
+    outputSize: OUTPUT_SIZE
+  });
+
+  return { baseCanvas, maskCanvas, placement };
 }
