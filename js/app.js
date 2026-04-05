@@ -77,7 +77,6 @@ const presetShapesGrid = document.getElementById("presetShapesGrid");
 const previewStepSection = document.getElementById("previewStepSection");
 const samplesStepSection = document.getElementById("samplesStepSection");
 
-/* Optional future UI hooks */
 const selectedChannelSelect = document.getElementById("selectedChannelSelect");
 const channelControlsWrap = document.getElementById("channelControls");
 
@@ -105,13 +104,7 @@ state.lastBaseSignature = null;
 
 state.selectedChannelId = 1;
 state.defaultChannelSize = "xxsmall";
-state.qrChannels = [
-  { id: 1, enabled: true, size: "xxsmall", x: 0, y: 0, autoX: 0, autoY: 0, fitScore: 0, cornersFit: 0, overlapRisk: 0, qrDisplaySize: 0, moduleDisplaySize: 0 },
-  { id: 2, enabled: true, size: "xxsmall", x: 0, y: 0, autoX: 0, autoY: 0, fitScore: 0, cornersFit: 0, overlapRisk: 0, qrDisplaySize: 0, moduleDisplaySize: 0 },
-  { id: 3, enabled: true, size: "xxsmall", x: 0, y: 0, autoX: 0, autoY: 0, fitScore: 0, cornersFit: 0, overlapRisk: 0, qrDisplaySize: 0, moduleDisplaySize: 0 },
-  { id: 4, enabled: true, size: "xxsmall", x: 0, y: 0, autoX: 0, autoY: 0, fitScore: 0, cornersFit: 0, overlapRisk: 0, qrDisplaySize: 0, moduleDisplaySize: 0 },
-  { id: 5, enabled: true, size: "xxsmall", x: 0, y: 0, autoX: 0, autoY: 0, fitScore: 0, cornersFit: 0, overlapRisk: 0, qrDisplaySize: 0, moduleDisplaySize: 0 }
-];
+state.qrChannels = [];
 
 const NUDGE_STEP = 8;
 const PAN_LIMIT = 360;
@@ -123,7 +116,7 @@ const DEFAULT_MASK_SCALE = 100;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
-const DEFAULT_CHANNEL_COUNT = 5;
+const DEFAULT_CHANNEL_COUNT = 3;
 const DEFAULT_CHANNEL_SPACING = 24;
 
 const SAMPLE_BASE = "./assets/Samples/";
@@ -598,11 +591,9 @@ function syncSelectedChannelUI() {
     row.classList.toggle("is-selected", id === state.selectedChannelId);
 
     const toggle = row.querySelector("[data-role='toggle']");
-    const size = row.querySelector("[data-role='size']");
     const meta = row.querySelector("[data-role='meta']");
 
     if (toggle) toggle.checked = !!channel.enabled;
-    if (size) size.value = channel.size || DEFAULT_QR_SIZE;
     if (meta) {
       meta.textContent = `Fit ${Math.round(channel.fitScore || 0)} · corners ${channel.cornersFit || 0}`;
     }
@@ -627,22 +618,13 @@ function buildChannelControlsUI() {
           <span>On</span>
         </label>
       </div>
-      <select class="select-input" data-role="size">
-        <option value="xxxxsmall"${channel.size === "xxxxsmall" ? " selected" : ""}>XXXXS</option>
-        <option value="xxxsmall"${channel.size === "xxxsmall" ? " selected" : ""}>XXXS</option>
-        <option value="xxsmall"${channel.size === "xxsmall" ? " selected" : ""}>XXS</option>
-        <option value="xsmall"${channel.size === "xsmall" ? " selected" : ""}>XS</option>
-        <option value="small"${channel.size === "small" ? " selected" : ""}>S</option>
-        <option value="medium"${channel.size === "medium" ? " selected" : ""}>M</option>
-        <option value="large"${channel.size === "large" ? " selected" : ""}>L</option>
-      </select>
       <div class="helper" data-role="meta"></div>
     `;
 
     channelControlsWrap.appendChild(row);
   });
 
-  channelControlsWrap.addEventListener("click", (e) => {
+  channelControlsWrap.onclick = (e) => {
     const row = e.target.closest("[data-channel-id]");
     if (!row) return;
 
@@ -651,35 +633,22 @@ function buildChannelControlsUI() {
     if (!selectBtn) return;
 
     setSelectedChannel(id);
-  });
+  };
 
-  channelControlsWrap.addEventListener("change", async (e) => {
+  channelControlsWrap.onchange = (e) => {
     const row = e.target.closest("[data-channel-id]");
     if (!row) return;
 
     const id = Number(row.dataset.channelId);
     const toggle = e.target.closest("[data-role='toggle']");
-    const size = e.target.closest("[data-role='size']");
 
     if (toggle) {
       updateChannelById(id, { enabled: !!toggle.checked });
       track("channel_toggled", { channelId: id, enabled: !!toggle.checked });
       resetGenerateButton();
       if (state.hasRenderedOnce) redrawChannelsOnly();
-      return;
     }
-
-    if (size) {
-      updateChannelById(id, {
-        size: size.value,
-        qrDisplaySize: 0,
-        moduleDisplaySize: 0
-      });
-      track("channel_size_changed", { channelId: id, size: size.value });
-      resetGenerateButton();
-      if (state.hasRenderedOnce) redrawChannelsOnly();
-    }
-  });
+  };
 
   syncSelectedChannelUI();
 }
@@ -797,12 +766,12 @@ async function rebuildStapledBaseIfNeeded() {
 function regenerateAutoChannels() {
   if (!state.currentMaskCanvas || !state.moduleCount) return;
 
-  const defaultSize = qrSizeSelect?.value || state.defaultChannelSize || DEFAULT_QR_SIZE;
+  const sharedSize = qrSizeSelect?.value || state.defaultChannelSize || DEFAULT_QR_SIZE;
 
   const generated = createAutoQrChannels({
     maskCanvas: state.currentMaskCanvas,
     moduleCount: state.moduleCount,
-    qrSize: defaultSize,
+    qrSize: sharedSize,
     channelCount: DEFAULT_CHANNEL_COUNT,
     minSpacing: DEFAULT_CHANNEL_SPACING,
     outputSize: 800
@@ -817,11 +786,9 @@ function regenerateAutoChannels() {
     return {
       ...auto,
       enabled: existing ? existing.enabled : true,
-      size: existing ? existing.size : defaultSize,
+      size: sharedSize,
       x: existing ? existing.x : 0,
-      y: existing ? existing.y : 0,
-      qrDisplaySize: existing && existing.size === auto.size ? (existing.qrDisplaySize || auto.qrDisplaySize) : auto.qrDisplaySize,
-      moduleDisplaySize: existing && existing.size === auto.size ? (existing.moduleDisplaySize || auto.moduleDisplaySize) : auto.moduleDisplaySize
+      y: existing ? existing.y : 0
     };
   });
 
@@ -1684,7 +1651,7 @@ function init() {
 
       if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
         redrawChannelsOnly();
-        setPreviewMeta(`Default QR size updated · ${APP_VERSION}`);
+        setPreviewMeta(`QR size updated across all channels · ${APP_VERSION}`);
       }
     });
   }
