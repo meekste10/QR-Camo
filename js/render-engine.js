@@ -3,7 +3,31 @@ import { pointInsideMask } from "./mask-engine.js?v=0.6.3";
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
+function buildLiveChannelFit(channel, moduleCount, outputSize, liveScale = 1) {
+  const safeModuleCount = Math.max(21, moduleCount || 21);
 
+  const baseQrDisplaySize = Math.max(1, Number(channel.qrDisplaySize || 0));
+  const baseModuleDisplaySize = Math.max(1, Number(channel.moduleDisplaySize || 1));
+
+  const centerX = Number(channel.autoX || 0) + baseQrDisplaySize / 2 + Number(channel.x || 0);
+  const centerY = Number(channel.autoY || 0) + baseQrDisplaySize / 2 + Number(channel.y || 0);
+
+  let moduleDisplaySize = Math.max(1, Math.round(baseModuleDisplaySize * liveScale));
+  let qrDisplaySize = moduleDisplaySize * safeModuleCount;
+
+  let x = Math.round(centerX - qrDisplaySize / 2);
+  let y = Math.round(centerY - qrDisplaySize / 2);
+
+  x = clamp(x, 0, outputSize - qrDisplaySize);
+  y = clamp(y, 0, outputSize - qrDisplaySize);
+
+  return {
+    x,
+    y,
+    qrDisplaySize,
+    moduleDisplaySize
+  };
+}
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
   if (!moduleCount || moduleCount <= 0) moduleCount = 21;
 
@@ -79,7 +103,7 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
     dy,
     drawSize,
     drawSize
-  );
+  );i
 }
 
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0, invertMask = false) {
@@ -551,7 +575,8 @@ export function drawMultipleQrOverlays(options) {
     sourceQrCanvas,
     moduleCount,
     channels = [],
-    outputSize = 800
+    outputSize = 800,
+    liveScale = 1
   } = options;
 
   outputCanvas.width = outputSize;
@@ -565,61 +590,36 @@ export function drawMultipleQrOverlays(options) {
     ctx.drawImage(baseCanvas, 0, 0);
   }
 
-  if (!sourceQrCanvas || !maskCanvas) {
-    return;
-  }
+  if (!sourceQrCanvas || !maskCanvas) return;
 
   const mctx = maskCanvas.getContext("2d");
+
+  const qrLayerCanvas = document.createElement("canvas");
+  qrLayerCanvas.width = outputSize;
+  qrLayerCanvas.height = outputSize;
+  const qrLayerCtx = qrLayerCanvas.getContext("2d");
+  qrLayerCtx.clearRect(0, 0, outputSize, outputSize);
+  qrLayerCtx.imageSmoothingEnabled = false;
 
   for (const channel of channels) {
     if (!channel || !channel.enabled) continue;
 
-    const fitBase = channel.qrDisplaySize && channel.moduleDisplaySize
-      ? {
-          x: channel.autoX || 0,
-          y: channel.autoY || 0,
-          qrDisplaySize: channel.qrDisplaySize,
-          moduleDisplaySize: channel.moduleDisplaySize
-        }
-      : findBestQrPlacement(
-          mctx,
-          outputSize,
-          Math.max(21, moduleCount || 21),
-          channel.size || "medium"
-        );
-
-    const fit = {
-      ...fitBase,
-      x: clamp(
-        Math.round((channel.autoX ?? fitBase.x) + (channel.x || 0)),
-        0,
-        outputSize - fitBase.qrDisplaySize
-      ),
-      y: clamp(
-        Math.round((channel.autoY ?? fitBase.y) + (channel.y || 0)),
-        0,
-        outputSize - fitBase.qrDisplaySize
-      )
-    };
-
-    const qrLayerCanvas = document.createElement("canvas");
-    qrLayerCanvas.width = outputSize;
-    qrLayerCanvas.height = outputSize;
-
-    const qrLayerCtx = qrLayerCanvas.getContext("2d");
-    qrLayerCtx.clearRect(0, 0, outputSize, outputSize);
-    qrLayerCtx.imageSmoothingEnabled = false;
+    const fit = buildLiveChannelFit(
+      channel,
+      moduleCount,
+      outputSize,
+      liveScale
+    );
 
     drawQrChannelLayer(qrLayerCtx, mctx, sourceQrCanvas, fit);
-
-    qrLayerCtx.globalCompositeOperation = "destination-in";
-    qrLayerCtx.drawImage(maskCanvas, 0, 0);
-    qrLayerCtx.globalCompositeOperation = "source-over";
-
-    ctx.drawImage(qrLayerCanvas, 0, 0);
   }
-}
 
+  qrLayerCtx.globalCompositeOperation = "destination-in";
+  qrLayerCtx.drawImage(maskCanvas, 0, 0);
+  qrLayerCtx.globalCompositeOperation = "source-over";
+
+  ctx.drawImage(qrLayerCanvas, 0, 0);
+}
 export function drawQrOverlayOnly(options) {
   const {
     baseCanvas,
