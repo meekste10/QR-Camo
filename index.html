@@ -23,7 +23,7 @@
           <div class="section-badge">Step 1</div>
           <h2>Paste your link or upload a QR</h2>
           <p class="helper">
-            Start with the real destination first. The app waits to build the final QR-Camo until both your QR and your shape are ready.
+            Paste your destination first. On iPhone, tap <strong>Done</strong> after entering the link, or simply choose a shape and the app will use the link automatically.
           </p>
 
           <label class="label" for="qrTextInput">Link</label>
@@ -34,7 +34,10 @@
             value=""
             placeholder="https://example.com"
             autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
             spellcheck="false"
+            enterkeyhint="done"
           />
 
           <label class="label" for="qrUpload">Upload your own QR if you have one</label>
@@ -100,10 +103,9 @@
             </div>
 
             <div class="adjust-panel-card adjust-panel-card--full">
-
               <div class="adjust-grid-top">
                 <div class="control-block">
-                  <label class="label" for="qrSizeSelect">Default QR size</label>
+                  <label class="label" for="qrSizeSelect">QR size</label>
                   <select id="qrSizeSelect" class="select-input">
                     <option value="xxxxsmall">Extra Extra Extra Extra Small</option>
                     <option value="xxxsmall">Extra Extra Extra Small</option>
@@ -114,34 +116,27 @@
                     <option value="large">Large</option>
                   </select>
                 </div>
-                <label class="label" for="qrScaleSlider">Live QR scale</label>
-<input
-  id="qrScaleSlider"
-  type="range"
-  min="70"
-  max="140"
-  step="1"
-  value="100"
-  class="range-input"
-/>
-<div class="offset-row">
-  <div class="offset-chip">Scale: <span id="qrScaleLabel">100</span>%</div>
-</div>
 
                 <div class="control-block">
-                  <label class="label" for="selectedChannelSelect">Selected QR channel</label>
-                  <select id="selectedChannelSelect" class="select-input"></select>
+                  <label class="label" for="qrScaleSlider">Live QR scale</label>
+                  <input
+                    id="qrScaleSlider"
+                    type="range"
+                    min="70"
+                    max="140"
+                    step="1"
+                    value="100"
+                    class="range-input"
+                  />
+                  <div class="offset-row">
+                    <div class="offset-chip">Scale: <span id="qrScaleLabel">100</span>%</div>
+                  </div>
                 </div>
-              </div>
-
-              <div class="channel-controls-section">
-                <div class="mini-section-title">QR channels</div>
-                <div id="channelControls" class="channel-controls"></div>
               </div>
 
               <div class="control-duo-row control-duo-row--tight">
                 <div class="direction-card">
-                  <div class="mini-section-title">Move selected QR</div>
+                  <div class="mini-section-title">Move QR</div>
 
                   <div class="dpad-wrap">
                     <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
@@ -162,17 +157,6 @@
 
                   <input type="hidden" id="qrOffsetX" value="0" />
                   <input type="hidden" id="qrOffsetY" value="0" />
-
-                  <!-- legacy hidden buttons kept so app.js doesn't break if referenced -->
-                  <button id="nudgeUpMedium" class="hidden" type="button"></button>
-                  <button id="nudgeRightMedium" class="hidden" type="button"></button>
-                  <button id="nudgeDownMedium" class="hidden" type="button"></button>
-                  <button id="nudgeLeftMedium" class="hidden" type="button"></button>
-
-                  <button id="nudgeUpLarge" class="hidden" type="button"></button>
-                  <button id="nudgeRightLarge" class="hidden" type="button"></button>
-                  <button id="nudgeDownLarge" class="hidden" type="button"></button>
-                  <button id="nudgeLeftLarge" class="hidden" type="button"></button>
                 </div>
 
                 <div class="color-card">
@@ -266,7 +250,7 @@
               <button class="sample-card" type="button" data-sample="door-qr"><img alt="Door QR sample" /><span>Door</span></button>
               <button class="sample-card" type="button" data-sample="pharmacy-qr"><img alt="Pharmacy QR sample" /><span>Pharmacy</span></button>
               <button class="sample-card" type="button" data-sample="question-icon-qr"><img alt="Question icon QR sample" /><span>Question</span></button>
-              <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info icon QR sample" /><span>Info</span></button>
+              <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info QR sample" /><span>Info</span></button>
               <button class="sample-card" type="button" data-sample="pizza-greek-qr"><img alt="Pizza Greek QR sample" /><span>Pizza Greek</span></button>
               <button class="sample-card" type="button" data-sample="heart-lt-blue-qr"><img alt="Heart QR sample" /><span>Heart</span></button>
             </div>
