@@ -79,6 +79,7 @@ const presetShapesGrid = document.getElementById("presetShapesGrid");
 const previewStepSection = document.getElementById("previewStepSection");
 const samplesStepSection = document.getElementById("samplesStepSection");
 
+/* legacy multi-QR UI still present in old HTML */
 const selectedChannelSelect = document.getElementById("selectedChannelSelect");
 const channelControlsWrap = document.getElementById("channelControls");
 
@@ -199,7 +200,6 @@ function track(eventName, props = {}) {
     appVersion: APP_VERSION,
     ...props
   };
-
   console.log("[QR CAMO TRACK]", payload);
 }
 
@@ -339,12 +339,12 @@ function scheduleHeavyRender(delay = 120) {
   }, delay);
 }
 
-function hideLegacyMultiQrUI() {
+function stripLegacyMultiQrUI() {
   const oldSelectBlock = selectedChannelSelect?.closest(".control-block");
   const oldControlsBlock = channelControlsWrap?.closest(".channel-controls-section");
 
-  if (oldSelectBlock) oldSelectBlock.classList.add("hidden");
-  if (oldControlsBlock) oldControlsBlock.classList.add("hidden");
+  if (oldSelectBlock) oldSelectBlock.remove();
+  if (oldControlsBlock) oldControlsBlock.remove();
 }
 
 function syncPresetShapeSelectionUI() {
@@ -553,6 +553,13 @@ function getBaseSignature(maskSource) {
     maskW: maskSource?.width || 0,
     maskH: maskSource?.height || 0
   });
+}
+
+function getCurrentQrSourceLabel() {
+  const uploadedFile = qrUpload?.files?.[0];
+  if (uploadedFile?.name) return uploadedFile.name;
+  if ((qrTextInput?.value || "").trim()) return "QR prepared from link";
+  return "waiting for QR source";
 }
 
 async function loadImageFromFile(file) {
@@ -820,6 +827,7 @@ function redrawOverlayOnly() {
   applyCurrentColorsToOutput();
   clearCanvas(sourcePreviewCanvas);
   updatePreviewFlags({ hasSource: false, hasOutput: true });
+  setSourceMeta(getCurrentQrSourceLabel());
   return true;
 }
 
@@ -937,6 +945,7 @@ async function renderOutput() {
     renderCount += 1;
 
     setPreviewMeta(`QR-Camo ready · ${APP_VERSION}`);
+    setSourceMeta(getCurrentQrSourceLabel());
     track("render_success", currentTrackingProps());
     setDebug(`Render complete · ${APP_VERSION}`);
     return true;
@@ -962,6 +971,7 @@ async function createQrCamo() {
   if (!okQr) {
     setDebug("Paste a link or upload a QR first.");
     setPreviewMeta(`Type or paste a link, then tap Done or tap a shape · ${APP_VERSION}`);
+    setSourceMeta("link not confirmed yet");
     return false;
   }
 
@@ -993,7 +1003,8 @@ async function autoRenderIfReady(heavy = false) {
   isRendering = true;
   try {
     if (heavy) {
-      await renderOutput();
+      const ok = await renderOutput();
+      if (!ok) return;
     } else {
       redrawOverlayOnly();
     }
@@ -1201,7 +1212,7 @@ function init() {
   populatePresetSelect();
   populatePresetShapeCards();
   initSampleCardImages();
-  hideLegacyMultiQrUI();
+  stripLegacyMultiQrUI();
 
   if (qrTextInput) {
     qrTextInput.value = "";
