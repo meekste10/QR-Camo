@@ -468,6 +468,16 @@ export function buildMaskCanvas({
   return maskCanvas;
 }
 
+export function buildSafeQrMaskCanvas(maskCanvas, moduleDisplaySize = 1) {
+  const safeRadius = Math.max(
+    1,
+    Math.round((moduleDisplaySize || 1) * 0.45)
+  );
+
+  const safeCandidate = erodeMaskCanvas(maskCanvas, safeRadius);
+  return maskCanvasHasEnoughPixels(safeCandidate) ? safeCandidate : maskCanvas;
+}
+
 export function renderStapledBase(options) {
   const {
     tiles,
@@ -662,13 +672,10 @@ export function render(options) {
     qrSize
   );
 
-  const safeRadius = Math.max(
-    1,
-    Math.round((roughPlacement?.moduleDisplaySize || 1) * 0.45)
+  const qrMaskCanvas = buildSafeQrMaskCanvas(
+    maskCanvas,
+    roughPlacement?.moduleDisplaySize || 1
   );
-
-  const safeCandidate = erodeMaskCanvas(maskCanvas, safeRadius);
-  const qrMaskCanvas = maskCanvasHasEnoughPixels(safeCandidate) ? safeCandidate : maskCanvas;
 
   const placement = findBestQrPlacement(
     qrMaskCanvas.getContext("2d"),
