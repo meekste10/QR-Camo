@@ -115,17 +115,30 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
   const dx = Math.round((width - drawW) / 2);
   const dy = Math.round((height - drawH) / 2);
 
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
+  ctx.clearRect(0, 0, width, height);
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
 
   const imageData = ctx.getImageData(0, 0, width, height);
   const d = imageData.data;
-  const threshold = 180;
+
+  let transparentPixels = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 250) transparentPixels++;
+  }
+
+  const usesAlphaMask = transparentPixels > d.length / 16;
 
   for (let i = 0; i < d.length; i += 4) {
-    const gray = effectiveGrayOverWhite(d[i], d[i + 1], d[i + 2], d[i + 3]);
-    const inside = invertMask ? gray >= threshold : gray < threshold;
+    let inside = false;
+
+    if (usesAlphaMask) {
+      inside = d[i + 3] > 10;
+    } else {
+      const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+      inside = gray < 180;
+    }
+
+    if (invertMask) inside = !inside;
 
     if (inside) {
       d[i] = 255;
