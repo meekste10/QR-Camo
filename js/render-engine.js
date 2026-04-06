@@ -5,13 +5,13 @@ function clamp(value, min, max) {
 }
 
 function sizeFractionsForPreset(qrSize = "medium") {
-  if (qrSize === "xxxxsmall") return [0.12, 0.10, 0.09, 0.08, 0.07];
-  if (qrSize === "xxxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
-  if (qrSize === "xxsmall") return [0.20, 0.18, 0.16, 0.14, 0.12];
-  if (qrSize === "xsmall") return [0.26, 0.24, 0.22, 0.20, 0.18];
-  if (qrSize === "small") return [0.34, 0.31, 0.28, 0.26, 0.22];
+  if (qrSize === "xxxxsmall") return [0.10, 0.09, 0.08, 0.07, 0.06];
+  if (qrSize === "xxxsmall") return [0.13, 0.12, 0.11, 0.10, 0.09];
+  if (qrSize === "xxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
+  if (qrSize === "xsmall") return [0.22, 0.20, 0.18, 0.16, 0.14];
+  if (qrSize === "small") return [0.30, 0.27, 0.24, 0.22, 0.20];
   if (qrSize === "large") return [0.52, 0.48, 0.44, 0.40, 0.36];
-  return [0.42, 0.38, 0.34, 0.30, 0.26];
+  return [0.38, 0.34, 0.30, 0.27, 0.24];
 }
 
 function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
@@ -146,6 +146,71 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
   }
 
   ctx.putImageData(imageData, 0, 0);
+}
+
+function maskCanvasHasEnoughPixels(maskCanvas, minPixels = 64) {
+  const ctx = maskCanvas.getContext("2d");
+  const data = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data;
+
+  let count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] > 10) count++;
+    if (count >= minPixels) return true;
+  }
+
+  return false;
+}
+
+function erodeMaskCanvas(sourceCanvas, radius = 1) {
+  const w = sourceCanvas.width;
+  const h = sourceCanvas.height;
+
+  const srcCtx = sourceCanvas.getContext("2d");
+  const src = srcCtx.getImageData(0, 0, w, h).data;
+
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+
+  const outCtx = out.getContext("2d");
+  const outImg = outCtx.createImageData(w, h);
+  const dst = outImg.data;
+
+  function alphaAt(x, y) {
+    if (x < 0 || y < 0 || x >= w || y >= h) return 0;
+    return src[(y * w + x) * 4 + 3];
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let inside = true;
+
+      for (let dy = -radius; dy <= radius && inside; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (alphaAt(x + dx, y + dy) <= 10) {
+            inside = false;
+            break;
+          }
+        }
+      }
+
+      const i = (y * w + x) * 4;
+      if (inside) {
+        dst[i] = 255;
+        dst[i + 1] = 255;
+        dst[i + 2] = 255;
+        dst[i + 3] = 255;
+      } else {
+        dst[i] = 0;
+        dst[i + 1] = 0;
+        dst[i + 2] = 0;
+        dst[i + 3] = 0;
+      }
+    }
+  }
+
+  outCtx.putImageData(outImg, 0, 0);
+  return out;
 }
 
 function buildEdgeBand(maskCanvas, insetPx, fillStyle) {
@@ -352,7 +417,7 @@ function drawQrLayer(ctx, maskCtx, qrCanvas, fit) {
       const y = fit.y + row * moduleSize;
 
       const coverage = cellMaskCoverage(maskCtx, x, y, moduleSize);
-      if (coverage < 0.55) continue;
+      if (coverage < 0.82) continue;
 
       const isDark = qrModuleIsDark(qrData, qrWidth, col, row);
       ctx.fillStyle = isDark ? "#000000" : "#ffffff";
@@ -504,6 +569,7 @@ export function drawSingleQrOverlay(options) {
   const {
     baseCanvas,
     maskCanvas,
+    qrMaskCanvas = null,
     outputCanvas,
     sourceQrCanvas,
     moduleCount,
@@ -528,7 +594,9 @@ export function drawSingleQrOverlay(options) {
 
   if (!sourceQrCanvas || !maskCanvas) return;
 
-  const maskCtx = maskCanvas.getContext("2d");
+  const overlayMaskCanvas = qrMaskCanvas || maskCanvas;
+  const maskCtx = overlayMaskCanvas.getContext("2d");
+
   const basePlacement =
     placement ||
     findBestQrPlacement(maskCtx, outputSize, Math.max(21, moduleCount || 21), qrSize);
@@ -587,8 +655,23 @@ export function render(options) {
     invertMask
   });
 
-  const placement = findBestQrPlacement(
+  const roughPlacement = findBestQrPlacement(
     maskCanvas.getContext("2d"),
+    OUTPUT_SIZE,
+    moduleCount,
+    qrSize
+  );
+
+  const safeRadius = Math.max(
+    1,
+    Math.round((roughPlacement?.moduleDisplaySize || 1) * 0.45)
+  );
+
+  const safeCandidate = erodeMaskCanvas(maskCanvas, safeRadius);
+  const qrMaskCanvas = maskCanvasHasEnoughPixels(safeCandidate) ? safeCandidate : maskCanvas;
+
+  const placement = findBestQrPlacement(
+    qrMaskCanvas.getContext("2d"),
     OUTPUT_SIZE,
     moduleCount,
     qrSize
@@ -606,6 +689,7 @@ export function render(options) {
   drawSingleQrOverlay({
     baseCanvas,
     maskCanvas,
+    qrMaskCanvas,
     outputCanvas,
     sourceQrCanvas,
     moduleCount,
@@ -617,5 +701,5 @@ export function render(options) {
     outputSize: OUTPUT_SIZE
   });
 
-  return { baseCanvas, maskCanvas, placement };
+  return { baseCanvas, maskCanvas, qrMaskCanvas, placement };
 }
