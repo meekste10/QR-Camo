@@ -1,26 +1,26 @@
-const APP_VERSION = "v0.6.3";
+const APP_VERSION = "v0.6.4";
 
-import { state } from "./state.js?v=0.6.3";
+import { state } from "./state.js?v=0.6.4";
 import {
   imageDataToCanvas,
   normalizeQrImageData,
   cropQrInterior,
   cropQrInteriorFromTrimmed
-} from "./qr-preprocess.js?v=0.6.3";
-import { extractTiles } from "./tile-engine.js?v=0.6.3";
+} from "./qr-preprocess.js?v=0.6.4";
+import { extractTiles } from "./tile-engine.js?v=0.6.4";
 import {
   maskPresets,
   presetShapeCategories
-} from "./presets.js?v=0.6.3";
-import { loadMask } from "./mask-engine.js?v=0.6.3";
-import { buildMaskFromImage } from "./mask-builder.js?v=0.6.3";
+} from "./presets.js?v=0.6.4";
+import { loadMask } from "./mask-engine.js?v=0.6.4";
+import { buildMaskFromImage } from "./mask-builder.js?v=0.6.4";
 import {
   buildMaskCanvas,
   renderStapledBase,
   findBestQrPlacement,
   drawSingleQrOverlay
-} from "./render-engine.js?v=0.6.3";
-import { exportPNG } from "./export.js?v=0.6.3";
+} from "./render-engine.js?v=0.6.4";
+import { exportPNG } from "./export.js?v=0.6.4";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
 
@@ -733,20 +733,13 @@ async function handleQrUpload(file) {
 function buildCurrentMaskFromUploaded() {
   if (!state.customMaskImage) return null;
 
-  function buildCurrentMaskFromUploaded() {
-  if (!state.customMaskImage) return null;
-
   const maskCanvas = buildMaskFromImage(state.customMaskImage, {
     size: 800,
     targetFill: 0.9,
     backgroundTolerance: 40,
-    alphaTolerance: 12
+    alphaTolerance: 12,
+    workSize: 512
   });
-
-  state.customMaskCanvas = maskCanvas;
-  show(shapeReadyBadge, true);
-  return maskCanvas;
-}
 
   state.customMaskCanvas = maskCanvas;
   show(shapeReadyBadge, true);
