@@ -733,14 +733,20 @@ async function handleQrUpload(file) {
 function buildCurrentMaskFromUploaded() {
   if (!state.customMaskImage) return null;
 
+  function buildCurrentMaskFromUploaded() {
+  if (!state.customMaskImage) return null;
+
   const maskCanvas = buildMaskFromImage(state.customMaskImage, {
     size: 800,
     targetFill: 0.9,
-    threshold: 180,
-    removeDetectedBackground: true,
-    backgroundTolerance: 52,
-    forceBackgroundToWhite: true
+    backgroundTolerance: 40,
+    alphaTolerance: 12
   });
+
+  state.customMaskCanvas = maskCanvas;
+  show(shapeReadyBadge, true);
+  return maskCanvas;
+}
 
   state.customMaskCanvas = maskCanvas;
   show(shapeReadyBadge, true);
