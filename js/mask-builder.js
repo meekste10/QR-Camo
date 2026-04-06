@@ -1,44 +1,25 @@
 export function buildMaskFromImage(img, options = {}) {
   const {
     size = 800,
-    threshold = 180,
     invert = false,
     targetFill = 0.9,
-    removeDetectedBackground = true,
-    backgroundTolerance = 52,
-    forceBackgroundToWhite = true
+    backgroundTolerance = 32,
+    alphaTolerance = 20
   } = options;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = img.width;
+  sourceCanvas.height = img.height;
+  const sctx = sourceCanvas.getContext("2d");
+  sctx.clearRect(0, 0, img.width, img.height);
+  sctx.imageSmoothingEnabled = false;
+  sctx.drawImage(img, 0, 0);
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.imageSmoothingEnabled = false;
+  const imageData = sctx.getImageData(0, 0, img.width, img.height);
+  const { width, height, data } = imageData;
 
-  const scale = Math.min(
-    (size * targetFill) / img.width,
-    (size * targetFill) / img.height
-  );
-
-  const drawW = Math.max(1, Math.round(img.width * scale));
-  const drawH = Math.max(1, Math.round(img.height * scale));
-  const drawX = Math.floor((size - drawW) / 2);
-  const drawY = Math.floor((size - drawH) / 2);
-
-  if (forceBackgroundToWhite) {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, size, size);
-  }
-
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-  let imageData = ctx.getImageData(0, 0, size, size);
-  let d = imageData.data;
-
-  function luminance(r, g, b) {
-    return 0.299 * r + 0.587 * g + 0.114 * b;
+  function idx(x, y) {
+    return (y * width + x) * 4;
   }
 
   function colorDistance(r1, g1, b1, r2, g2, b2) {
@@ -49,285 +30,254 @@ export function buildMaskFromImage(img, options = {}) {
   }
 
   function getPixel(x, y) {
-    const clampedX = Math.max(0, Math.min(size - 1, x));
-    const clampedY = Math.max(0, Math.min(size - 1, y));
-    const idx = (clampedY * size + clampedX) * 4;
+    const i = idx(x, y);
     return {
-      r: d[idx],
-      g: d[idx + 1],
-      b: d[idx + 2],
-      a: d[idx + 3]
+      r: data[i],
+      g: data[i + 1],
+      b: data[i + 2],
+      a: data[i + 3]
     };
   }
 
-  function averagePixels(samples) {
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let a = 0;
-
-    for (const p of samples) {
-      r += p.r;
-      g += p.g;
-      b += p.b;
-      a += p.a;
-    }
-
-    const count = Math.max(1, samples.length);
-
-    return {
-      r: r / count,
-      g: g / count,
-      b: b / count,
-      a: a / count
-    };
-  }
-
-  function estimateBackgroundColor() {
+  function averageBackgroundColor() {
     const samples = [];
-    const step = Math.max(4, Math.floor(size / 40));
-
-    for (let x = 0; x < size; x += step) {
-      samples.push(getPixel(x, 0));
-      samples.push(getPixel(x, size - 1));
-    }
-
-    for (let y = 0; y < size; y += step) {
-      samples.push(getPixel(0, y));
-      samples.push(getPixel(size - 1, y));
-    }
-
-    return averagePixels(samples);
-  }
-
-  function buildGrayscaleAndEdgeMaps() {
-    const gray = new Float32Array(size * size);
-    const edge = new Float32Array(size * size);
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const idx = (y * size + x) * 4;
-        gray[y * size + x] = luminance(d[idx], d[idx + 1], d[idx + 2]);
-      }
-    }
-
-    for (let y = 1; y < size - 1; y++) {
-      for (let x = 1; x < size - 1; x++) {
-        const center = gray[y * size + x];
-        const left = gray[y * size + (x - 1)];
-        const right = gray[y * size + (x + 1)];
-        const up = gray[(y - 1) * size + x];
-        const down = gray[(y + 1) * size + x];
-
-        const gx = Math.abs(right - left);
-        const gy = Math.abs(down - up);
-
-        edge[y * size + x] = (gx + gy) * 0.5;
-      }
-    }
-
-    return { gray, edge };
-  }
-
-  function buildBinaryMask() {
-    const bg = estimateBackgroundColor();
-    const { gray, edge } = buildGrayscaleAndEdgeMaps();
-    const mask = new Uint8ClampedArray(size * size);
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const pIdx = (y * size + x) * 4;
-        const mIdx = y * size + x;
-
-        const r = d[pIdx];
-        const g = d[pIdx + 1];
-        const b = d[pIdx + 2];
-        const a = d[pIdx + 3];
-
-        if (a === 0) {
-          mask[mIdx] = invert ? 255 : 0;
-          continue;
-        }
-
-        const lum = gray[mIdx];
-        const edgeStrength = edge[mIdx];
-        const bgDist = colorDistance(r, g, b, bg.r, bg.g, bg.b);
-
-        const isNearBackground =
-          removeDetectedBackground &&
-          bgDist <= backgroundTolerance &&
-          edgeStrength < 22;
-
-        let inside = false;
-
-        if (isNearBackground) {
-          inside = false;
-        } else {
-          const darkEnough = lum < threshold;
-          const edgeEnough = edgeStrength > 18;
-          inside = darkEnough || edgeEnough;
-        }
-
-        if (invert) inside = !inside;
-
-        mask[mIdx] = inside ? 255 : 0;
-      }
-    }
-
-    return mask;
-  }
-
-  function dilate(mask, radius = 1) {
-    const out = new Uint8ClampedArray(mask.length);
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        let on = false;
-
-        for (let dy = -radius; dy <= radius && !on; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
-            if (mask[ny * size + nx] > 0) {
-              on = true;
-              break;
-            }
-          }
-        }
-
-        out[y * size + x] = on ? 255 : 0;
-      }
-    }
-
-    return out;
-  }
-
-  function erode(mask, radius = 1) {
-    const out = new Uint8ClampedArray(mask.length);
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        let on = true;
-
-        for (let dy = -radius; dy <= radius && on; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) {
-              on = false;
-              break;
-            }
-            if (mask[ny * size + nx] === 0) {
-              on = false;
-              break;
-            }
-          }
-        }
-
-        out[y * size + x] = on ? 255 : 0;
-      }
-    }
-
-    return out;
-  }
-
-  function closeMask(mask) {
-    // fills small gaps and makes edges more coherent
-    return erode(dilate(mask, 1), 1);
-  }
-
-  function openMask(mask) {
-    // removes tiny noise specks
-    return dilate(erode(mask, 1), 1);
-  }
-
-  function keepLargestConnectedComponent(mask) {
-    const visited = new Uint8Array(size * size);
-    let bestComponent = null;
-    let bestCount = 0;
-
-    const neighbors = [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1]
+    const points = [
+      [0, 0],
+      [width - 1, 0],
+      [0, height - 1],
+      [width - 1, height - 1],
+      [Math.floor(width * 0.5), 0],
+      [Math.floor(width * 0.5), height - 1],
+      [0, Math.floor(height * 0.5)],
+      [width - 1, Math.floor(height * 0.5)]
     ];
 
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const startIdx = y * size + x;
-        if (visited[startIdx] || mask[startIdx] === 0) continue;
-
-        const queue = [startIdx];
-        const component = [];
-        visited[startIdx] = 1;
-
-        while (queue.length) {
-          const idx = queue.pop();
-          component.push(idx);
-
-          const cx = idx % size;
-          const cy = Math.floor(idx / size);
-
-          for (const [dx, dy] of neighbors) {
-            const nx = cx + dx;
-            const ny = cy + dy;
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
-
-            const nIdx = ny * size + nx;
-            if (visited[nIdx] || mask[nIdx] === 0) continue;
-
-            visited[nIdx] = 1;
-            queue.push(nIdx);
-          }
-        }
-
-        if (component.length > bestCount) {
-          bestCount = component.length;
-          bestComponent = component;
-        }
+    for (const [x, y] of points) {
+      const p = getPixel(x, y);
+      if (p.a > alphaTolerance) {
+        samples.push(p);
       }
     }
 
-    if (!bestComponent) return mask;
-
-    const out = new Uint8ClampedArray(size * size);
-    for (const idx of bestComponent) {
-      out[idx] = 255;
+    if (!samples.length) {
+      return { r: 255, g: 255, b: 255 };
     }
-    return out;
+
+    const sum = samples.reduce(
+      (acc, p) => {
+        acc.r += p.r;
+        acc.g += p.g;
+        acc.b += p.b;
+        return acc;
+      },
+      { r: 0, g: 0, b: 0 }
+    );
+
+    return {
+      r: Math.round(sum.r / samples.length),
+      g: Math.round(sum.g / samples.length),
+      b: Math.round(sum.b / samples.length)
+    };
   }
 
-  let mask = buildBinaryMask();
+  const bg = averageBackgroundColor();
 
-  mask = closeMask(mask);
-  mask = openMask(mask);
-  mask = keepLargestConnectedComponent(mask);
+  // Step 1: foreground extraction based on difference from background
+  const solid = new Uint8Array(width * height);
 
-  // draw final alpha mask
-  const out = ctx.createImageData(size, size);
-  const outData = out.data;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = idx(x, y);
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
 
-  for (let i = 0; i < mask.length; i++) {
-    const v = mask[i];
-    const idx = i * 4;
+      if (a <= alphaTolerance) continue;
 
-    if (v > 0) {
-      outData[idx] = 0;
-      outData[idx + 1] = 0;
-      outData[idx + 2] = 0;
-      outData[idx + 3] = 255;
-    } else {
-      outData[idx] = 0;
-      outData[idx + 1] = 0;
-      outData[idx + 2] = 0;
-      outData[idx + 3] = 0;
+      const dist = colorDistance(r, g, b, bg.r, bg.g, bg.b);
+      if (dist > backgroundTolerance) {
+        solid[y * width + x] = 1;
+      }
     }
   }
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.putImageData(out, 0, 0);
+  // Step 2: keep only the largest connected foreground component
+  const visited = new Uint8Array(width * height);
+  let bestPixels = null;
+  let bestCount = 0;
 
-  return canvas;
+  const neighbors = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1]
+  ];
+
+  for (let start = 0; start < solid.length; start++) {
+    if (!solid[start] || visited[start]) continue;
+
+    const queue = [start];
+    visited[start] = 1;
+
+    const pixels = [];
+    let qIndex = 0;
+
+    while (qIndex < queue.length) {
+      const current = queue[qIndex++];
+      pixels.push(current);
+
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      for (const [dx, dy] of neighbors) {
+        const nx = x + dx;
+        const ny = y + dy;
+
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+
+        const ni = ny * width + nx;
+        if (!solid[ni] || visited[ni]) continue;
+
+        visited[ni] = 1;
+        queue.push(ni);
+      }
+    }
+
+    if (pixels.length > bestCount) {
+      bestCount = pixels.length;
+      bestPixels = pixels;
+    }
+  }
+
+  const mainMask = new Uint8Array(width * height);
+  if (bestPixels) {
+    for (const p of bestPixels) {
+      mainMask[p] = 1;
+    }
+  }
+
+  // Step 3: fill internal holes so logos become a full silhouette
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!mainMask[y * width + x]) continue;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    const emptyCanvas = document.createElement("canvas");
+    emptyCanvas.width = size;
+    emptyCanvas.height = size;
+    return emptyCanvas;
+  }
+
+  const pad = 2;
+  const bw = maxX - minX + 1 + pad * 2;
+  const bh = maxY - minY + 1 + pad * 2;
+
+  const boxMask = new Uint8Array(bw * bh);
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (mainMask[y * width + x]) {
+        const bx = x - minX + pad;
+        const by = y - minY + pad;
+        boxMask[by * bw + bx] = 1;
+      }
+    }
+  }
+
+  const outsideVisited = new Uint8Array(bw * bh);
+  const floodQueue = [];
+
+  function pushIfEmpty(x, y) {
+    if (x < 0 || y < 0 || x >= bw || y >= bh) return;
+    const i = y * bw + x;
+    if (outsideVisited[i] || boxMask[i]) return;
+    outsideVisited[i] = 1;
+    floodQueue.push(i);
+  }
+
+  for (let x = 0; x < bw; x++) {
+    pushIfEmpty(x, 0);
+    pushIfEmpty(x, bh - 1);
+  }
+  for (let y = 0; y < bh; y++) {
+    pushIfEmpty(0, y);
+    pushIfEmpty(bw - 1, y);
+  }
+
+  let fq = 0;
+  while (fq < floodQueue.length) {
+    const current = floodQueue[fq++];
+    const x = current % bw;
+    const y = Math.floor(current / bw);
+
+    pushIfEmpty(x + 1, y);
+    pushIfEmpty(x - 1, y);
+    pushIfEmpty(x, y + 1);
+    pushIfEmpty(x, y - 1);
+  }
+
+  // Fill holes: any empty pixel not reachable from outside becomes solid
+  for (let i = 0; i < boxMask.length; i++) {
+    if (!boxMask[i] && !outsideVisited[i]) {
+      boxMask[i] = 1;
+    }
+  }
+
+  // Step 4: draw final mask centered into square output canvas
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = bw;
+  cropCanvas.height = bh;
+  const cctx = cropCanvas.getContext("2d");
+  const cropImage = cctx.createImageData(bw, bh);
+
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      const on = boxMask[y * bw + x];
+      const i = (y * bw + x) * 4;
+
+      if ((on && !invert) || (!on && invert)) {
+        cropImage.data[i] = 0;
+        cropImage.data[i + 1] = 0;
+        cropImage.data[i + 2] = 0;
+        cropImage.data[i + 3] = 255;
+      } else {
+        cropImage.data[i] = 0;
+        cropImage.data[i + 1] = 0;
+        cropImage.data[i + 2] = 0;
+        cropImage.data[i + 3] = 0;
+      }
+    }
+  }
+
+  cctx.putImageData(cropImage, 0, 0);
+
+  const out = document.createElement("canvas");
+  out.width = size;
+  out.height = size;
+  const octx = out.getContext("2d");
+  octx.clearRect(0, 0, size, size);
+  octx.imageSmoothingEnabled = false;
+
+  const scale = Math.min(
+    (size * targetFill) / cropCanvas.width,
+    (size * targetFill) / cropCanvas.height
+  );
+
+  const drawW = Math.max(1, Math.round(cropCanvas.width * scale));
+  const drawH = Math.max(1, Math.round(cropCanvas.height * scale));
+  const drawX = Math.floor((size - drawW) / 2);
+  const drawY = Math.floor((size - drawH) / 2);
+
+  octx.drawImage(cropCanvas, drawX, drawY, drawW, drawH);
+
+  return out;
 }
