@@ -1,4 +1,4 @@
-import { pointInsideMask } from "./mask-engine.js?v=0.6.3";
+import { pointInsideMask } from "./mask-engine.js?v=0.6.4";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -82,14 +82,6 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
     drawSize,
     drawSize
   );
-}
-
-function effectiveGrayOverWhite(r, g, b, a) {
-  const alpha = a / 255;
-  const rr = Math.round(r * alpha + 255 * (1 - alpha));
-  const gg = Math.round(g * alpha + 255 * (1 - alpha));
-  const bb = Math.round(b * alpha + 255 * (1 - alpha));
-  return Math.round(0.299 * rr + 0.587 * gg + 0.114 * bb);
 }
 
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0, invertMask = false) {
