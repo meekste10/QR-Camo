@@ -16,6 +16,7 @@ import { loadMask } from "./mask-engine.js?v=0.6.4";
 import { buildMaskFromImage } from "./mask-builder.js?v=0.6.4";
 import {
   buildMaskCanvas,
+  buildSafeQrMaskCanvas,
   renderStapledBase,
   findBestQrPlacement,
   drawSingleQrOverlay
@@ -95,6 +96,7 @@ state.blockModules = 2;
 state.hasRenderedOnce = false;
 state.stapledBaseCanvas = null;
 state.currentMaskCanvas = null;
+state.qrSafeMaskCanvas = null;
 state.lastBaseSignature = null;
 state.qrPlacement = null;
 state.liveQrScale = 1;
@@ -508,6 +510,7 @@ function clearCanvas(canvas) {
 function clearLayerCache() {
   state.stapledBaseCanvas = null;
   state.currentMaskCanvas = null;
+  state.qrSafeMaskCanvas = null;
   state.lastBaseSignature = null;
   state.qrPlacement = null;
 }
@@ -768,6 +771,7 @@ async function rebuildBaseAndPlacementIfNeeded() {
   if (
     !state.stapledBaseCanvas ||
     !state.currentMaskCanvas ||
+    !state.qrSafeMaskCanvas ||
     state.lastBaseSignature !== signature
   ) {
     state.currentMaskCanvas = buildMaskCanvas({
@@ -778,8 +782,20 @@ async function rebuildBaseAndPlacementIfNeeded() {
       invertMask: !!invertMask?.checked
     });
 
-    state.qrPlacement = findBestQrPlacement(
+    const roughPlacement = findBestQrPlacement(
       state.currentMaskCanvas.getContext("2d"),
+      800,
+      state.moduleCount,
+      qrSizeSelect?.value || DEFAULT_QR_SIZE
+    );
+
+    state.qrSafeMaskCanvas = buildSafeQrMaskCanvas(
+      state.currentMaskCanvas,
+      roughPlacement?.moduleDisplaySize || 1
+    );
+
+    state.qrPlacement = findBestQrPlacement(
+      state.qrSafeMaskCanvas.getContext("2d"),
       800,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
@@ -800,7 +816,7 @@ async function rebuildBaseAndPlacementIfNeeded() {
 
   if (!state.qrPlacement) {
     state.qrPlacement = findBestQrPlacement(
-      state.currentMaskCanvas.getContext("2d"),
+      (state.qrSafeMaskCanvas || state.currentMaskCanvas).getContext("2d"),
       800,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
@@ -809,7 +825,9 @@ async function rebuildBaseAndPlacementIfNeeded() {
 }
 
 function redrawOverlayOnly() {
-  if (!state.stapledBaseCanvas || !state.currentMaskCanvas || !state.sourceQrCanvas) return false;
+  if (!state.stapledBaseCanvas || !state.currentMaskCanvas || !state.sourceQrCanvas) {
+    return false;
+  }
 
   outputCanvas.width = 800;
   outputCanvas.height = 800;
@@ -817,6 +835,7 @@ function redrawOverlayOnly() {
   drawSingleQrOverlay({
     baseCanvas: state.stapledBaseCanvas,
     maskCanvas: state.currentMaskCanvas,
+    qrMaskCanvas: state.qrSafeMaskCanvas || state.currentMaskCanvas,
     outputCanvas,
     sourceQrCanvas: state.sourceQrCanvas,
     moduleCount: state.moduleCount,
@@ -1160,6 +1179,7 @@ function resetAll() {
   state.modulePixelSize = 1;
   state.blockModules = 2;
   state.hasRenderedOnce = false;
+  state.qrSafeMaskCanvas = null;
   state.liveQrScale = 1;
 
   clearLayerCache();
