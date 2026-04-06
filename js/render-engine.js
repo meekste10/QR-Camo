@@ -4,28 +4,6 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
-  if (!moduleCount || moduleCount <= 0) moduleCount = 21;
-
-  let targetFraction = 0.34;
-  if (qrSize === "xxxxsmall") targetFraction = 0.08;
-  if (qrSize === "xxxsmall") targetFraction = 0.11;
-  if (qrSize === "xxsmall") targetFraction = 0.14;
-  if (qrSize === "xsmall") targetFraction = 0.20;
-  if (qrSize === "small") targetFraction = 0.26;
-  if (qrSize === "medium") targetFraction = 0.34;
-  if (qrSize === "large") targetFraction = 0.42;
-
-  let qrDisplaySize = Math.floor(outputSize * targetFraction);
-  const moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / moduleCount));
-  qrDisplaySize = moduleDisplaySize * moduleCount;
-
-  const x = Math.floor((outputSize - qrDisplaySize) / 2);
-  const y = Math.floor((outputSize - qrDisplaySize) / 2);
-
-  return { x, y, qrDisplaySize, moduleDisplaySize };
-}
-
 function sizeFractionsForPreset(qrSize = "medium") {
   if (qrSize === "xxxxsmall") return [0.12, 0.10, 0.09, 0.08, 0.07];
   if (qrSize === "xxxsmall") return [0.16, 0.14, 0.12, 0.11, 0.10];
@@ -34,6 +12,21 @@ function sizeFractionsForPreset(qrSize = "medium") {
   if (qrSize === "small") return [0.34, 0.31, 0.28, 0.26, 0.22];
   if (qrSize === "large") return [0.52, 0.48, 0.44, 0.40, 0.36];
   return [0.42, 0.38, 0.34, 0.30, 0.26];
+}
+
+function fitQrCenter(outputSize, moduleCount, qrSize = "medium") {
+  const safeModuleCount = Math.max(21, moduleCount || 21);
+  const fractions = sizeFractionsForPreset(qrSize);
+  const fraction = fractions[0] || 0.34;
+
+  let qrDisplaySize = Math.floor(outputSize * fraction);
+  const moduleDisplaySize = Math.max(1, Math.floor(qrDisplaySize / safeModuleCount));
+  qrDisplaySize = moduleDisplaySize * safeModuleCount;
+
+  const x = Math.floor((outputSize - qrDisplaySize) / 2);
+  const y = Math.floor((outputSize - qrDisplaySize) / 2);
+
+  return { x, y, qrDisplaySize, moduleDisplaySize };
 }
 
 function normalizeTile(tile) {
@@ -91,6 +84,14 @@ function drawTile(ctx, tileCanvas, dx, dy, drawSize) {
   );
 }
 
+function effectiveGrayOverWhite(r, g, b, a) {
+  const alpha = a / 255;
+  const rr = Math.round(r * alpha + 255 * (1 - alpha));
+  const gg = Math.round(g * alpha + 255 * (1 - alpha));
+  const bb = Math.round(b * alpha + 255 * (1 - alpha));
+  return Math.round(0.299 * rr + 0.587 * gg + 0.114 * bb);
+}
+
 function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, paddingPx = 0, invertMask = false) {
   const ctx = maskCanvas.getContext("2d");
   const { width, height } = maskCanvas;
@@ -114,21 +115,17 @@ function drawScaledMaskToCanvas(maskImg, maskCanvas, scalePercent = 100, padding
   const dx = Math.round((width - drawW) / 2);
   const dy = Math.round((height - drawH) / 2);
 
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
   ctx.drawImage(maskImg, dx, dy, drawW, drawH);
 
   const imageData = ctx.getImageData(0, 0, width, height);
   const d = imageData.data;
+  const threshold = 180;
 
   for (let i = 0; i < d.length; i += 4) {
-    const a = d[i + 3];
-    if (a === 0) continue;
-
-    const r = d[i];
-    const g = d[i + 1];
-    const b = d[i + 2];
-    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-
-    const inside = invertMask ? gray > 180 : gray < 180;
+    const gray = effectiveGrayOverWhite(d[i], d[i + 1], d[i + 2], d[i + 3]);
+    const inside = invertMask ? gray >= threshold : gray < threshold;
 
     if (inside) {
       d[i] = 255;
@@ -407,11 +404,13 @@ export function renderStapledBase(options) {
     maskCanvas,
     outputSize = 800,
     blendTightness = 50,
-    blockModules = 2
+    blockModules = 2,
+    moduleDisplaySize = 8
   } = options;
 
   const mctx = maskCanvas.getContext("2d");
   const safeBlockModules = Math.max(1, blockModules);
+  const safeModuleDisplaySize = Math.max(1, Math.round(moduleDisplaySize || 8));
 
   const baseCanvas = document.createElement("canvas");
   baseCanvas.width = outputSize;
@@ -421,8 +420,7 @@ export function renderStapledBase(options) {
   cctx.clearRect(0, 0, outputSize, outputSize);
   cctx.imageSmoothingEnabled = false;
 
-  const moduleDisplaySize = 8;
-  const tileDisplaySize = Math.max(1, moduleDisplaySize * safeBlockModules);
+  const tileDisplaySize = Math.max(1, safeModuleDisplaySize * safeBlockModules);
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
   const minCoverage = 0.14 + tightness * 0.30;
 
@@ -584,20 +582,21 @@ export function render(options) {
     invertMask
   });
 
-  const baseCanvas = renderStapledBase({
-    tiles,
-    maskCanvas,
-    outputSize: OUTPUT_SIZE,
-    blendTightness,
-    blockModules
-  });
-
   const placement = findBestQrPlacement(
     maskCanvas.getContext("2d"),
     OUTPUT_SIZE,
     moduleCount,
     qrSize
   );
+
+  const baseCanvas = renderStapledBase({
+    tiles,
+    maskCanvas,
+    outputSize: OUTPUT_SIZE,
+    blendTightness,
+    blockModules,
+    moduleDisplaySize: placement.moduleDisplaySize
+  });
 
   drawSingleQrOverlay({
     baseCanvas,
