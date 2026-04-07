@@ -417,7 +417,7 @@ function drawQrLayer(ctx, maskCtx, qrCanvas, fit) {
       const y = fit.y + row * moduleSize;
 
       const coverage = cellMaskCoverage(maskCtx, x, y, moduleSize);
-      if (coverage < 0.82) continue;
+      if (coverage < 0.58) continue;
 
       const isDark = qrModuleIsDark(qrData, qrWidth, col, row);
       ctx.fillStyle = isDark ? "#000000" : "#ffffff";
@@ -696,7 +696,7 @@ export function render(options) {
   drawSingleQrOverlay({
     baseCanvas,
     maskCanvas,
-    qrMaskCanvas,
+    qrMaskCanvas: maskCanvas,
     outputCanvas,
     sourceQrCanvas,
     moduleCount,
