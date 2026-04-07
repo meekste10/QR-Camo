@@ -108,6 +108,7 @@ const DEFAULT_QR_SIZE = "xxsmall";
 const DEFAULT_QR_TEXT = "";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 100;
+const DEFAULT_MASK_PADDING = 56;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
@@ -778,7 +779,7 @@ async function rebuildBaseAndPlacementIfNeeded() {
       maskImg: maskSource,
       outputSize: 800,
       maskScale: Number(maskScale?.value || DEFAULT_MASK_SCALE),
-      maskPadding: 0,
+      maskPadding: DEFAULT_MASK_PADDING,
       invertMask: !!invertMask?.checked
     });
 
@@ -835,7 +836,7 @@ function redrawOverlayOnly() {
   drawSingleQrOverlay({
     baseCanvas: state.stapledBaseCanvas,
     maskCanvas: state.currentMaskCanvas,
-    qrMaskCanvas: state.qrSafeMaskCanvas || state.currentMaskCanvas,
+    qrMaskCanvas: state.currentMaskCanvas,
     outputCanvas,
     sourceQrCanvas: state.sourceQrCanvas,
     moduleCount: state.moduleCount,
