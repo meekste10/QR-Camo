@@ -20,6 +20,7 @@ export const state = {
 
   stapledBaseCanvas: null,
   currentMaskCanvas: null,
+  qrSafeMaskCanvas: null,
   lastBaseSignature: null,
 
   qrPlacement: null,
