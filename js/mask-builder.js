@@ -33,6 +33,10 @@ export function buildMaskFromImage(img, options = {}) {
     return y * width + x;
   }
 
+  function luminance(r, g, b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+
   function colorDistance(r1, g1, b1, r2, g2, b2) {
     const dr = r1 - r2;
     const dg = g1 - g2;
@@ -52,20 +56,20 @@ export function buildMaskFromImage(img, options = {}) {
 
   function estimateBackgroundColor() {
     const samples = [];
-    const edgeStep = Math.max(1, Math.floor(Math.min(workW, workH) / 24));
+    const step = Math.max(1, Math.floor(Math.min(workW, workH) / 24));
 
-    for (let x = 0; x < workW; x += edgeStep) {
-      const p1 = getPixel(x, 0);
-      const p2 = getPixel(x, workH - 1);
-      if (p1.a > alphaTolerance) samples.push(p1);
-      if (p2.a > alphaTolerance) samples.push(p2);
+    for (let x = 0; x < workW; x += step) {
+      const t = getPixel(x, 0);
+      const b = getPixel(x, workH - 1);
+      if (t.a > alphaTolerance) samples.push(t);
+      if (b.a > alphaTolerance) samples.push(b);
     }
 
-    for (let y = 0; y < workH; y += edgeStep) {
-      const p1 = getPixel(0, y);
-      const p2 = getPixel(workW - 1, y);
-      if (p1.a > alphaTolerance) samples.push(p1);
-      if (p2.a > alphaTolerance) samples.push(p2);
+    for (let y = 0; y < workH; y += step) {
+      const l = getPixel(0, y);
+      const r = getPixel(workW - 1, y);
+      if (l.a > alphaTolerance) samples.push(l);
+      if (r.a > alphaTolerance) samples.push(r);
     }
 
     if (!samples.length) {
@@ -87,6 +91,40 @@ export function buildMaskFromImage(img, options = {}) {
       g: Math.round(g / samples.length),
       b: Math.round(b / samples.length)
     };
+  }
+
+  function buildGrayMap() {
+    const gray = new Float32Array(workW * workH);
+
+    for (let y = 0; y < workH; y++) {
+      for (let x = 0; x < workW; x++) {
+        const i = (y * workW + x) * 4;
+        gray[index(x, y, workW)] = luminance(
+          data[i],
+          data[i + 1],
+          data[i + 2]
+        );
+      }
+    }
+
+    return gray;
+  }
+
+  function buildEdgeMap(gray) {
+    const edge = new Float32Array(workW * workH);
+
+    for (let y = 1; y < workH - 1; y++) {
+      for (let x = 1; x < workW - 1; x++) {
+        const left = gray[index(x - 1, y, workW)];
+        const right = gray[index(x + 1, y, workW)];
+        const up = gray[index(x, y - 1, workW)];
+        const down = gray[index(x, y + 1, workW)];
+
+        edge[index(x, y, workW)] = (Math.abs(right - left) + Math.abs(down - up)) * 0.5;
+      }
+    }
+
+    return edge;
   }
 
   function dilate(mask, width, height, radius = 1) {
@@ -227,28 +265,20 @@ export function buildMaskFromImage(img, options = {}) {
     return components;
   }
 
-  function bboxGap(a, b) {
-    const dx = Math.max(0, a.minX - b.maxX - 1, b.minX - a.maxX - 1);
-    const dy = Math.max(0, a.minY - b.maxY - 1, b.minY - a.maxY - 1);
-    return Math.max(dx, dy);
-  }
+  function keepLargestConnectedComponent(mask, width, height) {
+    const components = extractComponents(mask, width, height);
+    if (!components.length) return mask;
 
-  function unionBoxes(a, b) {
-    return {
-      minX: Math.min(a.minX, b.minX),
-      minY: Math.min(a.minY, b.minY),
-      maxX: Math.max(a.maxX, b.maxX),
-      maxY: Math.max(a.maxY, b.maxY)
-    };
-  }
-
-  function buildMaskFromComponents(components, width, height) {
-    const out = new Uint8Array(width * height);
+    let best = components[0];
     for (const comp of components) {
-      for (const p of comp.pixels) {
-        out[p] = 1;
-      }
+      if (comp.area > best.area) best = comp;
     }
+
+    const out = new Uint8Array(width * height);
+    for (const p of best.pixels) {
+      out[p] = 1;
+    }
+
     return out;
   }
 
@@ -298,32 +328,132 @@ export function buildMaskFromImage(img, options = {}) {
     };
   }
 
-  function fillInternalHoles(mask, width, height) {
+  function fillSmallInternalHoles(mask, width, height, maxHoleArea = 64) {
     const visited = new Uint8Array(mask.length);
-    const queue = [];
+    const out = new Uint8Array(mask);
 
-    function push(x, y) {
-      if (x < 0 || y < 0 || x >= width || y >= height) return;
-      const i = index(x, y, width);
-      if (visited[i] || mask[i]) return;
-      visited[i] = 1;
-      queue.push(i);
-    }
+    function floodHole(startIdx) {
+      const queue = [startIdx];
+      visited[startIdx] = 1;
 
-    for (let x = 0; x < width; x++) {
-      push(x, 0);
-      push(x, height - 1);
+      const pixels = [];
+      let touchesEdge = false;
+
+      for (let q = 0; q < queue.length; q++) {
+        const current = queue[q];
+        const x = current % width;
+        const y = Math.floor(current / width);
+
+        pixels.push(current);
+
+        if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+          touchesEdge = true;
+        }
+
+        const neighbors = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ];
+
+        for (const [dx, dy] of neighbors) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+
+          const ni = index(nx, ny, width);
+          if (visited[ni] || mask[ni]) continue;
+
+          visited[ni] = 1;
+          queue.push(ni);
+        }
+      }
+
+      if (!touchesEdge && pixels.length <= maxHoleArea) {
+        for (const p of pixels) {
+          out[p] = 1;
+        }
+      }
     }
 
     for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = index(x, y, width);
+        if (mask[i] || visited[i]) continue;
+        floodHole(i);
+      }
+    }
+
+    return out;
+  }
+
+  function buildMaskFromAlpha() {
+    const out = new Uint8Array(workW * workH);
+
+    for (let y = 0; y < workH; y++) {
+      for (let x = 0; x < workW; x++) {
+        const i = (y * workW + x) * 4 + 3;
+        if (data[i] > alphaTolerance) {
+          out[index(x, y, workW)] = 1;
+        }
+      }
+    }
+
+    return out;
+  }
+
+  function buildMaskFromFloodFill() {
+    const bg = estimateBackgroundColor();
+    const bgGray = luminance(bg.r, bg.g, bg.b);
+    const gray = buildGrayMap();
+    const edge = buildEdgeMap(gray);
+
+    const bgVisited = new Uint8Array(workW * workH);
+    const queue = [];
+
+    function canFlood(x, y) {
+      const i = index(x, y, workW);
+      const p = getPixel(x, y);
+
+      if (p.a <= alphaTolerance) return true;
+
+      const dist = colorDistance(p.r, p.g, p.b, bg.r, bg.g, bg.b);
+      const grayDiff = Math.abs(gray[i] - bgGray);
+      const edgeStrength = edge[i];
+
+      if (dist <= backgroundTolerance) return true;
+      if (grayDiff <= 18 && edgeStrength < 16) return true;
+      if (dist <= backgroundTolerance * 1.35 && edgeStrength < 10) return true;
+
+      return false;
+    }
+
+    function push(x, y) {
+      if (x < 0 || y < 0 || x >= workW || y >= workH) return;
+
+      const i = index(x, y, workW);
+      if (bgVisited[i]) return;
+      if (!canFlood(x, y)) return;
+
+      bgVisited[i] = 1;
+      queue.push(i);
+    }
+
+    for (let x = 0; x < workW; x++) {
+      push(x, 0);
+      push(x, workH - 1);
+    }
+
+    for (let y = 0; y < workH; y++) {
       push(0, y);
-      push(width - 1, y);
+      push(workW - 1, y);
     }
 
     for (let q = 0; q < queue.length; q++) {
       const current = queue[q];
-      const x = current % width;
-      const y = Math.floor(current / width);
+      const x = current % workW;
+      const y = Math.floor(current / workW);
 
       push(x + 1, y);
       push(x - 1, y);
@@ -331,44 +461,44 @@ export function buildMaskFromImage(img, options = {}) {
       push(x, y - 1);
     }
 
-    const out = new Uint8Array(mask);
+    const out = new Uint8Array(workW * workH);
 
-    for (let i = 0; i < out.length; i++) {
-      if (!out[i] && !visited[i]) {
-        out[i] = 1;
+    for (let y = 0; y < workH; y++) {
+      for (let x = 0; x < workW; x++) {
+        const i = index(x, y, workW);
+        const a = data[i * 4 + 3];
+
+        if (a > alphaTolerance && !bgVisited[i]) {
+          out[i] = 1;
+        }
       }
     }
 
     return out;
   }
 
-  const bg = estimateBackgroundColor();
+  let transparentPixels = 0;
+  let opaquePixels = 0;
 
-  let initialMask = new Uint8Array(workW * workH);
-
-  for (let y = 0; y < workH; y++) {
-    for (let x = 0; x < workW; x++) {
-      const i = (y * workW + x) * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-
-      if (a <= alphaTolerance) continue;
-
-      const dist = colorDistance(r, g, b, bg.r, bg.g, bg.b);
-      const inside = dist > backgroundTolerance;
-
-      if (inside) {
-        initialMask[index(x, y, workW)] = 1;
-      }
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] <= alphaTolerance) {
+      transparentPixels++;
+    } else {
+      opaquePixels++;
     }
   }
 
-  initialMask = closeMask(initialMask, workW, workH, 1);
-  initialMask = openMask(initialMask, workW, workH, 1);
+  const totalPixels = Math.max(1, workW * workH);
+  const transparencyRatio = transparentPixels / totalPixels;
 
-  const components = extractComponents(initialMask, workW, workH);
+  let mask = transparencyRatio > 0.02
+    ? buildMaskFromAlpha()
+    : buildMaskFromFloodFill();
+
+  mask = closeMask(mask, workW, workH, 1);
+  mask = openMask(mask, workW, workH, 1);
+
+  const components = extractComponents(mask, workW, workH);
 
   if (!components.length) {
     const emptyCanvas = document.createElement("canvas");
@@ -377,75 +507,47 @@ export function buildMaskFromImage(img, options = {}) {
     return emptyCanvas;
   }
 
-  const anchor = components
-    .slice()
-    .sort((a, b) => {
-      const aScore = a.area * (1 + (1 - a.cy / workH) * 0.12);
-      const bScore = b.area * (1 + (1 - b.cy / workH) * 0.12);
-      return bScore - aScore;
-    })[0];
+  mask = keepLargestConnectedComponent(mask, workW, workH);
 
-  const joinGap = Math.max(3, Math.round(Math.max(anchor.boxW, anchor.boxH) * 0.14));
-  const minJoinArea = Math.max(6, Math.round(anchor.area * 0.012));
+  const cropped = cropMask(mask, workW, workH, 1);
 
-  const selected = [anchor];
-  let union = {
-    minX: anchor.minX,
-    minY: anchor.minY,
-    maxX: anchor.maxX,
-    maxY: anchor.maxY
-  };
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-
-    for (const comp of components) {
-      if (selected.includes(comp)) continue;
-      if (comp.area < minJoinArea) continue;
-
-      const gap = bboxGap(comp, union);
-      if (gap <= joinGap) {
-        selected.push(comp);
-        union = unionBoxes(union, comp);
-        changed = true;
-      }
-    }
-  }
-
-  let clusterMask = buildMaskFromComponents(selected, workW, workH);
-
-  const croppedBeforeClose = cropMask(clusterMask, workW, workH, 2);
-  const solidifyRadius = Math.max(
-    2,
-    Math.min(24, Math.round(Math.min(croppedBeforeClose.width, croppedBeforeClose.height) * 0.045))
+  const bridgeRadius = Math.max(
+    1,
+    Math.min(5, Math.round(Math.min(cropped.width, cropped.height) * 0.012))
   );
 
   let solidMask = closeMask(
-    croppedBeforeClose.mask,
-    croppedBeforeClose.width,
-    croppedBeforeClose.height,
-    solidifyRadius
+    cropped.mask,
+    cropped.width,
+    cropped.height,
+    bridgeRadius
   );
 
-  solidMask = closeMask(
+  solidMask = openMask(
     solidMask,
-    croppedBeforeClose.width,
-    croppedBeforeClose.height,
-    Math.max(1, Math.round(solidifyRadius * 0.5))
+    cropped.width,
+    cropped.height,
+    1
   );
 
-  solidMask = fillInternalHoles(
+  solidMask = keepLargestConnectedComponent(
     solidMask,
-    croppedBeforeClose.width,
-    croppedBeforeClose.height
+    cropped.width,
+    cropped.height
+  );
+
+  solidMask = fillSmallInternalHoles(
+    solidMask,
+    cropped.width,
+    cropped.height,
+    Math.max(8, Math.round(cropped.width * cropped.height * 0.002))
   );
 
   const finalCropped = cropMask(
     solidMask,
-    croppedBeforeClose.width,
-    croppedBeforeClose.height,
-    2
+    cropped.width,
+    cropped.height,
+    1
   );
 
   const maskCanvas = document.createElement("canvas");
