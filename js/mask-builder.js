@@ -120,7 +120,8 @@ export function buildMaskFromImage(img, options = {}) {
         const up = gray[index(x, y - 1, workW)];
         const down = gray[index(x, y + 1, workW)];
 
-        edge[index(x, y, workW)] = (Math.abs(right - left) + Math.abs(down - up)) * 0.5;
+        edge[index(x, y, workW)] =
+          (Math.abs(right - left) + Math.abs(down - up)) * 0.5;
       }
     }
 
@@ -265,6 +266,16 @@ export function buildMaskFromImage(img, options = {}) {
     return components;
   }
 
+  function buildMaskFromComponents(components, width, height) {
+    const out = new Uint8Array(width * height);
+    for (const comp of components) {
+      for (const p of comp.pixels) {
+        out[p] = 1;
+      }
+    }
+    return out;
+  }
+
   function keepLargestConnectedComponent(mask, width, height) {
     const components = extractComponents(mask, width, height);
     if (!components.length) return mask;
@@ -332,7 +343,7 @@ export function buildMaskFromImage(img, options = {}) {
     const visited = new Uint8Array(mask.length);
     const out = new Uint8Array(mask);
 
-    function floodHole(startIdx) {
+    function flood(startIdx) {
       const queue = [startIdx];
       visited[startIdx] = 1;
 
@@ -381,7 +392,7 @@ export function buildMaskFromImage(img, options = {}) {
       for (let x = 0; x < width; x++) {
         const i = index(x, y, width);
         if (mask[i] || visited[i]) continue;
-        floodHole(i);
+        flood(i);
       }
     }
 
@@ -478,14 +489,8 @@ export function buildMaskFromImage(img, options = {}) {
   }
 
   let transparentPixels = 0;
-  let opaquePixels = 0;
-
   for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] <= alphaTolerance) {
-      transparentPixels++;
-    } else {
-      opaquePixels++;
-    }
+    if (data[i + 3] <= alphaTolerance) transparentPixels++;
   }
 
   const totalPixels = Math.max(1, workW * workH);
@@ -505,6 +510,46 @@ export function buildMaskFromImage(img, options = {}) {
     emptyCanvas.width = size;
     emptyCanvas.height = size;
     return emptyCanvas;
+  }
+
+  let fgArea = 0;
+  let minX = workW;
+  let minY = workH;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (const comp of components) {
+    fgArea += comp.area;
+    if (comp.minX < minX) minX = comp.minX;
+    if (comp.minY < minY) minY = comp.minY;
+    if (comp.maxX > maxX) maxX = comp.maxX;
+    if (comp.maxY > maxY) maxY = comp.maxY;
+  }
+
+  const bboxW = Math.max(1, maxX - minX + 1);
+  const bboxH = Math.max(1, maxY - minY + 1);
+  const bboxArea = bboxW * bboxH;
+  const fillRatio = fgArea / Math.max(1, bboxArea);
+
+  const outlineLike = fillRatio < 0.34 || components.length >= 6;
+
+  if (outlineLike) {
+    const minKeepArea = Math.max(4, Math.round(fgArea * 0.0025));
+    const kept = components.filter((comp) => comp.area >= minKeepArea);
+
+    mask = buildMaskFromComponents(kept, workW, workH);
+
+    mask = dilate(mask, workW, workH, 1);
+    mask = openMask(mask, workW, workH, 1);
+
+    const cropped = cropMask(mask, workW, workH, 1);
+
+    let refined = dilate(cropped.mask, cropped.width, cropped.height, 1);
+    refined = openMask(refined, cropped.width, cropped.height, 1);
+
+    const finalCropped = cropMask(refined, cropped.width, cropped.height, 1);
+
+    return renderFinalMask(finalCropped.mask, finalCropped.width, finalCropped.height);
   }
 
   mask = keepLargestConnectedComponent(mask, workW, workH);
@@ -550,55 +595,59 @@ export function buildMaskFromImage(img, options = {}) {
     1
   );
 
-  const maskCanvas = document.createElement("canvas");
-  maskCanvas.width = finalCropped.width;
-  maskCanvas.height = finalCropped.height;
+  return renderFinalMask(finalCropped.mask, finalCropped.width, finalCropped.height);
 
-  const mctx = maskCanvas.getContext("2d");
-  const outImage = mctx.createImageData(finalCropped.width, finalCropped.height);
+  function renderFinalMask(finalMask, finalWidth, finalHeight) {
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = finalWidth;
+    maskCanvas.height = finalHeight;
 
-  for (let y = 0; y < finalCropped.height; y++) {
-    for (let x = 0; x < finalCropped.width; x++) {
-      const on = finalCropped.mask[index(x, y, finalCropped.width)];
-      const i = (y * finalCropped.width + x) * 4;
+    const mctx = maskCanvas.getContext("2d");
+    const outImage = mctx.createImageData(finalWidth, finalHeight);
 
-      const inside = invert ? !on : !!on;
+    for (let y = 0; y < finalHeight; y++) {
+      for (let x = 0; x < finalWidth; x++) {
+        const on = finalMask[index(x, y, finalWidth)];
+        const i = (y * finalWidth + x) * 4;
 
-      if (inside) {
-        outImage.data[i] = 0;
-        outImage.data[i + 1] = 0;
-        outImage.data[i + 2] = 0;
-        outImage.data[i + 3] = 255;
-      } else {
-        outImage.data[i] = 0;
-        outImage.data[i + 1] = 0;
-        outImage.data[i + 2] = 0;
-        outImage.data[i + 3] = 0;
+        const inside = invert ? !on : !!on;
+
+        if (inside) {
+          outImage.data[i] = 0;
+          outImage.data[i + 1] = 0;
+          outImage.data[i + 2] = 0;
+          outImage.data[i + 3] = 255;
+        } else {
+          outImage.data[i] = 0;
+          outImage.data[i + 1] = 0;
+          outImage.data[i + 2] = 0;
+          outImage.data[i + 3] = 0;
+        }
       }
     }
+
+    mctx.putImageData(outImage, 0, 0);
+
+    const out = document.createElement("canvas");
+    out.width = size;
+    out.height = size;
+
+    const octx = out.getContext("2d");
+    octx.clearRect(0, 0, size, size);
+    octx.imageSmoothingEnabled = false;
+
+    const scale = Math.min(
+      (size * targetFill) / Math.max(1, maskCanvas.width),
+      (size * targetFill) / Math.max(1, maskCanvas.height)
+    );
+
+    const drawW = Math.max(1, Math.round(maskCanvas.width * scale));
+    const drawH = Math.max(1, Math.round(maskCanvas.height * scale));
+    const drawX = Math.floor((size - drawW) / 2);
+    const drawY = Math.floor((size - drawH) / 2);
+
+    octx.drawImage(maskCanvas, drawX, drawY, drawW, drawH);
+
+    return out;
   }
-
-  mctx.putImageData(outImage, 0, 0);
-
-  const out = document.createElement("canvas");
-  out.width = size;
-  out.height = size;
-
-  const octx = out.getContext("2d");
-  octx.clearRect(0, 0, size, size);
-  octx.imageSmoothingEnabled = false;
-
-  const scale = Math.min(
-    (size * targetFill) / Math.max(1, maskCanvas.width),
-    (size * targetFill) / Math.max(1, maskCanvas.height)
-  );
-
-  const drawW = Math.max(1, Math.round(maskCanvas.width * scale));
-  const drawH = Math.max(1, Math.round(maskCanvas.height * scale));
-  const drawX = Math.floor((size - drawW) / 2);
-  const drawY = Math.floor((size - drawH) / 2);
-
-  octx.drawImage(maskCanvas, drawX, drawY, drawW, drawH);
-
-  return out;
 }
