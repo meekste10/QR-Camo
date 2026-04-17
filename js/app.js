@@ -750,62 +750,6 @@ function buildCurrentMaskFromUploaded() {
   return maskCanvas;
 }
 
-function buildPresetMaskFromImage(img, options = {}) {
-  const {
-    size = 800,
-    targetFill = 0.9,
-    workSize = 512
-  } = options;
-
-  const workScale = Math.min(
-    workSize / Math.max(1, img.width),
-    workSize / Math.max(1, img.height),
-    1
-  );
-
-  const workW = Math.max(1, Math.round(img.width * workScale));
-  const workH = Math.max(1, Math.round(img.height * workScale));
-
-  const sourceCanvas = document.createElement("canvas");
-  sourceCanvas.width = workW;
-  sourceCanvas.height = workH;
-
-  const sctx = sourceCanvas.getContext("2d");
-  sctx.clearRect(0, 0, workW, workH);
-  sctx.imageSmoothingEnabled = false;
-  sctx.drawImage(img, 0, 0, workW, workH);
-
-  const imageData = sctx.getImageData(0, 0, workW, workH);
-  const d = imageData.data;
-
-  let transparentPixels = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 250) transparentPixels++;
-  }
-
-  const usesAlphaMask = transparentPixels > d.length / 16;
-  const rawMask = new Uint8Array(workW * workH);
-
-  function idx(x, y, width) {
-    return y * width + x;
-  }
-
-  for (let y = 0; y < workH; y++) {
-    for (let x = 0; x < workW; x++) {
-      const i = (y * workW + x) * 4;
-
-      let inside = false;
-
-      if (usesAlphaMask) {
-        inside = d[i + 3] > 10;
-      } else {
-        const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-        inside = gray < 200;
-      }
-
-      rawMask[idx(x, y, workW)] = inside ? 1 : 0;
-    }
-  }
 
   function cropMask(mask, width, height, padding = 0) {
     let minX = width;
@@ -917,14 +861,8 @@ async function getMaskSource() {
   }
 
   const loaded = await loadMask(maskPresets[selectedMask]);
-  const normalizedPresetMask = buildPresetMaskFromImage(loaded, {
-    size: 800,
-    targetFill: 0.9,
-    workSize: 512
-  });
-
   show(shapeReadyBadge, true);
-  return normalizedPresetMask;
+  return loaded;
 }
 
 async function rebuildBaseAndPlacementIfNeeded() {
