@@ -934,7 +934,6 @@ async function rebuildBaseAndPlacementIfNeeded() {
   if (
     !state.stapledBaseCanvas ||
     !state.currentMaskCanvas ||
-    !state.qrSafeMaskCanvas ||
     state.lastBaseSignature !== signature
   ) {
     state.currentMaskCanvas = buildMaskCanvas({
@@ -945,20 +944,10 @@ async function rebuildBaseAndPlacementIfNeeded() {
       invertMask: !!invertMask?.checked
     });
 
-    const roughPlacement = findBestQrPlacement(
-      state.currentMaskCanvas.getContext("2d"),
-      800,
-      state.moduleCount,
-      qrSizeSelect?.value || DEFAULT_QR_SIZE
-    );
-
-    state.qrSafeMaskCanvas = buildSafeQrMaskCanvas(
-      state.currentMaskCanvas,
-      roughPlacement?.moduleDisplaySize || 1
-    );
+    state.qrSafeMaskCanvas = state.currentMaskCanvas;
 
     state.qrPlacement = findBestQrPlacement(
-      state.qrSafeMaskCanvas.getContext("2d"),
+      state.currentMaskCanvas.getContext("2d"),
       800,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
@@ -979,7 +968,7 @@ async function rebuildBaseAndPlacementIfNeeded() {
 
   if (!state.qrPlacement) {
     state.qrPlacement = findBestQrPlacement(
-      (state.qrSafeMaskCanvas || state.currentMaskCanvas).getContext("2d"),
+      state.currentMaskCanvas.getContext("2d"),
       800,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
