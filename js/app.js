@@ -750,6 +750,162 @@ function buildCurrentMaskFromUploaded() {
   return maskCanvas;
 }
 
+function buildPresetMaskFromImage(img, options = {}) {
+  const {
+    size = 800,
+    targetFill = 0.9,
+    workSize = 512
+  } = options;
+
+  const workScale = Math.min(
+    workSize / Math.max(1, img.width),
+    workSize / Math.max(1, img.height),
+    1
+  );
+
+  const workW = Math.max(1, Math.round(img.width * workScale));
+  const workH = Math.max(1, Math.round(img.height * workScale));
+
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = workW;
+  sourceCanvas.height = workH;
+
+  const sctx = sourceCanvas.getContext("2d");
+  sctx.clearRect(0, 0, workW, workH);
+  sctx.imageSmoothingEnabled = false;
+  sctx.drawImage(img, 0, 0, workW, workH);
+
+  const imageData = sctx.getImageData(0, 0, workW, workH);
+  const d = imageData.data;
+
+  let transparentPixels = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 250) transparentPixels++;
+  }
+
+  const usesAlphaMask = transparentPixels > d.length / 16;
+  const rawMask = new Uint8Array(workW * workH);
+
+  function idx(x, y, width) {
+    return y * width + x;
+  }
+
+  for (let y = 0; y < workH; y++) {
+    for (let x = 0; x < workW; x++) {
+      const i = (y * workW + x) * 4;
+
+      let inside = false;
+
+      if (usesAlphaMask) {
+        inside = d[i + 3] > 10;
+      } else {
+        const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+        inside = gray < 200;
+      }
+
+      rawMask[idx(x, y, workW)] = inside ? 1 : 0;
+    }
+  }
+
+  function cropMask(mask, width, height, padding = 0) {
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!mask[idx(x, y, width)]) continue;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+
+    if (maxX < minX || maxY < minY) {
+      return {
+        mask: new Uint8Array(1),
+        width: 1,
+        height: 1
+      };
+    }
+
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(width - 1, maxX + padding);
+    maxY = Math.min(height - 1, maxY + padding);
+
+    const cropW = maxX - minX + 1;
+    const cropH = maxY - minY + 1;
+    const out = new Uint8Array(cropW * cropH);
+
+    for (let y = 0; y < cropH; y++) {
+      for (let x = 0; x < cropW; x++) {
+        out[idx(x, y, cropW)] = mask[idx(minX + x, minY + y, width)];
+      }
+    }
+
+    return {
+      mask: out,
+      width: cropW,
+      height: cropH
+    };
+  }
+
+  const cropped = cropMask(rawMask, workW, workH, 1);
+
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = cropped.width;
+  maskCanvas.height = cropped.height;
+
+  const mctx = maskCanvas.getContext("2d");
+  const outImage = mctx.createImageData(cropped.width, cropped.height);
+
+  for (let y = 0; y < cropped.height; y++) {
+    for (let x = 0; x < cropped.width; x++) {
+      const on = cropped.mask[idx(x, y, cropped.width)];
+      const i = (y * cropped.width + x) * 4;
+
+      if (on) {
+        outImage.data[i] = 0;
+        outImage.data[i + 1] = 0;
+        outImage.data[i + 2] = 0;
+        outImage.data[i + 3] = 255;
+      } else {
+        outImage.data[i] = 0;
+        outImage.data[i + 1] = 0;
+        outImage.data[i + 2] = 0;
+        outImage.data[i + 3] = 0;
+      }
+    }
+  }
+
+  mctx.putImageData(outImage, 0, 0);
+
+  const out = document.createElement("canvas");
+  out.width = size;
+  out.height = size;
+
+  const octx = out.getContext("2d");
+  octx.clearRect(0, 0, size, size);
+  octx.imageSmoothingEnabled = false;
+
+  const scale = Math.min(
+    (size * targetFill) / Math.max(1, maskCanvas.width),
+    (size * targetFill) / Math.max(1, maskCanvas.height)
+  );
+
+  const drawW = Math.max(1, Math.round(maskCanvas.width * scale));
+  const drawH = Math.max(1, Math.round(maskCanvas.height * scale));
+  const drawX = Math.floor((size - drawW) / 2);
+  const drawY = Math.floor((size - drawH) / 2);
+
+  octx.drawImage(maskCanvas, drawX, drawY, drawW, drawH);
+
+  return out;
+}
+
 async function getMaskSource() {
   if (state.customMaskImage) {
     return buildCurrentMaskFromUploaded();
@@ -761,12 +917,9 @@ async function getMaskSource() {
   }
 
   const loaded = await loadMask(maskPresets[selectedMask]);
-
-  const normalizedPresetMask = buildMaskFromImage(loaded, {
+  const normalizedPresetMask = buildPresetMaskFromImage(loaded, {
     size: 800,
     targetFill: 0.9,
-    backgroundTolerance: 40,
-    alphaTolerance: 12,
     workSize: 512
   });
 
