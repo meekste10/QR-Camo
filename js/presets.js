@@ -9,7 +9,7 @@ export const presetShapeCategories = [
       { key: "cloud", label: "Cloud", src: `${BASE}Cloud.PNG` },
       { key: "file", label: "File", src: `${BASE}File.PNG` },
       { key: "info", label: "Info", src: `${BASE}Info.PNG` },
-      { key: "location", label: "Location", src: `${BASE}Location.png.PNG` },
+      { key: "location", label: "Location", src: `${BASE}Location.PNG` },
       { key: "megaphone", label: "Megaphone", src: `${BASE}Megaphone.PNG` },
       { key: "phone", label: "Phone", src: `${BASE}Phone.PNG` },
       { key: "profile", label: "Profile", src: `${BASE}Profile.PNG` },
@@ -41,7 +41,7 @@ export const presetShapeCategories = [
   {
     category: "Food & Drink",
     shapes: [
-      { key: "fish", label: "Fish", src: `${BASE}Fish.png.PNG` },
+      { key: "fish", label: "Fish", src: `${BASE}Fish.PNG` },
       { key: "food-platter", label: "Food Platter", src: `${BASE}Food-platter.PNG` },
       { key: "lobster", label: "Lobster", src: `${BASE}Lobster.PNG` },
       { key: "martini-glass", label: "Martini Glass", src: `${BASE}Martini-glass.PNG` },
