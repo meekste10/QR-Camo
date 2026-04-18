@@ -1074,6 +1074,11 @@ async function handlePresetShapeSelection(maskKey) {
   setDebug(`Preset shape selected · ${APP_VERSION}`);
 
   await createQrCamo();
+
+  if (state.hasRenderedOnce) {
+    clearLayerCache();
+    await renderOutput();
+  }
 }
 
 async function showSamplePreview(sampleKey) {
