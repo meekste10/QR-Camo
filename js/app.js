@@ -765,18 +765,17 @@ async function getMaskSource() {
 
   const loaded = await loadMask(maskPresets[selectedMask]);
 
-  const normalizedPresetMask = buildMaskFromImage(loaded, {
-    size: 800,
-    targetFill: 0.9,
-    backgroundTolerance: 40,
-    alphaTolerance: 12,
-    workSize: 512
-  });
+const normalizedPresetMask = buildMaskFromImage(loaded, {
+  size: 800,
+  targetFill: 0.9,
+  backgroundTolerance: 40,
+  alphaTolerance: 12,
+  workSize: 512
+});
 
-  show(shapeReadyBadge, true);
-  return normalizedPresetMask;
-}
-
+show(shapeReadyBadge, true);
+return normalizedPresetMask;
+  
 async function rebuildBaseAndPlacementIfNeeded() {
   const maskSource = await getMaskSource();
   const signature = getBaseSignature(maskSource);
