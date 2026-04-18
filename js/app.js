@@ -792,15 +792,16 @@ async function rebuildBaseAndPlacementIfNeeded() {
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
     );
+const effectiveBlockModules = state.customMaskImage ? (state.blockModules || DEFAULT_BLOCK_MODULES) : 1;
 
-    state.stapledBaseCanvas = renderStapledBase({
-      tiles: state.textureTiles,
-      maskCanvas: state.currentMaskCanvas,
-      outputSize: 800,
-      blendTightness: DEFAULT_BLEND_TIGHTNESS,
-      blockModules: state.blockModules || DEFAULT_BLOCK_MODULES,
-      moduleDisplaySize: state.qrPlacement?.moduleDisplaySize || 8
-    });
+state.stapledBaseCanvas = renderStapledBase({
+  tiles: state.textureTiles,
+  maskCanvas: state.currentMaskCanvas,
+  outputSize: 800,
+  blendTightness: DEFAULT_BLEND_TIGHTNESS,
+  blockModules: effectiveBlockModules,
+  moduleDisplaySize: state.qrPlacement?.moduleDisplaySize || 8
+});
 
     state.lastBaseSignature = signature;
     return;
