@@ -108,7 +108,7 @@ const DEFAULT_QR_SIZE = "xxsmall";
 const DEFAULT_QR_TEXT = "";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 96;
-const DEFAULT_MASK_PADDING = 56;
+const DEFAULT_MASK_PADDING = 140;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
@@ -185,7 +185,7 @@ const samplePreviewCandidates = {
     `${SAMPLE_BASE}Info-icon-qr.png`,
     `${SAMPLE_BASE}info-icon-qr.png`
   ],
-  "pizza-greek-qr": [
+  "pizza-qr": [
     `${SAMPLE_BASE}Pizza-greek-qr.png`,
     `${SAMPLE_BASE}pizza-greek-qr.png`
   ],
