@@ -767,10 +767,6 @@ async function getMaskSource() {
   show(shapeReadyBadge, true);
   return loaded;
 }
-
-show(shapeReadyBadge, true);
-return normalizedPresetMask;
-  
 async function rebuildBaseAndPlacementIfNeeded() {
   const maskSource = await getMaskSource();
   const signature = getBaseSignature(maskSource);
