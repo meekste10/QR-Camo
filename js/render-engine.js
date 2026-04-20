@@ -502,7 +502,7 @@ export function renderStapledBase(options) {
 
   const tileDisplaySize = Math.max(1, safeModuleDisplaySize * safeBlockModules);
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.08 + tightness * 0.18;
+  const minCoverage = 0.11 + tightness * 0.20;
 
   for (let y = 0; y < outputSize; y += tileDisplaySize) {
     for (let x = 0; x < outputSize; x += tileDisplaySize) {
