@@ -112,6 +112,9 @@ const DEFAULT_MASK_PADDING = 140;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
+const DEFAULT_PRESET_BLOCK_MODULES = 2;
+const DEFAULT_PRESET_MIN_COVERAGE = 0.08;
+const DEFAULT_CUSTOM_MIN_COVERAGE = null;
 
 const SAMPLE_BASE = "./assets/Samples/";
 
@@ -792,16 +795,23 @@ async function rebuildBaseAndPlacementIfNeeded() {
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
     );
-const effectiveBlockModules = state.customMaskImage ? (state.blockModules || DEFAULT_BLOCK_MODULES) : 1;
+    const isPresetMask = !state.customMaskImage;
+    const effectiveBlockModules = isPresetMask
+      ? DEFAULT_PRESET_BLOCK_MODULES
+      : (state.blockModules || DEFAULT_BLOCK_MODULES);
 
-state.stapledBaseCanvas = renderStapledBase({
-  tiles: state.textureTiles,
-  maskCanvas: state.currentMaskCanvas,
-  outputSize: 800,
-  blendTightness: DEFAULT_BLEND_TIGHTNESS,
-  blockModules: effectiveBlockModules,
-  moduleDisplaySize: state.qrPlacement?.moduleDisplaySize || 8
-});
+    const effectiveMinCoverage = isPresetMask
+      ? DEFAULT_PRESET_MIN_COVERAGE
+      : DEFAULT_CUSTOM_MIN_COVERAGE;
+    state.stapledBaseCanvas = renderStapledBase({
+      tiles: state.textureTiles,
+      maskCanvas: state.currentMaskCanvas,
+      outputSize: 800,
+      blendTightness: DEFAULT_BLEND_TIGHTNESS,
+      blockModules: effectiveBlockModules,
+      moduleDisplaySize: state.qrPlacement?.moduleDisplaySize || 8,
+      minCoverage: effectiveMinCoverage
+    });
 
     state.lastBaseSignature = signature;
     return;
