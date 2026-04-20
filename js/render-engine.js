@@ -485,7 +485,8 @@ export function renderStapledBase(options) {
     outputSize = 800,
     blendTightness = 50,
     blockModules = 2,
-    moduleDisplaySize = 8
+    moduleDisplaySize = 8,
+    minCoverage = null
   } = options;
 
   const mctx = maskCanvas.getContext("2d");
@@ -502,12 +503,15 @@ export function renderStapledBase(options) {
 
   const tileDisplaySize = Math.max(1, safeModuleDisplaySize * safeBlockModules);
   const tightness = clamp(Number(blendTightness) / 100, 0, 1);
-  const minCoverage = 0.11 + tightness * 0.20;
+
+  const computedMinCoverage = 0.14 + tightness * 0.30;
+  const effectiveMinCoverage =
+    Number.isFinite(minCoverage) ? clamp(minCoverage, 0, 1) : computedMinCoverage;
 
   for (let y = 0; y < outputSize; y += tileDisplaySize) {
     for (let x = 0; x < outputSize; x += tileDisplaySize) {
       const coverage = cellMaskCoverage(mctx, x, y, tileDisplaySize);
-      if (coverage < minCoverage) continue;
+      if (coverage < effectiveMinCoverage) continue;
 
       const gridX = Math.floor(x / tileDisplaySize);
       const gridY = Math.floor(y / tileDisplaySize);
@@ -652,7 +656,8 @@ export function render(options) {
     maskPadding = 0,
     invertMask = false,
     blockModules = 2,
-    liveScale = 1
+    liveScale = 1,
+    minCoverage = null
   } = options;
 
   const OUTPUT_SIZE = 800;
@@ -684,13 +689,14 @@ export function render(options) {
     qrSize
   );
 
-  const baseCanvas = renderStapledBase({
+    const baseCanvas = renderStapledBase({
     tiles,
     maskCanvas,
     outputSize: OUTPUT_SIZE,
     blendTightness,
     blockModules,
-    moduleDisplaySize: placement.moduleDisplaySize
+    moduleDisplaySize: placement.moduleDisplaySize,
+    minCoverage
   });
 
   drawSingleQrOverlay({
