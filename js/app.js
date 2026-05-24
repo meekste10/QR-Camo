@@ -131,6 +131,8 @@ let nudgeCount = 0;
 let renderCount = 0;
 let renderTimer = null;
 let isRendering = false;
+let updatePresetScroller = null;
+let updateSamplesScroller = null;
 
 const samplePreviewCandidates = {
   "Coffee-mug-qr": [
@@ -291,6 +293,11 @@ function syncWorkflowVisibility() {
 
   setStepVisible(previewStepSection, hasQr || hasShape);
   setStepVisible(samplesStepSection, hasQr && hasShape);
+
+  requestAnimationFrame(() => {
+    updatePresetScroller?.();
+    updateSamplesScroller?.();
+  });
 }
 
 function unlockWorkflowAfterBothReady() {
@@ -397,6 +404,8 @@ function setupHorizontalScroller(leftBtn, shell, rightBtn) {
 
   requestAnimationFrame(updateButtons);
   setTimeout(updateButtons, 120);
+
+  return updateButtons;
 }
 
 function hexToRgb(hex) {
@@ -496,6 +505,15 @@ function applyCurrentColorsToOutput() {
   );
 
   updateContrastWarning();
+}
+
+function refreshRenderedColors() {
+  if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas && state.sourceQrCanvas) {
+    redrawOverlayOnly();
+    return;
+  }
+
+  applyCurrentColorsToOutput();
 }
 
 function createCanvas(w, h) {
@@ -1285,8 +1303,8 @@ function init() {
   populatePresetShapeCards();
   initSampleCardImages();
 
-  setupHorizontalScroller(presetScrollLeft, presetScrollShell, presetScrollRight);
-  setupHorizontalScroller(samplesScrollLeft, samplesScrollShell, samplesScrollRight);
+  updatePresetScroller = setupHorizontalScroller(presetScrollLeft, presetScrollShell, presetScrollRight);
+  updateSamplesScroller = setupHorizontalScroller(samplesScrollLeft, samplesScrollShell, samplesScrollRight);
 
   if (qrTextInput) {
     qrTextInput.value = "";
@@ -1604,7 +1622,7 @@ function init() {
       });
       updateContrastWarning();
       if (state.hasRenderedOnce && outputCanvas?.width) {
-        applyCurrentColorsToOutput();
+        refreshRenderedColors();
       }
     });
   }
@@ -1616,7 +1634,7 @@ function init() {
       });
       updateContrastWarning();
       if (state.hasRenderedOnce && outputCanvas?.width) {
-        applyCurrentColorsToOutput();
+        refreshRenderedColors();
       }
     });
   }
@@ -1628,7 +1646,7 @@ function init() {
       });
       updateContrastWarning();
       if (state.hasRenderedOnce && outputCanvas?.width) {
-        applyCurrentColorsToOutput();
+        refreshRenderedColors();
       }
     });
   }
