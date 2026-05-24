@@ -273,15 +273,32 @@ function setStepVisible(el, visible) {
   el.classList.toggle("is-locked", !visible);
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function hasRealQrInput() {
+  return !!(state.sourceQrCanvas && state.textureTiles?.length);
+}
+
+function hasRealShapeInput() {
+  return !!(state.customMaskImage || (maskSelect?.value && maskPresets[maskSelect.value]));
+}
+
+function syncWorkflowVisibility() {
+  const hasQr = hasRealQrInput();
+  const hasShape = hasRealShapeInput();
+
+  setStepVisible(previewStepSection, hasQr || hasShape);
+  setStepVisible(samplesStepSection, hasQr && hasShape);
+}
+
 function unlockWorkflowAfterBothReady() {
-  const ready = hasRealQrInput() && hasRealShapeInput();
-  setStepVisible(previewStepSection, ready);
-  setStepVisible(samplesStepSection, ready);
+  syncWorkflowVisibility();
 }
 
 function lockWorkflowUntilReady() {
-  setStepVisible(previewStepSection, false);
-  setStepVisible(samplesStepSection, false);
+  syncWorkflowVisibility();
 }
 
 function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
@@ -293,18 +310,6 @@ function updatePreviewFlags({ hasSource = false, hasOutput = false } = {}) {
   if (previewEmptyState) {
     previewEmptyState.classList.toggle("hidden", hasSource || hasOutput);
   }
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function hasRealQrInput() {
-  return !!(state.sourceQrCanvas && state.textureTiles?.length);
-}
-
-function hasRealShapeInput() {
-  return !!(state.customMaskImage || (maskSelect?.value && maskPresets[maskSelect.value]));
 }
 
 function syncOffsetLabels() {
@@ -697,6 +702,7 @@ async function buildQrFromText(text) {
   setSourceMeta("QR prepared from link");
   setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
   show(qrReadyBadge, true);
+  syncWorkflowVisibility();
 
   track("qr_generated_from_text", {
     textLength: text?.length || 0,
@@ -761,6 +767,7 @@ async function handleQrUpload(file) {
   setSourceMeta(file.name || "Uploaded QR");
   setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
   show(qrReadyBadge, true);
+  syncWorkflowVisibility();
 
   track("qr_upload_processed", {
     fileName: file?.name || null,
@@ -783,6 +790,7 @@ function buildCurrentMaskFromUploaded() {
 
   state.customMaskCanvas = maskCanvas;
   show(shapeReadyBadge, true);
+  syncWorkflowVisibility();
   return maskCanvas;
 }
 
@@ -1027,12 +1035,14 @@ async function createQrCamo() {
   if (!okQr) {
     setDebug("Paste a link or upload a QR first.");
     setPreviewMeta(`Type or paste a link, then choose a shape · ${APP_VERSION}`);
+    syncWorkflowVisibility();
     return false;
   }
 
   if (!hasRealShapeInput()) {
     setDebug("Choose a shape next.");
     setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
+    syncWorkflowVisibility();
     return false;
   }
 
@@ -1124,6 +1134,7 @@ async function handlePresetShapeSelection(maskKey) {
 
   show(shapeReadyBadge, true);
   syncPresetShapeSelectionUI();
+  syncWorkflowVisibility();
   resetGenerateButton();
 
   track("preset_shape_selected", { shape: maskKey });
@@ -1349,6 +1360,7 @@ function init() {
         unlockWorkflowAfterBothReady();
         await createQrCamo();
       } else {
+        syncWorkflowVisibility();
         setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
       }
     });
@@ -1366,6 +1378,7 @@ function init() {
         unlockWorkflowAfterBothReady();
         await createQrCamo();
       } else {
+        syncWorkflowVisibility();
         setPreviewMeta(`QR ready · choose a shape next · ${APP_VERSION}`);
       }
     });
@@ -1389,6 +1402,8 @@ function init() {
       if (hasRealShapeInput()) {
         unlockWorkflowAfterBothReady();
         await createQrCamo();
+      } else {
+        syncWorkflowVisibility();
       }
     });
   }
@@ -1412,6 +1427,7 @@ function init() {
         syncPresetShapeSelectionUI();
 
         show(shapeReadyBadge, true);
+        syncWorkflowVisibility();
 
         track("custom_shape_upload_success", {
           fileName: file.name
