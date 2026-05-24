@@ -51,46 +51,35 @@ export const presetShapeCategories = [
     ]
   },
   {
-    category: "Home, Property & Access",
+    category: "Home & Real Estate",
     shapes: [
       { key: "door", label: "Door", src: `${BASE}Door.PNG` },
+      { key: "hammer", label: "Hammer", src: `${BASE}Hammer.PNG` },
       { key: "house", label: "House", src: `${BASE}house.png` },
       { key: "house-2", label: "House 2", src: `${BASE}House-2.PNG` },
       { key: "house-fence", label: "House Fence", src: `${BASE}House-fence.PNG` },
       { key: "key", label: "Key", src: `${BASE}Key.PNG` },
       { key: "keyhole", label: "Keyhole", src: `${BASE}Keyhole.PNG` },
       { key: "lock", label: "Lock", src: `${BASE}Lock.PNG` },
+      { key: "toolkit", label: "Toolkit", src: `${BASE}Toolkit.PNG` },
       { key: "tree", label: "Tree", src: `${BASE}tree.png` }
     ]
   },
   {
-    category: "People & Health",
+    category: "Other",
     shapes: [
       { key: "human-head", label: "Human Head", src: `${BASE}Human-head.PNG` },
-      { key: "pharmacy", label: "Pharmacy", src: `${BASE}Pharmacy.PNG` }
-    ]
-  },
-  {
-    category: "Tools & Utility",
-    shapes: [
-      { key: "hammer", label: "Hammer", src: `${BASE}Hammer.PNG` },
       { key: "microphone", label: "Microphone", src: `${BASE}Microphone.PNG` },
+      { key: "pharmacy", label: "Pharmacy", src: `${BASE}Pharmacy.PNG` },
       { key: "play-button", label: "Play Button", src: `${BASE}Play-button.PNG` },
       { key: "repair-wrench", label: "Repair Wrench", src: `${BASE}Repair-Wrench.PNG` },
-      { key: "toolkit", label: "Toolkit", src: `${BASE}Toolkit.PNG` },
-      { key: "t-shirts", label: "T-Shirts", src: `${BASE}T-shirts.PNG` }
-    ]
-  },
-  {
-    category: "Fun & Novelty",
-    shapes: [
       { key: "turtle", label: "Turtle", src: `${BASE}turtle.png` }
     ]
   }
 ];
 
-export const allPresetShapes = presetShapeCategories.flatMap((group) => group.shapes);
-
 export const maskPresets = Object.fromEntries(
-  allPresetShapes.map((shape) => [shape.key, shape.src])
+  presetShapeCategories.flatMap((group) =>
+    group.shapes.map((shape) => [shape.key, shape.src])
+  )
 );
