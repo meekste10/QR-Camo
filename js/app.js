@@ -1,4 +1,5 @@
 const APP_VERSION = "v0.6.4";
+const OUTPUT_SIZE = 800;
 
 import { state } from "./state.js?v=0.6.4";
 import {
@@ -33,7 +34,6 @@ const appVersionBadge = document.getElementById("appVersionBadge");
 const loadingOverlay = document.getElementById("loadingOverlay");
 
 const qrTextInput = document.getElementById("qrTextInput");
-const makeQrBtn = document.getElementById("makeQrBtn");
 const qrUpload = document.getElementById("qrUpload");
 
 const maskSelect = document.getElementById("maskSelect");
@@ -42,6 +42,9 @@ const customMaskUpload = document.getElementById("customMaskUpload");
 const qrSizeSelect = document.getElementById("qrSizeSelect");
 const qrScaleSlider = document.getElementById("qrScaleSlider");
 const qrScaleLabel = document.getElementById("qrScaleLabel");
+
+const blendTightness = document.getElementById("blendTightness");
+const blendTightnessLabel = document.getElementById("blendTightnessLabel");
 
 const maskScale = document.getElementById("maskScale");
 const maskScaleText = document.getElementById("maskScaleText");
@@ -80,8 +83,13 @@ const presetShapesGrid = document.getElementById("presetShapesGrid");
 const previewStepSection = document.getElementById("previewStepSection");
 const samplesStepSection = document.getElementById("samplesStepSection");
 
-const selectedChannelSelect = document.getElementById("selectedChannelSelect");
-const channelControlsWrap = document.getElementById("channelControls");
+const presetScrollLeft = document.getElementById("presetScrollLeft");
+const presetScrollRight = document.getElementById("presetScrollRight");
+const presetScrollShell = document.getElementById("presetScrollShell");
+
+const samplesScrollLeft = document.getElementById("samplesScrollLeft");
+const samplesScrollRight = document.getElementById("samplesScrollRight");
+const samplesScrollShell = document.getElementById("samplesScrollShell");
 
 state.customMaskImage = null;
 state.customMaskCanvas = null;
@@ -108,11 +116,12 @@ const DEFAULT_QR_SIZE = "xxsmall";
 const DEFAULT_QR_TEXT = "";
 const DEFAULT_BLEND_TIGHTNESS = 50;
 const DEFAULT_MASK_SCALE = 140;
-const DEFAULT_MASK_PADDING = 140;
+const DEFAULT_MASK_PADDING = 56;
 const DEFAULT_BLOCK_MODULES = 2;
 const DEFAULT_UPLOAD_BLOCK_MODULES = 3;
 const DEFAULT_UPLOAD_THRESHOLD = 145;
-const DEFAULT_PRESET_BLOCK_MODULES = 2;
+
+const DEFAULT_PRESET_BLOCK_MODULES = 1;
 const DEFAULT_PRESET_MIN_COVERAGE = 0.08;
 const DEFAULT_CUSTOM_MIN_COVERAGE = null;
 
@@ -213,6 +222,7 @@ function currentTrackingProps() {
   return {
     qrSize: qrSizeSelect?.value || null,
     liveQrScale: state.liveQrScale || 1,
+    blendTightness: Number(blendTightness?.value || DEFAULT_BLEND_TIGHTNESS),
     moduleCount: state.moduleCount || null,
     tileCount: state.textureTiles?.length || 0,
     hasCustomMask: !!state.customMaskImage,
@@ -313,6 +323,12 @@ function syncQrScaleLabel() {
   }
 }
 
+function syncBlendTightnessLabel() {
+  if (blendTightness && blendTightnessLabel) {
+    blendTightnessLabel.textContent = String(blendTightness.value);
+  }
+}
+
 function resetGenerateButton() {
   if (!generateBtn) return;
   generateBtn.textContent = "Create QR-Camo";
@@ -322,19 +338,11 @@ function resetGenerateButton() {
 }
 
 function setCreatedState() {
-  if (generateBtn) {
-    generateBtn.textContent = "Created";
-    generateBtn.classList.remove("btn-primary");
-    generateBtn.classList.add("btn-secondary");
-    generateBtn.disabled = true;
-  }
-
-  if (makeQrBtn) {
-    makeQrBtn.textContent = "Created";
-    makeQrBtn.classList.remove("btn-primary");
-    makeQrBtn.classList.add("btn-secondary");
-    makeQrBtn.disabled = true;
-  }
+  if (!generateBtn) return;
+  generateBtn.textContent = "Created";
+  generateBtn.classList.remove("btn-primary");
+  generateBtn.classList.add("btn-secondary");
+  generateBtn.disabled = true;
 }
 
 function scheduleHeavyRender(delay = 120) {
@@ -343,14 +351,6 @@ function scheduleHeavyRender(delay = 120) {
     renderTimer = null;
     await autoRenderIfReady(true);
   }, delay);
-}
-
-function hideLegacyMultiQrUI() {
-  const oldSelectBlock = selectedChannelSelect?.closest(".control-block");
-  const oldControlsBlock = channelControlsWrap?.closest(".channel-controls-section");
-
-  if (oldSelectBlock) oldSelectBlock.classList.add("hidden");
-  if (oldControlsBlock) oldControlsBlock.classList.add("hidden");
 }
 
 function syncPresetShapeSelectionUI() {
@@ -363,13 +363,44 @@ function syncPresetShapeSelectionUI() {
   });
 }
 
+function setupHorizontalScroller(leftBtn, shell, rightBtn) {
+  if (!shell || !leftBtn || !rightBtn) return;
+
+  const getStep = () => Math.max(220, Math.round(shell.clientWidth * 0.85));
+
+  const updateButtons = () => {
+    const maxScrollLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+    const hasOverflow = maxScrollLeft > 4;
+
+    leftBtn.disabled = !hasOverflow || shell.scrollLeft <= 4;
+    rightBtn.disabled = !hasOverflow || shell.scrollLeft >= maxScrollLeft - 4;
+
+    leftBtn.classList.toggle("is-disabled", leftBtn.disabled);
+    rightBtn.classList.toggle("is-disabled", rightBtn.disabled);
+  };
+
+  leftBtn.addEventListener("click", () => {
+    shell.scrollBy({ left: -getStep(), behavior: "smooth" });
+  });
+
+  rightBtn.addEventListener("click", () => {
+    shell.scrollBy({ left: getStep(), behavior: "smooth" });
+  });
+
+  shell.addEventListener("scroll", updateButtons, { passive: true });
+  window.addEventListener("resize", updateButtons);
+
+  requestAnimationFrame(updateButtons);
+  setTimeout(updateButtons, 120);
+}
+
 function hexToRgb(hex) {
   const clean = (hex || "").replace("#", "").trim();
   const full = clean.length === 3
     ? clean.split("").map((c) => c + c).join("")
     : clean;
 
-  const int = parseInt(full, 16);
+  const int = parseInt(full || "000000", 16);
   return {
     r: (int >> 16) & 255,
     g: (int >> 8) & 255,
@@ -496,11 +527,11 @@ function drawContain(ctx, source, width, height, padding = 0, background = null)
 function paintSourcePreview(sourceCanvas) {
   if (!sourceCanvas || !sourcePreviewCanvas) return;
 
-  sourcePreviewCanvas.width = 800;
-  sourcePreviewCanvas.height = 800;
+  sourcePreviewCanvas.width = OUTPUT_SIZE;
+  sourcePreviewCanvas.height = OUTPUT_SIZE;
 
   const ctx = sourcePreviewCanvas.getContext("2d");
-  drawContain(ctx, sourceCanvas, 800, 800, 40, "#0a1020");
+  drawContain(ctx, sourceCanvas, OUTPUT_SIZE, OUTPUT_SIZE, 40, "#0a1020");
 
   updatePreviewFlags({ hasSource: true, hasOutput: false });
 }
@@ -538,6 +569,7 @@ function clearQrPreparedState() {
 
   clearCanvas(sourcePreviewCanvas);
   clearCanvas(outputCanvas);
+
   show(qrReadyBadge, false);
 
   updatePreviewFlags({
@@ -558,6 +590,7 @@ function getBaseSignature(maskSource) {
     maskScale: Number(maskScale?.value || 0),
     qrSize: qrSizeSelect?.value || DEFAULT_QR_SIZE,
     blockModules: state.blockModules || DEFAULT_BLOCK_MODULES,
+    blendTightness: Number(blendTightness?.value || DEFAULT_BLEND_TIGHTNESS),
     maskW: maskSource?.width || 0,
     maskH: maskSource?.height || 0
   });
@@ -741,7 +774,7 @@ function buildCurrentMaskFromUploaded() {
   if (!state.customMaskImage) return null;
 
   const maskCanvas = buildMaskFromImage(state.customMaskImage, {
-    size: 800,
+    size: OUTPUT_SIZE,
     targetFill: 0.9,
     backgroundTolerance: 40,
     alphaTolerance: 12,
@@ -752,9 +785,6 @@ function buildCurrentMaskFromUploaded() {
   show(shapeReadyBadge, true);
   return maskCanvas;
 }
-
-
-
 
 async function getMaskSource() {
   if (state.customMaskImage) {
@@ -770,6 +800,7 @@ async function getMaskSource() {
   show(shapeReadyBadge, true);
   return loaded;
 }
+
 async function rebuildBaseAndPlacementIfNeeded() {
   const maskSource = await getMaskSource();
   const signature = getBaseSignature(maskSource);
@@ -777,25 +808,38 @@ async function rebuildBaseAndPlacementIfNeeded() {
   if (
     !state.stapledBaseCanvas ||
     !state.currentMaskCanvas ||
+    !state.qrSafeMaskCanvas ||
     state.lastBaseSignature !== signature
   ) {
     state.currentMaskCanvas = buildMaskCanvas({
       maskImg: maskSource,
-      outputSize: 800,
+      outputSize: OUTPUT_SIZE,
       maskScale: Number(maskScale?.value || DEFAULT_MASK_SCALE),
       maskPadding: DEFAULT_MASK_PADDING,
       invertMask: !!invertMask?.checked
     });
 
-    state.qrSafeMaskCanvas = state.currentMaskCanvas;
-
-    state.qrPlacement = findBestQrPlacement(
+    const roughPlacement = findBestQrPlacement(
       state.currentMaskCanvas.getContext("2d"),
-      800,
+      OUTPUT_SIZE,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
     );
+
+    state.qrSafeMaskCanvas = buildSafeQrMaskCanvas(
+      state.currentMaskCanvas,
+      roughPlacement?.moduleDisplaySize || 1
+    );
+
+    state.qrPlacement = findBestQrPlacement(
+      (state.qrSafeMaskCanvas || state.currentMaskCanvas).getContext("2d"),
+      OUTPUT_SIZE,
+      state.moduleCount,
+      qrSizeSelect?.value || DEFAULT_QR_SIZE
+    );
+
     const isPresetMask = !state.customMaskImage;
+
     const effectiveBlockModules = isPresetMask
       ? DEFAULT_PRESET_BLOCK_MODULES
       : (state.blockModules || DEFAULT_BLOCK_MODULES);
@@ -803,11 +847,12 @@ async function rebuildBaseAndPlacementIfNeeded() {
     const effectiveMinCoverage = isPresetMask
       ? DEFAULT_PRESET_MIN_COVERAGE
       : DEFAULT_CUSTOM_MIN_COVERAGE;
+
     state.stapledBaseCanvas = renderStapledBase({
       tiles: state.textureTiles,
       maskCanvas: state.currentMaskCanvas,
-      outputSize: 800,
-      blendTightness: DEFAULT_BLEND_TIGHTNESS,
+      outputSize: OUTPUT_SIZE,
+      blendTightness: Number(blendTightness?.value || DEFAULT_BLEND_TIGHTNESS),
       blockModules: effectiveBlockModules,
       moduleDisplaySize: state.qrPlacement?.moduleDisplaySize || 8,
       minCoverage: effectiveMinCoverage
@@ -819,8 +864,8 @@ async function rebuildBaseAndPlacementIfNeeded() {
 
   if (!state.qrPlacement) {
     state.qrPlacement = findBestQrPlacement(
-      state.currentMaskCanvas.getContext("2d"),
-      800,
+      (state.qrSafeMaskCanvas || state.currentMaskCanvas).getContext("2d"),
+      OUTPUT_SIZE,
       state.moduleCount,
       qrSizeSelect?.value || DEFAULT_QR_SIZE
     );
@@ -832,13 +877,13 @@ function redrawOverlayOnly() {
     return false;
   }
 
-  outputCanvas.width = 800;
-  outputCanvas.height = 800;
+  outputCanvas.width = OUTPUT_SIZE;
+  outputCanvas.height = OUTPUT_SIZE;
 
   drawSingleQrOverlay({
     baseCanvas: state.stapledBaseCanvas,
     maskCanvas: state.currentMaskCanvas,
-    qrMaskCanvas: state.currentMaskCanvas,
+    qrMaskCanvas: state.qrSafeMaskCanvas || state.currentMaskCanvas,
     outputCanvas,
     sourceQrCanvas: state.sourceQrCanvas,
     moduleCount: state.moduleCount,
@@ -847,7 +892,7 @@ function redrawOverlayOnly() {
     liveScale: Number(state.liveQrScale || 1),
     qrOffsetX: Number(qrOffsetX?.value || 0),
     qrOffsetY: Number(qrOffsetY?.value || 0),
-    outputSize: 800
+    outputSize: OUTPUT_SIZE
   });
 
   applyCurrentColorsToOutput();
@@ -981,7 +1026,7 @@ async function createQrCamo() {
   const okQr = await ensureQrPrepared();
   if (!okQr) {
     setDebug("Paste a link or upload a QR first.");
-    setPreviewMeta(`Type or paste a link, then tap Done or tap a shape · ${APP_VERSION}`);
+    setPreviewMeta(`Type or paste a link, then choose a shape · ${APP_VERSION}`);
     return false;
   }
 
@@ -1085,11 +1130,6 @@ async function handlePresetShapeSelection(maskKey) {
   setDebug(`Preset shape selected · ${APP_VERSION}`);
 
   await createQrCamo();
-
-  if (state.hasRenderedOnce) {
-    clearLayerCache();
-    await renderOutput();
-  }
 }
 
 async function showSamplePreview(sampleKey) {
@@ -1104,10 +1144,10 @@ async function showSamplePreview(sampleKey) {
 
     clearCanvas(sourcePreviewCanvas);
 
-    outputCanvas.width = 800;
-    outputCanvas.height = 800;
+    outputCanvas.width = OUTPUT_SIZE;
+    outputCanvas.height = OUTPUT_SIZE;
     const ctx = outputCanvas.getContext("2d");
-    drawContain(ctx, img, 800, 800, 40, "#0a1020");
+    drawContain(ctx, img, OUTPUT_SIZE, OUTPUT_SIZE, 40, "#0a1020");
 
     updatePreviewFlags({ hasSource: false, hasOutput: true });
 
@@ -1165,6 +1205,7 @@ function resetAll() {
   if (qrSizeSelect) qrSizeSelect.value = DEFAULT_QR_SIZE;
   if (maskScale) maskScale.value = String(DEFAULT_MASK_SCALE);
   if (maskScaleText) maskScaleText.value = String(DEFAULT_MASK_SCALE);
+  if (blendTightness) blendTightness.value = String(DEFAULT_BLEND_TIGHTNESS);
   if (invertMask) invertMask.checked = false;
 
   if (qrOffsetX) qrOffsetX.value = "0";
@@ -1201,6 +1242,7 @@ function resetAll() {
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncQrScaleLabel();
+  syncBlendTightnessLabel();
   syncPresetShapeSelectionUI();
   updateContrastWarning();
 
@@ -1231,11 +1273,13 @@ function init() {
   populatePresetSelect();
   populatePresetShapeCards();
   initSampleCardImages();
-  hideLegacyMultiQrUI();
+
+  setupHorizontalScroller(presetScrollLeft, presetScrollShell, presetScrollRight);
+  setupHorizontalScroller(samplesScrollLeft, samplesScrollShell, samplesScrollRight);
 
   if (qrTextInput) {
     qrTextInput.value = "";
-    qrTextInput.placeholder = "Paste link, then tap Done or tap a shape";
+    qrTextInput.placeholder = "Paste link, then choose a shape";
   }
 
   if (qrSizeSelect) {
@@ -1244,6 +1288,10 @@ function init() {
 
   if (qrScaleSlider) {
     qrScaleSlider.value = "100";
+  }
+
+  if (blendTightness) {
+    blendTightness.value = String(DEFAULT_BLEND_TIGHTNESS);
   }
 
   if (maskScale) {
@@ -1260,6 +1308,7 @@ function init() {
   syncOffsetLabels();
   syncMaskScaleLabel();
   syncQrScaleLabel();
+  syncBlendTightnessLabel();
   syncPresetShapeSelectionUI();
   updateContrastWarning();
   updatePreviewFlags({ hasSource: false, hasOutput: false });
@@ -1286,7 +1335,7 @@ function init() {
       });
 
       setSourceMeta("link typed · not confirmed yet");
-      setPreviewMeta(`Link typed · tap Done or tap a shape to confirm it · ${APP_VERSION}`);
+      setPreviewMeta(`Link typed · choose a shape to use it · ${APP_VERSION}`);
     });
 
     qrTextInput.addEventListener("keydown", async (e) => {
@@ -1449,6 +1498,23 @@ function init() {
       if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
         redrawOverlayOnly();
         setPreviewMeta(`QR scale updated · ${APP_VERSION}`);
+      }
+    });
+  }
+
+  if (blendTightness) {
+    blendTightness.addEventListener("input", () => {
+      syncBlendTightnessLabel();
+
+      track("blend_tightness_changed", {
+        value: Number(blendTightness.value || DEFAULT_BLEND_TIGHTNESS)
+      });
+
+      resetGenerateButton();
+      clearLayerCache();
+
+      if (state.hasRenderedOnce) {
+        scheduleHeavyRender(40);
       }
     });
   }
