@@ -67,8 +67,28 @@
 
           <label class="label">Preset shapes</label>
 
-          <div class="samples-marquee-shell preset-marquee-shell">
-            <div id="presetShapesGrid" class="preset-categories-grid"></div>
+          <div class="marquee-nav-row">
+            <button
+              id="presetScrollLeft"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll preset shapes left"
+            >
+              ←
+            </button>
+
+            <div id="presetScrollShell" class="samples-marquee-shell preset-marquee-shell">
+              <div id="presetShapesGrid" class="preset-categories-grid"></div>
+            </div>
+
+            <button
+              id="presetScrollRight"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll preset shapes right"
+            >
+              →
+            </button>
           </div>
 
           <select id="maskSelect" class="select-input hidden"></select>
@@ -131,6 +151,22 @@
                   <div class="offset-row">
                     <div class="offset-chip">Scale: <span id="qrScaleLabel">100</span>%</div>
                   </div>
+                </div>
+              </div>
+
+              <div class="control-block">
+                <label class="label" for="blendTightness">Blend tightness</label>
+                <input
+                  id="blendTightness"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="50"
+                  class="range-input"
+                />
+                <div class="offset-row">
+                  <div class="offset-chip">Blend: <span id="blendTightnessLabel">50</span>%</div>
                 </div>
               </div>
 
@@ -207,7 +243,7 @@
                   />
 
                   <div class="offset-row">
-                    <div class="offset-chip">Shape: <span id="maskScaleLabel">100</span>%</div>
+                    <div class="offset-chip">Shape: <span id="maskScaleLabel">140</span>%</div>
                   </div>
 
                   <div id="contrastWarning" class="helper hidden">
@@ -233,27 +269,47 @@
           <h2>Samples</h2>
           <p class="helper">Swipe through example QR-Camo designs.</p>
 
-          <div class="samples-marquee-shell">
-            <div class="samples-marquee-track" id="samplesGrid">
-              <button class="sample-card" type="button" data-sample="Coffee-mug-qr"><img alt="Coffee mug QR sample" /><span>Coffee Mug</span></button>
-              <button class="sample-card" type="button" data-sample="Calendar-qr"><img alt="Calendar QR sample" /><span>Calendar</span></button>
-              <button class="sample-card" type="button" data-sample="Headphones-qr"><img alt="Headphones QR sample" /><span>Headphones</span></button>
-              <button class="sample-card" type="button" data-sample="repair-wrench-qr"><img alt="Repair wrench QR sample" /><span>Repair</span></button>
-              <button class="sample-card" type="button" data-sample="profile-icon-qr"><img alt="Profile QR sample" /><span>Profile</span></button>
-              <button class="sample-card" type="button" data-sample="lock-icon-qr"><img alt="Lock QR sample" /><span>Lock</span></button>
-              <button class="sample-card" type="button" data-sample="shop-bag-qr"><img alt="Shop bag QR sample" /><span>Shop Bag</span></button>
-              <button class="sample-card" type="button" data-sample="gift-qr"><img alt="Gift QR sample" /><span>Gift</span></button>
-              <button class="sample-card" type="button" data-sample="play-button-qr"><img alt="Play button QR sample" /><span>Play</span></button>
-              <button class="sample-card" type="button" data-sample="map-qr"><img alt="Map QR sample" /><span>Map</span></button>
-              <button class="sample-card" type="button" data-sample="trophy-qr"><img alt="Trophy QR sample" /><span>Trophy</span></button>
-              <button class="sample-card" type="button" data-sample="human-head-qr"><img alt="Human head QR sample" /><span>Human Head</span></button>
-              <button class="sample-card" type="button" data-sample="door-qr"><img alt="Door QR sample" /><span>Door</span></button>
-              <button class="sample-card" type="button" data-sample="pharmacy-qr"><img alt="Pharmacy QR sample" /><span>Pharmacy</span></button>
-              <button class="sample-card" type="button" data-sample="question-icon-qr"><img alt="Question icon QR sample" /><span>Question</span></button>
-              <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info QR sample" /><span>Info</span></button>
-              <button class="sample-card" type="button" data-sample="pizza-greek-qr"><img alt="Pizza Greek QR sample" /><span>Pizza Greek</span></button>
-              <button class="sample-card" type="button" data-sample="heart-lt-blue-qr"><img alt="Heart QR sample" /><span>Heart</span></button>
+          <div class="marquee-nav-row">
+            <button
+              id="samplesScrollLeft"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll samples left"
+            >
+              ←
+            </button>
+
+            <div id="samplesScrollShell" class="samples-marquee-shell">
+              <div class="samples-marquee-track" id="samplesGrid">
+                <button class="sample-card" type="button" data-sample="Coffee-mug-qr"><img alt="Coffee mug QR sample" /><span>Coffee Mug</span></button>
+                <button class="sample-card" type="button" data-sample="Calendar-qr"><img alt="Calendar QR sample" /><span>Calendar</span></button>
+                <button class="sample-card" type="button" data-sample="Headphones-qr"><img alt="Headphones QR sample" /><span>Headphones</span></button>
+                <button class="sample-card" type="button" data-sample="repair-wrench-qr"><img alt="Repair wrench QR sample" /><span>Repair</span></button>
+                <button class="sample-card" type="button" data-sample="profile-icon-qr"><img alt="Profile QR sample" /><span>Profile</span></button>
+                <button class="sample-card" type="button" data-sample="lock-icon-qr"><img alt="Lock QR sample" /><span>Lock</span></button>
+                <button class="sample-card" type="button" data-sample="shop-bag-qr"><img alt="Shop bag QR sample" /><span>Shop Bag</span></button>
+                <button class="sample-card" type="button" data-sample="gift-qr"><img alt="Gift QR sample" /><span>Gift</span></button>
+                <button class="sample-card" type="button" data-sample="play-button-qr"><img alt="Play button QR sample" /><span>Play</span></button>
+                <button class="sample-card" type="button" data-sample="map-qr"><img alt="Map QR sample" /><span>Map</span></button>
+                <button class="sample-card" type="button" data-sample="trophy-qr"><img alt="Trophy QR sample" /><span>Trophy</span></button>
+                <button class="sample-card" type="button" data-sample="human-head-qr"><img alt="Human head QR sample" /><span>Human Head</span></button>
+                <button class="sample-card" type="button" data-sample="door-qr"><img alt="Door QR sample" /><span>Door</span></button>
+                <button class="sample-card" type="button" data-sample="pharmacy-qr"><img alt="Pharmacy QR sample" /><span>Pharmacy</span></button>
+                <button class="sample-card" type="button" data-sample="question-icon-qr"><img alt="Question icon QR sample" /><span>Question</span></button>
+                <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info QR sample" /><span>Info</span></button>
+                <button class="sample-card" type="button" data-sample="pizza-qr"><img alt="Pizza QR sample" /><span>Pizza</span></button>
+                <button class="sample-card" type="button" data-sample="heart-lt-blue-qr"><img alt="Heart QR sample" /><span>Heart</span></button>
+              </div>
             </div>
+
+            <button
+              id="samplesScrollRight"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll samples right"
+            >
+              →
+            </button>
           </div>
         </div>
 
