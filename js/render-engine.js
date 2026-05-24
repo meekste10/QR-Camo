@@ -689,7 +689,7 @@ export function render(options) {
     qrSize
   );
 
-    const baseCanvas = renderStapledBase({
+  const baseCanvas = renderStapledBase({
     tiles,
     maskCanvas,
     outputSize: OUTPUT_SIZE,
@@ -702,7 +702,7 @@ export function render(options) {
   drawSingleQrOverlay({
     baseCanvas,
     maskCanvas,
-    qrMaskCanvas: maskCanvas,
+    qrMaskCanvas,
     outputCanvas,
     sourceQrCanvas,
     moduleCount,
