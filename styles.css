@@ -479,7 +479,7 @@ input[type="color"]::-moz-color-swatch{
 
 .source-preview-layer{
   z-index:1;
-  opacity:.14;
+  opacity:0;
 }
 
 .output-preview-layer{
@@ -488,7 +488,7 @@ input[type="color"]::-moz-color-swatch{
 }
 
 .preview-stage.has-source .source-preview-layer{
-  opacity:.14;
+  opacity:1;
 }
 
 .preview-stage.has-output .output-preview-layer{
