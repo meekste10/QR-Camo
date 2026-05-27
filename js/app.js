@@ -72,6 +72,7 @@ const contrastWarning = document.getElementById("contrastWarning");
 const generateBtn = document.getElementById("generateBtn");
 const resetBtn = document.getElementById("resetBtn");
 const exportBtn = document.getElementById("exportBtn");
+const exportQrBtn = document.getElementById("exportQrBtn");
 
 const previewMeta = document.getElementById("previewMeta");
 const sourceMeta = document.getElementById("sourceMeta");
@@ -746,6 +747,38 @@ function rebuildTextureTilesForCurrentStyle() {
   state.textureTiles = tiles;
   state.moduleStyle = style;
   return true;
+}
+
+
+function buildStandaloneQrExportCanvas() {
+  const qrCanvas = state.normalizedQrCanvas || state.sourceQrCanvas;
+  if (!qrCanvas || !qrCanvas.width || !qrCanvas.height) return null;
+
+  const style = qrStyleSelect?.value || state.moduleStyle || DEFAULT_QR_STYLE;
+  const modulePixels = 20;
+  const quietModules = 4;
+
+  const styledQrCanvas = buildStyledQrCanvas(qrCanvas, style, {
+    modulePixels,
+    includeLightModules: true
+  });
+
+  if (!styledQrCanvas || !styledQrCanvas.width || !styledQrCanvas.height) {
+    return null;
+  }
+
+  const quietPx = quietModules * modulePixels;
+  const out = document.createElement("canvas");
+  out.width = styledQrCanvas.width + quietPx * 2;
+  out.height = styledQrCanvas.height + quietPx * 2;
+
+  const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(styledQrCanvas, quietPx, quietPx);
+
+  return out;
 }
 
 async function buildQrFromText(text) {
@@ -1552,6 +1585,33 @@ function init() {
           message: err.message
         });
         setDebug(`Export failed: ${err.message}`);
+      }
+    });
+  }
+
+
+  if (exportQrBtn) {
+    exportQrBtn.addEventListener("click", () => {
+      try {
+        const qrExportCanvas = buildStandaloneQrExportCanvas();
+
+        if (!qrExportCanvas || !qrExportCanvas.width || !qrExportCanvas.height) {
+          track("export_qr_blocked_no_qr");
+          setDebug("Create or upload a QR first.");
+          return;
+        }
+
+        exportPNG(qrExportCanvas, "qr-code.png");
+
+        track("export_qr_success", currentTrackingProps());
+        setDebug(`Exported QR · ${APP_VERSION}`);
+      } catch (err) {
+        console.error(err);
+        track("export_qr_failed", {
+          ...currentTrackingProps(),
+          message: err.message
+        });
+        setDebug(`Export QR failed: ${err.message}`);
       }
     });
   }
