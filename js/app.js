@@ -23,6 +23,7 @@ import {
   drawSingleQrOverlay
 } from "./render-engine.js?v=0.6.4";
 import { exportPNG } from "./export.js?v=0.6.4";
+import { buildStyledQrCanvas } from "./module-style-engine.js?v=0.6.4";
 
 console.log("QR CAMO BUILD:", APP_VERSION);
 
@@ -616,6 +617,7 @@ function getBaseSignature(maskSource) {
     invertMask: !!invertMask?.checked,
     maskScale: Number(maskScale?.value || 0),
     qrSize: qrSizeSelect?.value || DEFAULT_QR_SIZE,
+    moduleStyle: qrStyleSelect?.value || state.moduleStyle || DEFAULT_QR_STYLE,
     blockModules: state.blockModules || DEFAULT_BLOCK_MODULES,
     blendTightness: Number(blendTightness?.value || DEFAULT_BLEND_TIGHTNESS),
     maskW: maskSource?.width || 0,
@@ -686,34 +688,84 @@ function buildGeneratedQrCanvas(text) {
   };
 }
 
+
+function buildInteriorCanvasForCurrentStyle(qrCanvas, blockModules = DEFAULT_BLOCK_MODULES) {
+  const style = qrStyleSelect?.value || state.moduleStyle || DEFAULT_QR_STYLE;
+
+  if (!qrCanvas || !qrCanvas.width || !qrCanvas.height) {
+    return null;
+  }
+
+  if (style === "classic") {
+    return cropQrInterior(qrCanvas, 8);
+  }
+
+  const styledModulePixels = Math.max(6, Number(blockModules || DEFAULT_BLOCK_MODULES) * 6);
+  const styledQrCanvas = buildStyledQrCanvas(qrCanvas, style, {
+    modulePixels: styledModulePixels,
+    includeLightModules: true
+  });
+
+  return cropQrInteriorFromTrimmed(
+    styledQrCanvas.getContext("2d").getImageData(0, 0, styledQrCanvas.width, styledQrCanvas.height),
+    styledModulePixels,
+    8
+  );
+}
+
+function rebuildTextureTilesForCurrentStyle() {
+  if (!state.normalizedQrCanvas) return false;
+
+  const style = qrStyleSelect?.value || state.moduleStyle || DEFAULT_QR_STYLE;
+  const blockModules = state.blockModules || DEFAULT_BLOCK_MODULES;
+  const styledModulePixels = style === "classic"
+    ? 1
+    : Math.max(6, Number(blockModules || DEFAULT_BLOCK_MODULES) * 6);
+
+  const interiorCanvas = buildInteriorCanvasForCurrentStyle(
+    state.normalizedQrCanvas,
+    blockModules
+  );
+
+  if (!interiorCanvas) return false;
+
+  const tileSize = style === "classic"
+    ? blockModules
+    : Math.max(2, styledModulePixels * blockModules);
+
+  const tiles = extractTiles(interiorCanvas, tileSize, {
+    stride: Math.max(1, Math.floor(tileSize / 2)),
+    rejectMostlySolid: true,
+    minBlackRatio: style === "classic" ? 0.02 : 0.005,
+    maxBlackRatio: style === "classic" ? 0.98 : 0.995
+  });
+
+  if (!tiles.length) return false;
+
+  state.interiorCanvas = interiorCanvas;
+  state.textureTiles = tiles;
+  state.moduleStyle = style;
+  return true;
+}
+
 async function buildQrFromText(text) {
   if (!window.QRCode) {
     throw new Error("QRCode library not loaded");
   }
 
   const generated = buildGeneratedQrCanvas(text);
-  const interiorCanvas = cropQrInterior(generated.normalizedCanvas, 8);
-
-  const tiles = extractTiles(interiorCanvas, DEFAULT_BLOCK_MODULES, {
-    stride: Math.max(1, Math.floor(DEFAULT_BLOCK_MODULES / 2)),
-    rejectMostlySolid: true,
-    minBlackRatio: 0.02,
-    maxBlackRatio: 0.98
-  });
-
-  if (!tiles.length) {
-    throw new Error("No tiles could be extracted from generated QR");
-  }
 
   state.sourceQrCanvas = generated.normalizedCanvas;
   state.overlayQrCanvas = generated.overlayCanvas;
   state.normalizedQrCanvas = generated.normalizedCanvas;
-  state.interiorCanvas = interiorCanvas;
-  state.textureTiles = tiles;
   state.moduleCount = generated.moduleCount;
   state.modulePixelSize = 1;
   state.blockModules = DEFAULT_BLOCK_MODULES;
   state.hasRenderedOnce = false;
+
+  if (!rebuildTextureTilesForCurrentStyle()) {
+    throw new Error("No tiles could be extracted from generated QR");
+  }
 
   clearLayerCache();
   state.liveQrScale = 1;
@@ -729,7 +781,7 @@ async function buildQrFromText(text) {
   track("qr_generated_from_text", {
     textLength: text?.length || 0,
     moduleCount: generated.moduleCount,
-    tileCount: tiles.length
+    tileCount: state.textureTiles?.length || 0
   });
 }
 
@@ -746,39 +798,24 @@ async function handleQrUpload(file) {
   const trimmedOnly = normalized.trimmedImageData;
   const modulePixelSize = Math.max(1, trimmedOnly.width / normalized.moduleCount);
 
-  const interiorCanvas = cropQrInteriorFromTrimmed(
-    trimmedOnly,
-    modulePixelSize,
-    8
-  );
-
   const uploadTilePx = Math.max(
     3,
     Math.round(modulePixelSize * DEFAULT_UPLOAD_BLOCK_MODULES)
   );
-
-  const tiles = extractTiles(interiorCanvas, uploadTilePx, {
-    stride: Math.max(1, Math.floor(uploadTilePx / 2)),
-    rejectMostlySolid: true,
-    minBlackRatio: 0.01,
-    maxBlackRatio: 0.99
-  });
-
-  if (!tiles.length) {
-    throw new Error("No tiles could be extracted from uploaded QR");
-  }
 
   const overlayCanvas = imageDataToCanvas(trimmedOnly);
 
   state.sourceQrCanvas = normalized.canvas;
   state.overlayQrCanvas = overlayCanvas;
   state.normalizedQrCanvas = normalized.canvas;
-  state.interiorCanvas = interiorCanvas;
-  state.textureTiles = tiles;
   state.moduleCount = normalized.moduleCount;
   state.modulePixelSize = modulePixelSize;
   state.blockModules = DEFAULT_UPLOAD_BLOCK_MODULES;
   state.hasRenderedOnce = false;
+
+  if (!rebuildTextureTilesForCurrentStyle()) {
+    throw new Error("No tiles could be extracted from uploaded QR");
+  }
 
   clearLayerCache();
   state.liveQrScale = 1;
@@ -794,7 +831,7 @@ async function handleQrUpload(file) {
   track("qr_upload_processed", {
     fileName: file?.name || null,
     moduleCount: normalized.moduleCount,
-    tileCount: tiles.length,
+    tileCount: state.textureTiles?.length || 0,
     uploadTilePx
   });
 }
@@ -1544,9 +1581,16 @@ function init() {
 
       resetGenerateButton();
 
-      if (state.hasRenderedOnce && state.stapledBaseCanvas && state.currentMaskCanvas) {
-        redrawOverlayOnly();
-        setPreviewMeta(`QR style updated · ${APP_VERSION}`);
+      if (hasRealQrInput()) {
+        rebuildTextureTilesForCurrentStyle();
+        clearLayerCache();
+      }
+
+      if (state.hasRenderedOnce) {
+        scheduleHeavyRender(40);
+      } else if (hasRealQrInput()) {
+        paintSourcePreview(state.overlayQrCanvas || state.sourceQrCanvas);
+        setPreviewMeta(`QR innards style ready · ${APP_VERSION}`);
       }
     });
   }

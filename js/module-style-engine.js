@@ -223,3 +223,43 @@ export function listQrModuleStyles() {
     label: config.label
   }));
 }
+
+
+export function buildStyledQrCanvas(qrCanvas, moduleStyle = "classic", options = {}) {
+  const {
+    modulePixels = 8,
+    includeLightModules = true
+  } = options;
+
+  if (!qrCanvas || !qrCanvas.width || !qrCanvas.height) {
+    return null;
+  }
+
+  const safeModulePixels = Math.max(1, Math.round(modulePixels || 8));
+  const out = document.createElement("canvas");
+  out.width = qrCanvas.width * safeModulePixels;
+  out.height = qrCanvas.height * safeModulePixels;
+
+  const ctx = out.getContext("2d");
+  ctx.clearRect(0, 0, out.width, out.height);
+  ctx.imageSmoothingEnabled = false;
+
+  if (includeLightModules) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+  }
+
+  const fauxFit = {
+    x: 0,
+    y: 0,
+    moduleDisplaySize: safeModulePixels
+  };
+
+  drawStyledQrLayer(ctx, null, qrCanvas, fauxFit, {
+    moduleStyle,
+    coverageFn: null,
+    coverageThreshold: 0
+  });
+
+  return out;
+}
