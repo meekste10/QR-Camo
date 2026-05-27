@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR-Camo</title>
+  <link rel="stylesheet" href="./styles.css?v=0.6.4" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero-header">
+      <img
+        src="./QR Camo Logo.png"
+        alt="QR Camo"
+        class="hero-logo"
+      />
+    </header>
+
+    <main class="workspace single-column-workspace">
+      <section class="controls-card full-width-card">
+
+        <div class="section section--hero">
+          <div class="section-badge">Step 1</div>
+          <h2>Paste your link or upload a QR</h2>
+          <p class="helper">
+            Paste or type the url first. Then choose a shape and the app will use the link automatically.
+          </p>
+
+          <label class="label" for="qrTextInput">Link</label>
+          <input
+            id="qrTextInput"
+            type="text"
+            class="text-input"
+            value=""
+            placeholder="https://example.com"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="done"
+          />
+
+          <label class="label" for="qrUpload">Upload your own QR if you have one</label>
+          <input id="qrUpload" type="file" accept="image/*" class="file-input" />
+        </div>
+
+        <div class="section section--shape">
+          <div class="section-badge">Step 2</div>
+          <h2>Choose your shape</h2>
+          <p class="helper">
+            Upload your own silhouette first, or choose a preset below.
+          </p>
+
+          <div class="custom-upload-hero">
+            <div class="custom-upload-copy">
+              <div class="custom-upload-title">Upload your custom silhouette</div>
+              <div class="custom-upload-subtitle">
+                Best for logos, icons, symbols, mascots, product shapes, and your own brand marks.
+              </div>
+            </div>
+
+            <label for="customMaskUpload" class="custom-upload-btn">
+              Choose image
+            </label>
+            <input id="customMaskUpload" type="file" accept="image/*" class="file-input custom-upload-input" />
+          </div>
+
+          <label class="label">Preset shapes</label>
+
+          <div class="marquee-nav-row">
+            <button
+              id="presetScrollLeft"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll preset shapes left"
+            >
+              ←
+            </button>
+
+            <div id="presetScrollShell" class="samples-marquee-shell preset-marquee-shell">
+              <div id="presetShapesGrid" class="preset-categories-grid"></div>
+            </div>
+
+            <button
+              id="presetScrollRight"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll preset shapes right"
+            >
+              →
+            </button>
+          </div>
+
+          <select id="maskSelect" class="select-input hidden"></select>
+        </div>
+
+        <div id="previewStepSection" class="section preview-adjust-section progressive-step is-locked hidden section--preview">
+          <div class="section-badge">Step 3</div>
+          <h2>Adjust</h2>
+
+          <div class="preview-adjust-layout single-stack-layout">
+            <div class="preview-card embedded-preview-card">
+              <div class="preview-header compact-preview-header">
+                <div>
+                  <div class="preview-title">QR-Camo preview</div>
+                  <div id="previewMeta" class="preview-meta">Paste a link or upload a QR to begin</div>
+                </div>
+                <div id="sourceMeta" class="source-meta">waiting for QR source</div>
+              </div>
+
+              <div class="preview-stage embedded-preview-stage">
+                <canvas id="sourcePreviewCanvas" class="source-preview-layer"></canvas>
+                <canvas id="outputCanvas" class="output-preview-layer"></canvas>
+
+                <div id="previewEmptyState" class="preview-empty-state">
+                  <div class="empty-icon">⬒</div>
+                  <div class="empty-title">Start with your link or QR</div>
+                  <div class="empty-copy">
+                    Once your QR source and shape are both ready, your QR-Camo will appear here.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="adjust-panel-card adjust-panel-card--full">
+              <div class="adjust-grid-top">
+                <div class="control-block">
+                  <label class="label" for="qrSizeSelect">QR size</label>
+                  <select id="qrSizeSelect" class="select-input">
+                    <option value="xxxxsmall">Extra Extra Extra Extra Small</option>
+                    <option value="xxxsmall">Extra Extra Extra Small</option>
+                    <option value="xxsmall" selected>Extra Extra Small</option>
+                    <option value="xsmall">Extra Small</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+
+                <div class="control-block">
+                  <label class="label" for="qrStyleSelect">QR innards style</label>
+                  <select id="qrStyleSelect" class="select-input">
+                    <option value="classic" selected>Classic / safest</option>
+                    <option value="rounded">Rounded blocks</option>
+                    <option value="dots">Dots</option>
+                    <option value="pearls">Pearls</option>
+                    <option value="softInk">Soft ink</option>
+                    <option value="luxeStamp">Luxe stamp</option>
+                  </select>
+                  <p class="helper">
+                    Finder squares stay protected so the style changes the QR texture without casually breaking scan logic.
+                  </p>
+                </div>
+
+                <div class="control-block">
+                  <label class="label" for="qrScaleSlider">Live QR scale</label>
+                  <input
+                    id="qrScaleSlider"
+                    type="range"
+                    min="70"
+                    max="140"
+                    step="1"
+                    value="100"
+                    class="range-input"
+                  />
+                  <div class="offset-row">
+                    <div class="offset-chip">Scale: <span id="qrScaleLabel">100</span>%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="control-block">
+                <label class="label" for="blendTightness">Blend tightness</label>
+                <input
+                  id="blendTightness"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="50"
+                  class="range-input"
+                />
+                <div class="offset-row">
+                  <div class="offset-chip">Blend: <span id="blendTightnessLabel">50</span>%</div>
+                </div>
+              </div>
+
+              <div class="control-duo-row control-duo-row--tight">
+                <div class="direction-card">
+                  <div class="mini-section-title">Move QR</div>
+
+                  <div class="dpad-wrap">
+                    <button id="nudgeUp" class="nudge-btn" type="button">↑</button>
+
+                    <div class="dpad-middle">
+                      <button id="nudgeLeft" class="nudge-btn" type="button">←</button>
+                      <button id="resetPositionBtn" class="nudge-btn center-btn" type="button">•</button>
+                      <button id="nudgeRight" class="nudge-btn" type="button">→</button>
+                    </div>
+
+                    <button id="nudgeDown" class="nudge-btn" type="button">↓</button>
+                  </div>
+
+                  <div class="offset-row">
+                    <div class="offset-chip">X: <span id="qrOffsetXLabel">0</span></div>
+                    <div class="offset-chip">Y: <span id="qrOffsetYLabel">0</span></div>
+                  </div>
+
+                  <input type="hidden" id="qrOffsetX" value="0" />
+                  <input type="hidden" id="qrOffsetY" value="0" />
+                </div>
+
+                <div class="color-card">
+                  <div class="mini-section-title">Color + shape</div>
+
+                  <div class="color-row color-row--stacked">
+                    <label class="color-field">
+                      <span>Foreground</span>
+                      <input type="color" id="foregroundColor" value="#000000" />
+                    </label>
+
+                    <label class="color-field">
+                      <span>Background</span>
+                      <input type="color" id="backgroundColor" value="#ffffff" />
+                    </label>
+                  </div>
+
+                  <label class="checkbox-row">
+                    <input type="checkbox" id="transparentBackground" />
+                    <span>Transparent background</span>
+                  </label>
+
+                  <label class="checkbox-row">
+                    <input type="checkbox" id="invertMask" />
+                    <span>Invert shape</span>
+                  </label>
+
+                  <label class="label" for="maskScaleText">Shape size %</label>
+                  <input
+                    id="maskScaleText"
+                    type="number"
+                    class="text-input"
+                    min="100"
+                    max="250"
+                    step="1"
+                    value="140"
+                    inputmode="numeric"
+                  />
+
+                  <input
+                    id="maskScale"
+                    type="range"
+                    min="100"
+                    max="250"
+                    step="1"
+                    value="140"
+                    class="range-input"
+                  />
+
+                  <div class="offset-row">
+                    <div class="offset-chip">Shape: <span id="maskScaleLabel">140</span>%</div>
+                  </div>
+
+                  <div id="contrastWarning" class="helper hidden">
+                    Low contrast may reduce scan reliability.
+                  </div>
+                </div>
+              </div>
+
+              <div class="action-row shape-action-row">
+                <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
+                <button id="exportBtn" class="btn-secondary" type="button">Export PNG</button>
+              </div>
+
+              <div class="action-row action-row-single">
+                <button id="generateBtn" class="btn-primary" type="button">Create QR-Camo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="samplesStepSection" class="section samples-section section--samples progressive-step is-locked hidden">
+          <div class="section-badge">Explore</div>
+          <h2>Samples</h2>
+          <p class="helper">Swipe through example QR-Camo designs.</p>
+
+          <div class="marquee-nav-row">
+            <button
+              id="samplesScrollLeft"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll samples left"
+            >
+              ←
+            </button>
+
+            <div id="samplesScrollShell" class="samples-marquee-shell">
+              <div class="samples-marquee-track" id="samplesGrid">
+                <button class="sample-card" type="button" data-sample="Coffee-mug-qr"><img alt="Coffee mug QR sample" /><span>Coffee Mug</span></button>
+                <button class="sample-card" type="button" data-sample="Calendar-qr"><img alt="Calendar QR sample" /><span>Calendar</span></button>
+                <button class="sample-card" type="button" data-sample="Headphones-qr"><img alt="Headphones QR sample" /><span>Headphones</span></button>
+                <button class="sample-card" type="button" data-sample="repair-wrench-qr"><img alt="Repair wrench QR sample" /><span>Repair</span></button>
+                <button class="sample-card" type="button" data-sample="profile-icon-qr"><img alt="Profile QR sample" /><span>Profile</span></button>
+                <button class="sample-card" type="button" data-sample="lock-icon-qr"><img alt="Lock QR sample" /><span>Lock</span></button>
+                <button class="sample-card" type="button" data-sample="shop-bag-qr"><img alt="Shop bag QR sample" /><span>Shop Bag</span></button>
+                <button class="sample-card" type="button" data-sample="gift-qr"><img alt="Gift QR sample" /><span>Gift</span></button>
+                <button class="sample-card" type="button" data-sample="play-button-qr"><img alt="Play button QR sample" /><span>Play</span></button>
+                <button class="sample-card" type="button" data-sample="map-qr"><img alt="Map QR sample" /><span>Map</span></button>
+                <button class="sample-card" type="button" data-sample="trophy-qr"><img alt="Trophy QR sample" /><span>Trophy</span></button>
+                <button class="sample-card" type="button" data-sample="human-head-qr"><img alt="Human head QR sample" /><span>Human Head</span></button>
+                <button class="sample-card" type="button" data-sample="door-qr"><img alt="Door QR sample" /><span>Door</span></button>
+                <button class="sample-card" type="button" data-sample="pharmacy-qr"><img alt="Pharmacy QR sample" /><span>Pharmacy</span></button>
+                <button class="sample-card" type="button" data-sample="question-icon-qr"><img alt="Question icon QR sample" /><span>Question</span></button>
+                <button class="sample-card" type="button" data-sample="info-icon-qr"><img alt="Info QR sample" /><span>Info</span></button>
+                <button class="sample-card" type="button" data-sample="pizza-qr"><img alt="Pizza QR sample" /><span>Pizza</span></button>
+                <button class="sample-card" type="button" data-sample="heart-lt-blue-qr"><img alt="Heart QR sample" /><span>Heart</span></button>
+              </div>
+            </div>
+
+            <button
+              id="samplesScrollRight"
+              class="marquee-arrow"
+              type="button"
+              aria-label="Scroll samples right"
+            >
+              →
+            </button>
+          </div>
+        </div>
+
+        <div id="debugPanel" class="debug-box">Ready.</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-title">Building QR-Camo…</div>
+      <div class="loading-copy">Fitting QR to shape</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script type="module" src="./js/app.js?v=0.6.4"></script>
+</body>
+</html>
